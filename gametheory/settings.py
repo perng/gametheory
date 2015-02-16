@@ -78,7 +78,7 @@ REST_FRAMEWORK = {
 
 LANGUAGE_CODE = 'en-us'
 
-TIME_ZONE = 'UTC'
+TIME_ZONE = 'America/Los_Angeles'
 
 USE_I18N = True
 
@@ -92,7 +92,20 @@ USE_TZ = True
 
 STATIC_URL = '/static/'
 
-WAITING_TIMEOUT = 60000  # seconds
+WAITING_TIMEOUT = 120  # seconds
+
+CACHES = {
+    'default': {
+        'BACKEND': 'django.core.cache.backends.memcached.MemcachedCache',
+        'LOCATION': '127.0.0.1:11211',
+        'TIMEOUT': 60,
+        'OPTIONS': {
+            'MAX_ENTRIES': 1000
+        }
+    }
+}
+
+
 
 def payout(icheat, hecheat):
     if icheat:
@@ -103,3 +116,4 @@ def payout(icheat, hecheat):
         if hecheat:
             return -1
         return 1
+TIMEOUT_PENALTY = 1

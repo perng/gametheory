@@ -3,7 +3,9 @@ from django.http import HttpResponse
 from models import Player, Queue, Game
 from datetime import datetime
 from datetime import timedelta
-from gametheory.settings import WAITING_TIMEOUT, payout
+from django.core.cache import caches
+from django.db import transaction
+from gametheory.settings import WAITING_TIMEOUT, payout, TIMEOUT_PENALTY
 # Create your views here.
 
 def clean_up():
@@ -16,17 +18,27 @@ def clean_up():
 	for g in games:
 		g.delete
 
-def index(request):
-    return HttpResponse("Hello, world. ")
-
-def get_player_stats(request, player_name):
-	clean_up()
-	player, created = Player.objects.get_or_create(player_name=player_name)
-	if created:
-		player.save()
+def register(register, player_name, player_uuid):
+	player, created = Player.objects.get_or_create(player_uuid=player_uuid)
+	player.player_name = player_name
+	player.save()
  	return HttpResponse('{status:"ok", player_id:%d, score:%d}' % (player.id, player.score), content_type='application/json')
 
+def get_player_stats_by_id(request, player_id):
+	clean_up()
+	player = Player.objects.get(id = int(player_id))
+	player.save() # update last_play_time 
+ 	return HttpResponse('{status:"ok", player_id:%d, score:%d}' % (player.id, player.score), content_type='application/json')
+
+def get_player_stats_by_uuid(request, player_uuid):
+	clean_up()
+	player = Player.objects.get(player_uuid = player_uuid)
+	player.save() # update last_play_time 
+ 	return HttpResponse('{status:"ok", player_id:%d, score:%d}' % (player.id, player.score), content_type='application/json')
+
+
 def start_game(request, player_id):
+	clean_up()
 	player_id=int(player_id)
 	player=Player.objects.get(id=player_id)
 
@@ -34,25 +46,28 @@ def start_game(request, player_id):
 	games = Game.objects.filter(player2=player_id, player2cheat=None)[:]
 	if len(games)==1:
 		game=games[0]
-		opponent = game.player2 if game.player1.id==player_id else game.player1
+		opponent = game.player1
 		return HttpResponse('{status:"ok", game_id:%d, oppenent_id:%d, oppenent_name:"%s", opponent_score:%d}' % (game.id, opponent.id, opponent.player_name, opponent.score),
 			content_type='application/json')
 
 	# check if there are any oppenent in queue, if so, create game table
-	try:		
-		queue = Queue.objects.filter(last_pool_time__gte = datetime.now()-timedelta(seconds=WAITING_TIMEOUT)).exclude(id = player_id).order_by('enter_time')[0]
-		opponent = queue.player
-		queue.delete()
+	with transaction.atomic():
+		cache = caches['default']
+		opp_id = cache.get('q')
+		if opp_id and int(opp_id) != player_id:
+			opp_id = int(opp_id)
+			cache.delete('q')
+		else:
+			opp_id = None
+	if opp_id:
+		opponent = Player.objects.get(id=opp_id)
 		game = Game(player1=player, player2=opponent)
 		game.save()
 		return HttpResponse('{status:"ok", game_id:%d, oppenent_id:%d, oppenent_name:"%s", opponent_score:%d}' % (game.id, opponent.id, opponent.player_name, opponent.score),
 			content_type='application/json')
-	except IndexError:
-		pass
-
+	
 	# queue the player
-	queue, created = Queue.objects.get_or_create(player = player)
-	queue.save()  # refresh last_pool_time if not first created
+	cache.set('q', player_id)
 	return HttpResponse('{status:"queued"}', content_type='application/json')
 
 def player_cheat(request, player_id, game_id, cheat=True):
@@ -78,10 +93,22 @@ def player_cheat(request, player_id, game_id, cheat=True):
 		player.score+= pay
 		player.save()
 		return HttpResponse('{status:"ok", opponent_cheat:"%s", gain:%d, new_score:%d}' % (hecheat, pay, player.score), content_type='application/json')
+	elif game.finish_time != None:  # opponent timed out
+		return HttpResponse('{status:"opponent_timed_out"}', content_type='application/json')
 	else:
 		return HttpResponse('{status:"waiting"}', content_type='application/json')
 
 
 def player_split(request, player_id, game_id):
 	return player_cheat(request, player_id, game_id, False)
+
+def player_timed_out(request, player_id, game_id):
+	game = Game.objects.get(id=int(game_id))
+	player = Player.objects.get(id=int(player_id))
+	player.score -= TIMEOUT_PENALTY
+	player.save()
+	game.finish_time = datetime.now()
+	game.save()
+	return HttpResponse('{status:"timed_out", gain:%d, new_score:%d}' % (-TIMEOUT_PENALTY, player.score), content_type='application/json')
+
 
