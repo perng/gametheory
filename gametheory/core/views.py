@@ -28,13 +28,13 @@ def get_player_stats_by_id(request, player_id):
 	clean_up()
 	player = Player.objects.get(id = int(player_id))
 	player.save() # update last_play_time 
- 	return HttpResponse('{status:"ok", player_id:%d, score:%d}' % (player.id, player.score), content_type='application/json')
+ 	return HttpResponse('{status:"ok", player_id:%d, player_name:"%s", score:%d}' % (player.id, player.player_name, player.score), content_type='application/json')
 
 def get_player_stats_by_uuid(request, player_uuid):
 	clean_up()
 	player = Player.objects.get(player_uuid = player_uuid)
 	player.save() # update last_play_time 
- 	return HttpResponse('{status:"ok", player_id:%d, score:%d}' % (player.id, player.score), content_type='application/json')
+ 	return HttpResponse('{status:"ok", player_id:%d, player_name:"%s", score:%d}' % (player.id, player.player_name, player.score), content_type='application/json')
 
 
 def start_game(request, player_id):
