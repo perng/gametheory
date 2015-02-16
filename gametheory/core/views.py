@@ -24,7 +24,7 @@ def get_player_stats(request, player_name):
 	player, created = Player.objects.get_or_create(player_name=player_name)
 	if created:
 		player.save()
- 	return HttpResponse('{status:"ok", player_id:%d, score:%d}' % (player.id, player.score))
+ 	return HttpResponse('{status:"ok", player_id:%d, score:%d}' % (player.id, player.score), content_type='application/json')
 
 def start_game(request, player_id):
 	player_id=int(player_id)
@@ -35,7 +35,8 @@ def start_game(request, player_id):
 	if len(games)==1:
 		game=games[0]
 		opponent = game.player2 if game.player1.id==player_id else game.player1
-		return HttpResponse('{status:"ok", game_id:%d, oppenent_id:%d, oppenent_name:"%s", opponent_score:%d}' % (game.id, opponent.id, opponent.player_name, opponent.score))
+		return HttpResponse('{status:"ok", game_id:%d, oppenent_id:%d, oppenent_name:"%s", opponent_score:%d}' % (game.id, opponent.id, opponent.player_name, opponent.score),
+			content_type='application/json')
 
 	# check if there are any oppenent in queue, if so, create game table
 	try:		
@@ -44,14 +45,15 @@ def start_game(request, player_id):
 		queue.delete()
 		game = Game(player1=player, player2=opponent)
 		game.save()
-		return HttpResponse('{status:"ok", game_id:%d, oppenent_id:%d, oppenent_name:"%s", opponent_score:%d}' % (game.id, opponent.id, opponent.player_name, opponent.score))
+		return HttpResponse('{status:"ok", game_id:%d, oppenent_id:%d, oppenent_name:"%s", opponent_score:%d}' % (game.id, opponent.id, opponent.player_name, opponent.score),
+			content_type='application/json')
 	except IndexError:
 		pass
 
 	# queue the player
 	queue, created = Queue.objects.get_or_create(player = player)
 	queue.save()  # refresh last_pool_time if not first created
-	return HttpResponse('{status:"queued"}')
+	return HttpResponse('{status:"queued"}', content_type='application/json')
 
 def player_cheat(request, player_id, game_id, cheat=True):
 	game = Game.objects.get(id=int(game_id))
@@ -75,9 +77,9 @@ def player_cheat(request, player_id, game_id, cheat=True):
 		pay = payout(cheat, hecheat)
 		player.score+= pay
 		player.save()
-		return HttpResponse('{status:"ok", opponent_cheat:"%s", gain:%d, new_score:%d}' % (hecheat, pay, player.score))
+		return HttpResponse('{status:"ok", opponent_cheat:"%s", gain:%d, new_score:%d}' % (hecheat, pay, player.score), content_type='application/json')
 	else:
-		return HttpResponse('{status:"waiting"}')
+		return HttpResponse('{status:"waiting"}', content_type='application/json')
 
 
 def player_split(request, player_id, game_id):
