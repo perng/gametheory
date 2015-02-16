@@ -16,7 +16,7 @@
 ** if opponent submitted, return {status:"ok", opponent_cheat:<True|Fase>, gain:<gain>, new_score:<new_score>}. Game over. 
 ** If opponent timed out, returns {status:"opponent_timed_out",  gain:<gain>, new_score:<new_score>}
 * http://gametheory.olidu.com/player_split/<player_id>/<game_id> return game result
-*  http://gametheory.olidu.com/player_timed_out/<player_id>/<game_id>  
+* http://gametheory.olidu.com/player_timed_out/<player_id>/<game_id>  
 ** send when the client decided the player has timed out (or quit the app)
 ** return {status:"timed_out", gain:<penalty>, new_score:<new_score>}  where penalty is a negative number. 
 ** The other party will receive {status:"opponent_timed_out"},  no gain or loss if opponent timed_out 
