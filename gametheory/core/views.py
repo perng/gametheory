@@ -1,10 +1,11 @@
 from django.shortcuts import render
 from django.http import HttpResponse
-from models import Player, Queue, Game
+from models import Player,  Game
 from datetime import datetime
 from datetime import timedelta
 from django.core.cache import caches
 from django.db import transaction
+from django.db.models import Q
 from gametheory.settings import WAITING_TIMEOUT, payout, TIMEOUT_PENALTY
 # Create your views here.
 
@@ -41,18 +42,21 @@ def start_game(request, player_id):
 	clean_up()
 	player_id=int(player_id)
 	player=Player.objects.get(id=player_id)
+	cache = caches['default']
 
 	#check if already assigned in a game
-	games = Game.objects.filter(player2=player_id, player2cheat=None)[:]
-	if len(games)==1:
-		game=games[0]
-		opponent = game.player1
+	game_id = cache.get(player_id)
+	if game_id:
+		game_id = int(game_id)
+		game = Game.objects.get(id = game_id)
+		opponent = game.opponent(player_id)
+		print "already in game", game_id
 		return HttpResponse('{status:"ok", game_id:%d, oppenent_id:%d, oppenent_name:"%s", opponent_score:%d}' % (game.id, opponent.id, opponent.player_name, opponent.score),
 			content_type='application/json')
 
 	# check if there are any oppenent in queue, if so, create game table
 	with transaction.atomic():
-		cache = caches['default']
+		print 'cached player=', cache.get('q')
 		opp_id = cache.get('q')
 		if opp_id and int(opp_id) != player_id:
 			opp_id = int(opp_id)
@@ -63,6 +67,9 @@ def start_game(request, player_id):
 		opponent = Player.objects.get(id=opp_id)
 		game = Game(player1=player, player2=opponent)
 		game.save()
+		cache.set(opp_id, game.id)
+		cache.set(player_id, game.id)
+		print 'found opponent, new game_id=', game.id
 		return HttpResponse('{status:"ok", game_id:%d, oppenent_id:%d, oppenent_name:"%s", opponent_score:%d}' % (game.id, opponent.id, opponent.player_name, opponent.score),
 			content_type='application/json')
 	
@@ -71,9 +78,13 @@ def start_game(request, player_id):
 	return HttpResponse('{status:"queued"}', content_type='application/json')
 
 def player_cheat(request, player_id, game_id, cheat=True):
+	cache = caches['default']
+
 	game = Game.objects.get(id=int(game_id))
 	player_id = int(player_id)
 	player = Player.objects.get(id=player_id)
+	opponent = game.opponent(player_id)
+	cache.set(player_id, None)
 
 	if game.player1.id == player_id:
 		print "I am player1"
