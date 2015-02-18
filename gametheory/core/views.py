@@ -10,6 +10,7 @@ from gametheory.settings import WAITING_TIMEOUT, payout, TIMEOUT_PENALTY, geopre
 import json, urllib2
 
 OK = 'ok'
+FAIL = {"status": "failed"}
 
 def JsonResponse(obj):
 	return HttpResponse(json.dumps(obj), content_type='application/json')
@@ -40,14 +41,21 @@ def register(request, player_name, player_uuid):
 
 def get_player_stats_by_id(request, player_id):
 	clean_up()
-	player = Player.objects.get(id = int(player_id))
+	try:
+		player = Player.objects.get(id = int(player_id))
+	except:
+		return JsonResponse(FAIL)
 	player.save() # update last_play_time 
  	result = {'status':OK, 'player_id':player.id, 'player_name':player.player_name, 'score':player.score}
 	return JsonResponse(result)
 
 def get_player_stats_by_uuid(request, player_uuid):
 	clean_up()
-	player = Player.objects.get(player_uuid = player_uuid)
+	try:
+		player = Player.objects.get(player_uuid = player_uuid)
+	except:
+		return JsonResponse(FAIL)
+
 	player.save() # update last_play_time 
  	result = {'status':OK, 'player_id':player.id, 'player_name':player.player_namee, 'score':player.score}
 	return JsonResponse(result)
@@ -55,7 +63,11 @@ def get_player_stats_by_uuid(request, player_uuid):
 
 def start_game(request, player_id):
 	clean_up()
-	player_id=int(player_id)
+	try:
+		player = Player.objects.get(id=int(player_id))
+	except:
+		return JsonResponse(FAIL)
+
 	player=Player.objects.get(id=player_id)
 	cache = caches['default']
 
@@ -97,7 +109,10 @@ def player_cheat(request, player_id, game_id, cheat=True):
 
 	game = Game.objects.get(id=int(game_id))
 	player_id = int(player_id)
-	player = Player.objects.get(id=player_id)
+	try:
+		player = Player.objects.get(id = player_id)
+	except:
+		return JsonResponse(FAIL)
 	opponent = game.opponent(player_id)
 	cache.set(player_id, None)
 
@@ -131,7 +146,10 @@ def player_split(request, player_id, game_id):
 
 def player_timed_out(request, player_id, game_id):
 	game = Game.objects.get(id=int(game_id))
-	player = Player.objects.get(id=int(player_id))
+	try:
+		player = Player.objects.get(id=int(player_id))
+	except:
+		return JsonResponse(FAIL)
 	player.score -= TIMEOUT_PENALTY
 	player.save()
 	game.finish_time = datetime.now()
@@ -139,33 +157,48 @@ def player_timed_out(request, player_id, game_id):
 	return JsonResponse({'status':'timed_out', 'gain':-TIMEOUT_PENALTY, 'new_score':player.score})
 
 def leaders_overall(request):
-	player = Player.objects.get(id=int(player_id))
 	players = Player.objects.order_by('-score')[:20]
 	player_list = [{'player_name':p.player_name, 'score':p.score} for p in players]
 	return JsonResponse({'status':OK, 'players': player_list})
 
 def rank_overall(request, player_id):
-	player = Player.objects.get(id=int(player_id))
+	try:
+		player = Player.objects.get(id=int(player_id))
+	except:
+		return JsonResponse(FAIL)
 	rank = Player.objects.filter(score__gt=player.score).count()+1
 	return JsonResponse({'status':OK, 'rank':rank})
 
 def leaders_country(request, player_id):
-	player = Player.objects.get(id=int(player_id))
+	try:
+		player = Player.objects.get(id=int(player_id))
+	except:
+		return JsonResponse(FAIL)
 	players = Player.objects.filter(country=player.country).order_by('-score')
 	player_list = [{'player_name':p.player_name, 'score':p.score} for p in players]		
 	return JsonResponse({'status':OK, 'players': player_list})
 def rank_country(request, player_id):
-	player = Player.objects.get(id=int(player_id))
+	try:
+		player = Player.objects.get(id=int(player_id))
+	except:
+		return JsonResponse(FAIL)
 	rank = Player.objects.filter(score__gt=player.score, country=player.country).count()+1
 	return JsonResponse({'status':OK, 'rank':rank})
 
 def leaders_city(request, player_id):
-	player = Player.objects.get(id=int(player_id))
+	try:
+		player = Player.objects.get(id=int(player_id))
+	except:
+		return JsonResponse(FAIL)
 	players = Player.objects.filter(country=player.country, city=player.city).order_by('-score')
 	player_list = [{'player_name':p.player_name, 'score':p.score} for p in players]		
 	return JsonResponse({'status':OK, 'players': player_list})
+
 def rank_city(request, player_id):
-	player = Player.objects.get(id=int(player_id))
+	try:
+		player = Player.objects.get(id=int(player_id))
+	except:
+		return JsonResponse(FAIL)
 	rank = Player.objects.filter(score__gt=player.score, country=player.country, city=player.city).count()+1
 	return JsonResponse({'status':OK, 'rank':rank})
 
