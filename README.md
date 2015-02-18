@@ -50,9 +50,9 @@ All leader board calls return up to 20 top players with scores from high to low.
     * Same output format as leaders_overall
 
 ## Player rank 
-* http://gametheory.olidu.com/rank_overall/1
-* http://gametheory.olidu.com/rank_country/1
-* http://gametheory.olidu.com/rank_state/1
-* http://gametheory.olidu.com/rank_city/1
+* http://gametheory.olidu.com/rank_overall/[player_id]
+* http://gametheory.olidu.com/rank_country/[player_id]
+* http://gametheory.olidu.com/rank_state/[player_id]
+* http://gametheory.olidu.com/rank_city/[player_id]
     * Sample result {"status": "ok", "rank": 1}
 
