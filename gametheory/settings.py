@@ -117,3 +117,8 @@ def payout(icheat, hecheat):
             return -1
         return 1
 TIMEOUT_PENALTY = 1
+
+geolocationurl=  "http://api.ipinfodb.com/v3/ip-city/?key="
+geokey = "968491fd6c7df2822b0d2a00d101498e78a7637b6a83e66104cc07432cb1a6ce"
+ip_param = "&ip="
+geoprefix = geolocationurl+geokey+ip_param

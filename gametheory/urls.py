@@ -15,5 +15,12 @@ urlpatterns = patterns('',
     url(r'^player_cheat/(?P<player_id>\d+)/(?P<game_id>\d+)$', player_cheat),
     url(r'^player_split/(?P<player_id>\d+)/(?P<game_id>\d+)$', player_split),
     url(r'^player_timed_out/(?P<player_id>\d+)/(?P<game_id>\d+)$', player_timed_out),
-    #url(r'',  index),
+    url(r'^leaders_overall$', leaders_overall),
+    url(r'^leaders_country/(?P<player_id>\d+)$', leaders_country),
+    url(r'^leaders_city/(?P<player_id>\d+)$', leaders_city),
+
+    url(r'^rank_overall/(?P<player_id>\d+)$', rank_overall),
+    url(r'^rank_country/(?P<player_id>\d+)$', rank_country),
+    url(r'^rank_city/(?P<player_id>\d+)$', rank_city),
+    
 )

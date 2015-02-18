@@ -6,8 +6,8 @@ from datetime import timedelta
 from django.core.cache import caches
 from django.db import transaction
 from django.db.models import Q
-from gametheory.settings import WAITING_TIMEOUT, payout, TIMEOUT_PENALTY
-import json
+from gametheory.settings import WAITING_TIMEOUT, payout, TIMEOUT_PENALTY, geoprefix
+import json, urllib2
 
 OK = 'ok'
 
@@ -21,9 +21,19 @@ def clean_up():
 	for g in games:
 		g.delete
 
-def register(register, player_name, player_uuid):
+def register(request, player_name, player_uuid):
 	player, created = Player.objects.get_or_create(player_uuid=player_uuid)
 	player.player_name = player_name
+	ip = request.META['REMOTE_ADDR']
+	tokens = urllib2.urlopen(geoprefix+ip).readline().split(';')
+	if tokens[0]=='OK':
+		player.ip_address = ip
+		player.country = tokens[4]
+		player.state = tokens[5]
+		player.city = tokens[6]
+		player.zipcode = tokens[7]
+		player.long = float(tokens[8])
+		player.lat = float(tokens[9])
 	player.save()
 	result = {'status':OK, 'player_id':player.id, 'player.score':player.score}
 	return JsonResponse(result)
@@ -127,3 +137,35 @@ def player_timed_out(request, player_id, game_id):
 	game.finish_time = datetime.now()
 	game.save()
 	return JsonResponse({'status':'timed_out', 'gain':-TIMEOUT_PENALTY, 'new_score':player.score})
+
+def leaders_overall(request):
+	player = Player.objects.get(id=int(player_id))
+	players = Player.objects.order_by('-score')[:20]
+	player_list = [{'player_name':p.player_name, 'score':p.score} for p in players]
+	return JsonResponse({'status':OK, 'players': player_list})
+
+def rank_overall(request, player_id):
+	player = Player.objects.get(id=int(player_id))
+	rank = Player.objects.filter(score__gt=player.score).count()+1
+	return JsonResponse({'status':OK, 'rank':rank})
+
+def leaders_country(request, player_id):
+	player = Player.objects.get(id=int(player_id))
+	players = Player.objects.filter(country=player.country).order_by('-score')
+	player_list = [{'player_name':p.player_name, 'score':p.score} for p in players]		
+	return JsonResponse({'status':OK, 'players': player_list})
+def rank_country(request, player_id):
+	player = Player.objects.get(id=int(player_id))
+	rank = Player.objects.filter(score__gt=player.score, country=player.country).count()+1
+	return JsonResponse({'status':OK, 'rank':rank})
+
+def leaders_city(request, player_id):
+	player = Player.objects.get(id=int(player_id))
+	players = Player.objects.filter(country=player.country, city=player.city).order_by('-score')
+	player_list = [{'player_name':p.player_name, 'score':p.score} for p in players]		
+	return JsonResponse({'status':OK, 'players': player_list})
+def rank_city(request, player_id):
+	player = Player.objects.get(id=int(player_id))
+	rank = Player.objects.filter(score__gt=player.score, country=player.country, city=player.city).count()+1
+	return JsonResponse({'status':OK, 'rank':rank})
+

@@ -7,11 +7,19 @@ class Player(models.Model):
 	score = models.IntegerField(default = 1200)
 	join_time = models.DateTimeField(auto_now_add=True, null=True)
 	last_play_time = models.DateTimeField(auto_now=True, null=True)
+	ip_address = models.CharField(max_length=20, null=True)
+	country = models.CharField(max_length=50, null=True)
+	state = models.CharField(max_length=30, null=True)
+	city =  models.CharField(max_length=30, null=True)
+	zipcode =  models.CharField(max_length=10, null=True)
+	long = models.FloatField(null=True)
+	lat = models.FloatField(null=True)
+
 	def __str__(self):
 		return self.player_name+':'+self.player_uuid
 class PlayerAdmin(admin.ModelAdmin):
-	fields = ['player_name', 'player_uuid', 'score', 
-			'join_time', 'last_play_time']
+	fields = ['player_name', 'player_uuid', 'score', 'ip_address', 
+		'country','state', 'city']
 admin.site.register(Player, PlayerAdmin)
 
 
