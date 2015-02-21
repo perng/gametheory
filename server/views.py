@@ -12,8 +12,8 @@ import json, urllib2
 OK = 'ok'
 FAIL = {"status": "failed"}
 
-def JsonResponse(obj):
-	return HttpResponse(json.dumps(obj), content_type='application/json')
+def JsonResponse(socket, obj):
+	socket.sendMessage(json.dumps(obj))
 
 def clean_up():
 	''' removed timed-out Queue and Game'''
