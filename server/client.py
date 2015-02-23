@@ -1,34 +1,54 @@
+import time, json
 
 from autobahn.twisted.websocket import WebSocketClientProtocol, \
     WebSocketClientFactory
 
+STATUS_OK = {"status":"ok"}
+cmd_response =[
+                ({"cmd":"noop"}, STATUS_OK ),
+            ]
 
 class MyClientProtocol(WebSocketClientProtocol):
 
-
     def onConnect(self, response):
-        self.counter = 0
+        self.current_test = 0
         print("Server connected: {0}".format(response.peer))
 
     def onOpen(self):
         print("WebSocket connection open.")
-
-        self.sendMessage(u'{"cwd":"get_player_id_by_id", "player_id":1}'.encode('utf8'), False)
+        self.test()
 
     def onMessage(self, payload, isBinary):
         print "onMessage called"
-        print payload
-        if isBinary:
-            print("Binary message received: {0} bytes".format(len(payload)))
-        else:
-            self.counter+=1
-            print payload
-            print("Text message received: {0}".format(payload.decode('utf8')))
+        print("Text message received: {0}".format(payload.decode('utf8')))
+        self.test(payload)
             #self.sendMessage(u'{"cmd":"get_player_id_by_id", "player_id":1}'.encode('utf8'), False)
 
     def onClose(self, wasClean, code, reason):
         print("WebSocket connection closed: {0}".format(reason))
 
+    def sendMsg(self, msg):
+        msg=json.dumps(msg)
+        self.sendMessage(msg.encode('utf8'), False)
+
+    def test(self, response=None):
+        print 'current_test', self.current_test
+        print 'test called, response=', response
+        if response:
+            print 'response type', type(response)
+            responsejson = json.loads(response)
+            print cmd_response[self.current_test][1]
+            for k in responsejson:
+                if k!='msg':
+                    assert responsejson[k] == cmd_response[self.current_test][1][k]
+            print "Test OK!"
+            self.current_test += 1
+        print 'current_test', self.current_test
+        if self.current_test < len(cmd_response):
+            time.sleep(2)
+            self.sendMsg(cmd_response[self.current_test][0])
+
+        #self.sendMessage(u'{"cwd":"get_player_id_by_id", "player_id":1}'.encode('utf8'), False)
 
 if __name__ == '__main__':
 
