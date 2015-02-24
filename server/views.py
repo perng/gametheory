@@ -25,15 +25,29 @@ def clean_up():
     for g in games:
         g.delete()
 
+class requiredParams(object):
+    def __init__(self, *args):
+        self.required=args
+    def __call__(self, f):
+        def wrapped_f(socket, params):
+            missing = [p for p in self.required if p not in params]
+            if missing:
+                msg = 'parameters '+','.join(missing)+' are missing.'
+                return JsonResponse(socket, params, {}, ERROR, msg)
+            return f(socket, params)
+        return wrapped_f
+
+
 def noop(socket, params):
     return JsonResponse(socket, params,  {},  OK, 'No operation')
 
+@requiredParams('uuid', 'uuid_type', 'player_name')
 def register(socket, params):
-    if 'uuid' not in params:
-        return JsonResponse(socket, {}, ERROR, 'uuid not sent in '+params)
-    if 'player_name' not in params:
-        return JsonResponse(socket, {}, ERROR, 'player_name not sent in '+params)
-    player, created = Player.objects.get_or_create(player_uuid=params['uuid'])
+    player, created = Player.objects.get_or_create(player_uuid=params['uuid'], uuid_type=params['uuid_type'])
+    if created:
+        msg = "New user registered"
+    else:
+        msg = "User renamed"
     player.player_name = params['player_name']
     ip = socket.ip
     tokens = urllib2.urlopen(geoprefix+ip).readline().split(';')
@@ -47,7 +61,7 @@ def register(socket, params):
         player.lat = float(tokens[9])
     player.save()
     result = {'status':OK, 'player_id':player.id, 'player.score':player.score}
-    return JsonResponse(socket, result)
+    return JsonResponse(socket, params, result, msg=msg)
 
 def get_player_stats_by_id(socket, player_id):
     clean_up()

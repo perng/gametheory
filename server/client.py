@@ -6,6 +6,7 @@ from autobahn.twisted.websocket import WebSocketClientProtocol, \
 STATUS_OK = {"status":"ok"}
 cmd_response =[
                 ({"cmd":"noop"}, STATUS_OK ),
+                ({"cmd":"register", "uuid":"bcde", "uuid_type":"fb", "player_name":"Charles Perng"}, STATUS_OK), 
             ]
 
 class MyClientProtocol(WebSocketClientProtocol):
@@ -38,11 +39,15 @@ class MyClientProtocol(WebSocketClientProtocol):
             print 'response type', type(response)
             responsejson = json.loads(response)
             print cmd_response[self.current_test][1]
-            for k in responsejson:
-                if k!='msg':
-                    assert responsejson[k] == cmd_response[self.current_test][1][k]
+            if 'msg' in responsejson:
+                print 'msg=',responsejson['msg']
+            for k in cmd_response[self.current_test][1]:
+                assert responsejson[k] == cmd_response[self.current_test][1][k]
             print "Test OK!"
             self.current_test += 1
+            if self.current_test >= len(cmd_response):
+                self.sendClose()
+
         print 'current_test', self.current_test
         if self.current_test < len(cmd_response):
             time.sleep(2)

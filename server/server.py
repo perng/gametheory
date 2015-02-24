@@ -12,13 +12,8 @@ class MyServerProtocol(WebSocketServerProtocol):
 
     def onConnect(self, request):
         print("Client connecting : {0}".format(request.peer))
-#        self.seriea = serial
-#        serial +=1
-#        print 'serial:', self.serial
         print 'request=',request
         try:
-            print type(request)
-            print dir(request)
             print request.peer
             self.ip=request.peer.split(':')[1]
         except:
@@ -28,7 +23,7 @@ class MyServerProtocol(WebSocketServerProtocol):
         print("WebSocket connection open.")
 
     def onMessage(self, payload, isBinary):
-        print payload
+        print 'received:', payload
         params=json.loads(payload)
         getattr(views, params['cmd'])(self, params)
 
