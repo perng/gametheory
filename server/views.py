@@ -37,7 +37,14 @@ class requiredParams(object):
             return f(socket, params)
         return wrapped_f
 
-
+class requireLogin(object):
+    def __call__(self, f):
+        def wrapped_f(socket, params):
+            if socket.player >= 0:
+                return f(socket, params)
+            msg = 'player id not registered'
+            return JsonResponse(socket, params, {}, ERROR, msg)
+        return wrapped_f
 def noop(socket, params):
     return JsonResponse(socket, params,  {},  OK, 'No operation')
 
@@ -60,10 +67,12 @@ def register(socket, params):
         player.long = float(tokens[8])
         player.lat = float(tokens[9])
     player.save()
-    result = {'status':OK, 'player_id':player.id, 'player.score':player.score}
-    return JsonResponse(socket, params, result, msg=msg)
+    socket.player_id = player.id
+    result = {'player_id':player.id, 'player.score':player.score}
+    return JsonResponse(socket, params, result, OK, msg)
 
-def get_player_stats_by_id(socket, player_id):
+
+def get_my_stats(socket, params):
     clean_up()
     try:
         player = Player.objects.get(id = int(player_id))

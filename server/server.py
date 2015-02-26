@@ -14,16 +14,17 @@ class MyServerProtocol(WebSocketServerProtocol):
         print("Client connecting : {0}".format(request.peer))
         print 'request=',request
         try:
-            print request.peer
             self.ip=request.peer.split(':')[1]
+            self.port=int(request.peer.split(':')[2])
         except:
             print 'something wrong with incoming request'
+        self.player_id = -1
 
     def onOpen(self):
         print("WebSocket connection open.")
 
     def onMessage(self, payload, isBinary):
-        print 'received:', payload
+        print 'from port', self.port, 'received:', payload
         params=json.loads(payload)
         getattr(views, params['cmd'])(self, params)
 
