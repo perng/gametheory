@@ -16,6 +16,7 @@ class MyServerProtocol(WebSocketServerProtocol):
         try:
             print request.peer
             self.ip=request.peer.split(':')[1]
+            print 'connection from ', self.ip
         except:
             print 'something wrong with incoming request'
 
@@ -36,8 +37,10 @@ if __name__ == '__main__':
     logging.basicConfig(filename='example.log',level=logging.INFO)
     log.startLogging(sys.stdout)
 
-    factory = WebSocketServerFactory("ws://localhost:9000", debug=False)
+    port = int(sys.argv[1]) 
+
+    factory = WebSocketServerFactory("ws://localhost:%d" % (port,), debug=True)
     factory.protocol = MyServerProtocol
 
-    reactor.listenTCP(9000, factory)
+    reactor.listenTCP(port, factory)
     reactor.run()

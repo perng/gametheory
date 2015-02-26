@@ -64,7 +64,11 @@ if __name__ == '__main__':
 
     log.startLogging(sys.stdout)
 
-    factory = WebSocketClientFactory("ws://localhost:9000", debug=False)
+    if len(sys.argv)>=2 and sys.argv[1]=='remote':
+        print 'connect to remote'
+        factory = WebSocketClientFactory("ws://gametheory.olidu.com:9000", debug=False)
+    else:
+        factory = WebSocketClientFactory("ws://localhost:9000", debug=False)
     factory.protocol = MyClientProtocol
 
     reactor.connectTCP("127.0.0.1", 9000, factory)
