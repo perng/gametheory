@@ -1,5 +1,10 @@
 # gametheory
 
+* websocket client chrome extension:  https://chrome.google.com/webstore/detail/simple-websocket-client/pfdhoblngboilpfeibdedpjgfnlcodoo
+* websocket server  ws://gametheory.olidu.com:80
+
+
+----Old ----------------------------------------------------------------------------------
 ## REST calls  (returns JSON) 
 * http://gametheory.olidu.com/reguster/[player_name]/[uuid> 
     * This should be called for first time registration or rename. [uuid> is the actual identifier of the user, it can be mac address or other unique id. To rename the user, send the new [player_name> and the same [uuid>. 
