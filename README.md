@@ -3,6 +3,12 @@
 * websocket client chrome extension:  https://chrome.google.com/webstore/detail/simple-websocket-client/pfdhoblngboilpfeibdedpjgfnlcodoo
 * websocket server  ws://gametheory.olidu.com:80
 
+* No operation (testing):
+  * request: {"cmd":"noop"}
+  * response: {"status": "ok", "msg": "No operation", "reply_cmd": "noop"}
+* Registration:
+  * requet: {"cmd": "register", "player_name": "Charles Perng", "uuid": "bcde", "uuid_type": "fb"}
+  * response: {"player_id": 1, "status": "ok", "reply_cmd": "register", "msg": "New user registered", "player.score": 1200}
 
 ----Old ----------------------------------------------------------------------------------
 ## REST calls  (returns JSON) 
