@@ -5,7 +5,7 @@ from autobahn.twisted.websocket import WebSocketClientProtocol, \
 
 STATUS_OK = {"status":"ok"}
 cmd_response =[
-#                ({"cmd":"noop"}, STATUS_OK ),
+                ({"cmd":"noop"}, STATUS_OK ),
                 ({"cmd":"register", "uuid":"bcde", "uuid_type":"fb", "player_name":"Charles Perng"}, STATUS_OK), 
             ]
 

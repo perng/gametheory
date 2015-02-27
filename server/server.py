@@ -14,12 +14,13 @@ class MyServerProtocol(WebSocketServerProtocol):
         print("Client connecting : {0}".format(request.peer))
         print 'request=',request
         try:
-            print 'connection from ', self.ip
             self.ip=request.peer.split(':')[1]
+            print 'connection from ', self.ip
+            print 'port', request.peer.split(':')
             self.port=int(request.peer.split(':')[2])
         except:
             print 'something wrong with incoming request'
-        self.player_id = -1
+        self.player = None
 
     def onOpen(self):
         print("WebSocket connection open.")

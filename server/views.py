@@ -40,18 +40,29 @@ class required_params(object):
             return f(socket, params)
         return wrapped_f
 
-class login_required(object):
+class xlogin_required(object):
+    def __init__(self, f):
+        self.f = f
     def __call__(self, f):
         def wrapped_f(socket, params):
-            if socket.player >= 0:
-                return f(socket, params)
-            msg = 'player id not registered'
+            if socket.player:
+                return self.f(socket, params)
+            msg = 'login required'
             return JsonResponse(socket, params, {}, ERROR, msg)
         return wrapped_f
+
+def login_required(func):
+    def wrapped_f(socket, params):
+        if socket.player:
+            return self.f(socket, params)
+        msg = 'login required'
+        return JsonResponse(socket, params, {}, ERROR, msg)
+    return wrapped_f
+
 def noop(socket, params):
     return JsonResponse(socket, params,  {},  OK, 'No operation')
 
-@requiredParams('uuid', 'uuid_type', 'player_name')
+@required_params('uuid', 'uuid_type', 'player_name')
 def register(socket, params):
     player, created = Player.objects.get_or_create(player_uuid=params['uuid'], uuid_type=params['uuid_type'])
     if created:
@@ -70,17 +81,22 @@ def register(socket, params):
         player.long = float(tokens[8])
         player.lat = float(tokens[9])
     player.save()
-    socket.player_id = player.id
+    socket.player = player
     result = {'player_id':player.id, 'player.score':player.score}
     return JsonResponse(socket, params, result, OK, msg)
 
+@required_params('player_id')
+def login(socket, params):
+    try:
+        socket.player = Player.objects.get(id=params['player_id'])
+        return get_my_stats(socket, params)
+    except:
+        pass
+    return JsonResponse(socket, params, {}, ERROR, "Login failed, player_id invalid")
+
 @login_required
 def get_my_stats(socket, params):
-    try:
-        player = Player.objects.get(id = int(socket.player_id))
-    except:
-        return JsonResponse(socket, params, {}, ERROR, 'Player does not exist')
-    player.save() # update last_play_time
+    player = socket.player
     result = {'player_id':player.id, 'player_name':player.player_name, 'score':player.score}
     result['xp'] = player.xp
     result['level'] = player.level
@@ -89,7 +105,7 @@ def get_my_stats(socket, params):
 def get_player_stats(socket, params):
     if 'player_id' in params:
       try:
-        player = Player.objects.get(id= int(params[player_id])
+        player = Player.objects.get(id= int(params['player_id']))
       except:
         return JsonResponse(socket, params, {}, ERROR, 'player_id:'+params['player_id']+' not found')
     elif 'uuid' in params and 'uuid_type' in params:
