@@ -6,8 +6,12 @@ class Player(models.Model):
     player_uuid = models.CharField(max_length=40)
     uuid_type = models.CharField(max_length=40)
     score = models.IntegerField(default = 1200)
+    level = models.IntegerField(default = 1)
+    xp = models.IntegerField(default = 0)
+
     join_time = models.DateTimeField(auto_now_add=True, null=True)
     last_play_time = models.DateTimeField(auto_now=True, null=True)
+
     ip_address = models.CharField(max_length=20, null=True)
     country = models.CharField(max_length=50, null=True)
     state = models.CharField(max_length=30, null=True)

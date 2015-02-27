@@ -5,7 +5,7 @@ from autobahn.twisted.websocket import WebSocketClientProtocol, \
 
 STATUS_OK = {"status":"ok"}
 cmd_response =[
-                ({"cmd":"noop"}, STATUS_OK ),
+#                ({"cmd":"noop"}, STATUS_OK ),
                 ({"cmd":"register", "uuid":"bcde", "uuid_type":"fb", "player_name":"Charles Perng"}, STATUS_OK), 
             ]
 
@@ -45,15 +45,16 @@ class MyClientProtocol(WebSocketClientProtocol):
                 assert responsejson[k] == cmd_response[self.current_test][1][k]
             print "Test OK!"
             self.current_test += 1
-            if self.current_test >= len(cmd_response):
-                self.sendClose()
+            #if self.current_test >= len(cmd_response):
+            #    self.sendClose()
 
         print 'current_test', self.current_test
         if self.current_test < len(cmd_response):
-            time.sleep(2)
+            time.sleep(5)
+            print 'send:',cmd_response[self.current_test][0]
             self.sendMsg(cmd_response[self.current_test][0])
+            time.sleep(5)
 
-        #self.sendMessage(u'{"cwd":"get_player_id_by_id", "player_id":1}'.encode('utf8'), False)
 
 if __name__ == '__main__':
 
@@ -64,8 +65,8 @@ if __name__ == '__main__':
 
     log.startLogging(sys.stdout)
 
-    if len(sys.argv)>=2 and sys.argv[1]=='remote':
-        print 'connect to remote'
+    if len(sys.argv) >= 2 and sys.argv[1]=='remote':
+        print 'connect to gametheory.olidu.com:9000'
         factory = WebSocketClientFactory("ws://gametheory.olidu.com:9000", debug=False)
     else:
         factory = WebSocketClientFactory("ws://localhost:9000", debug=False)
