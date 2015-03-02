@@ -1,6 +1,6 @@
 from django.shortcuts import render
 from django.http import HttpResponse
-from gametheory.core.models import Player,  Game
+from gametheory.core.models import Player, GameRecord
 from datetime import datetime
 from datetime import timedelta
 from django.core.cache import caches
@@ -8,59 +8,74 @@ from django.db import transaction
 from django.db.models import Q
 from gametheory.settings import WAITING_TIMEOUT, payout, TIMEOUT_PENALTY, geoprefix
 import json, urllib2, logging
+from Queue import Empty
 
 OK = 'ok'
 ERROR = 'error'
+WAITING = 'waiting'
 
-def JsonResponse(socket, params,  result, status=OK, msg=''):
-    print 'obj=', result
-    result["status"]=status
-    result["msg"]=msg
+
+class Game:
+    def __init__(self, player_sockets=[]):
+        self.sockets = player_sockets
+        self.start_time = datetime.now()
+
+    def add_player(self, socket):
+        self.sockets.append(socket)
+
+
+def JsonResponse(socket, params, result, status=OK, msg=''):
+    print 'result=', result
+    result["status"] = status
+    result["msg"] = msg
     result["reply_cmd"] = params['cmd']
-    if 'cmd_tracker' in params:
-      result['cmd_tracker'] = params['cmd_tracker']
+    if '_tracker' in params:
+        result['_tracker'] = params['_tracker']
     socket.sendMessage(json.dumps(result).encode('utf8'), False)
+
 
 def clean_up():
     ''' removed timed-out Queue and Game'''
-    t = datetime.now()-timedelta(seconds=WAITING_TIMEOUT)
-    games = Game.objects.filter(start_time__lt = t, finish_time =None)[:]
+    t = datetime.now() - timedelta(seconds=WAITING_TIMEOUT)
+    games = Game.objects.filter(start_time__lt=t, finish_time=None)[:]
     for g in games:
         g.delete()
 
+
 class required_params(object):
     def __init__(self, *args):
-        self.required=args
+        self.required = args
+
     def __call__(self, f):
         def wrapped_f(socket, params):
             missing = [p for p in self.required if p not in params]
             if missing:
-                msg = 'parameters '+','.join(missing)+' are missing.'
+                msg = 'parameters ' + ','.join(missing) + ' are missing.'
                 return JsonResponse(socket, params, {}, ERROR, msg)
             return f(socket, params)
+
         return wrapped_f
 
-class xlogin_required(object):
-    def __init__(self, f):
-        self.f = f
-    def __call__(self, f):
-        def wrapped_f(socket, params):
-            if socket.player:
-                return self.f(socket, params)
-            msg = 'login required'
-            return JsonResponse(socket, params, {}, ERROR, msg)
-        return wrapped_f
 
 def login_required(func):
     def wrapped_f(socket, params):
         if socket.player:
-            return self.f(socket, params)
+            return func(socket, params)
         msg = 'login required'
         return JsonResponse(socket, params, {}, ERROR, msg)
+
     return wrapped_f
 
+
 def noop(socket, params):
-    return JsonResponse(socket, params,  {},  OK, 'No operation')
+    return JsonResponse(socket, params, {}, OK, 'No operation')
+
+@required_params('game_name')
+def get_gamerooms(socket, params):
+    gname = params['game_name']
+    if gname in socket.factory.gamerooms:
+        return JsonResponse(socket, params, {'game_rooms': socket.factory.gamerooms[gname].keys()}, OK, '')
+    print 'get_gamerooms error'
 
 @required_params('uuid', 'uuid_type', 'player_name')
 def register(socket, params):
@@ -71,8 +86,8 @@ def register(socket, params):
         msg = "User renamed"
     player.player_name = params['player_name']
     ip = socket.ip
-    tokens = urllib2.urlopen(geoprefix+ip).readline().split(';')
-    if tokens[0]=='OK':
+    tokens = urllib2.urlopen(geoprefix + ip).readline().split(';')
+    if tokens[0] == 'OK':
         player.ip_address = ip
         player.country = tokens[4]
         player.state = tokens[5]
@@ -82,8 +97,10 @@ def register(socket, params):
         player.lat = float(tokens[9])
     player.save()
     socket.player = player
-    result = {'player_id':player.id, 'player.score':player.score}
+    result = player.stats()
+
     return JsonResponse(socket, params, result, OK, msg)
+
 
 @required_params('player_id')
 def login(socket, params):
@@ -94,136 +111,114 @@ def login(socket, params):
         pass
     return JsonResponse(socket, params, {}, ERROR, "Login failed, player_id invalid")
 
+
 @login_required
 def get_my_stats(socket, params):
-    player = socket.player
-    result = {'player_id':player.id, 'player_name':player.player_name, 'score':player.score}
-    result['xp'] = player.xp
-    result['level'] = player.level
-    return JsonResponse(socket, params, result, OK, '')
+    return JsonResponse(socket, params, socket.player.stats(), OK, '')
+
 
 def get_player_stats(socket, params):
     if 'player_id' in params:
-      try:
-        player = Player.objects.get(id= int(params['player_id']))
-      except:
-        return JsonResponse(socket, params, {}, ERROR, 'player_id:'+params['player_id']+' not found')
+        try:
+            player = Player.objects.get(id=int(params['player_id']))
+        except:
+            return JsonResponse(socket, params, {}, ERROR, 'player_id:' + params['player_id'] + ' not found')
     elif 'uuid' in params and 'uuid_type' in params:
-      try:
-        player = Player.objects.get(uuid= params['uuid'], uuid_type=params['uuid_type'])
-      except:
-        return JsonResponse(socket, params, {}, ERROR, 'uuid:'+params['uuid']+' not found')
+        try:
+            player = Player.objects.get(uuid=params['uuid'], uuid_type=params['uuid_type'])
+        except:
+            return JsonResponse(socket, params, {}, ERROR, 'uuid:' + params['uuid'] + ' not found')
     else:
         return JsonResponse(socket, params, {}, ERROR, 'no id info')
+    player.save()  # update last_play_time
+    return JsonResponse(socket, params, player.stats(), OK, '')
 
-    player.save() # update last_play_time
-    result = {'player_id':player.id, 'player_name':player.player_namee, 'score':player.score}
-    result['xp'] = player.xp
-    result['level'] = player.level
-    return JsonResponse(socket, params, result, OK, '' )
 
 @login_required
+@required_params('game_name', 'room')
 def start_game(socket, params):
-    player = Player.objects.get(id=socket.player_id)
-
-    cache = caches['default']
-
-    #check if already assigned in a game
-    game_id = cache.get(player_id)
-    if game_id:
-        game_id = int(game_id)
-        game = Game.objects.get(id = game_id)
-        opponent = game.opponent(player_id)
-        print "already in game", game_id
-        result = {'status':OK, 'game_id':game.id, 'oppenent_id':opponent.id, 'oppenent_name':opponent.player_name, 'opponent_score':opponent.score}
-        return JsonResponse(result)
-
-    # check if there are any oppenent in queue, if so, create game table
-    with transaction.atomic():
-        print 'cached player=', cache.get('q')
-        opp_id = cache.get('q')
-        if opp_id and int(opp_id) != player_id:
-            opp_id = int(opp_id)
-            cache.delete('q')
-        else:
-            opp_id = None
-    if opp_id:
-        opponent = Player.objects.get(id=opp_id)
-        game = Game(player1=player, player2=opponent)
-        game.save()
-        cache.set(opp_id, game.id)
-        cache.set(player_id, game.id)
-        result = {'game_id':game.id, 'oppenent_id':opponent.id, 'oppenent_name':opponent.player_name, 'opponent_score':opponent.score}
-        return JsonResponse(socket, params, result, OK, '' )
-
-    # queue the player
-    cache.set('q', player_id)
-    return JsonResponse(socket, params, result, OK, '' )
-
-def player_cheat(socket, player_id, game_id, cheat=True):
-    cache = caches['default']
-
-    game = Game.objects.get(id=int(game_id))
-    player_id = int(player_id)
     try:
-        player = Player.objects.get(id = player_id)
+        game_name, room = params['game_name'], params['room']
+        room = socket.factory.gamerooms[game_name][room]
+        lock = socket.factory.locks[game_name][room]
+        spec = socket.factory.gamespecs[game_name]
     except:
-        return JsonResponse(FAIL)
-    opponent = game.opponent(player_id)
-    cache.set(player_id, None)
-
-    if game.player1.id == player_id:
-        print "I am player1"
-        game.player1cheat = cheat
-        hecheat = game.player2cheat
+        return JsonResponse(socket, params, {}, ERROR, "game or room doesn't exist")
+    lock.acquire(True)
+    if len(room) + 1 >= spec['num_player']:  # game can start
+        game = Game([socket])
+        socket.game = game
+        game.add_player(socket)
+        lock.acquire()
+        for i in range(spec['num_player'] - 1):
+            opp_socket = room.get()
+            game.add_player(opp_socket)
+            opp_socket.game = game
+        lock.release()
+        players_info = [s.player.stats() for s in game.sockets]
+        msg = 'Game start!'
+        JsonResponse(socket, params, {'players': players_info}, OK, msg)
+        return
     else:
-        print "I am player2"
-        game.player2cheat = cheat
-        hecheat = game.player1cheat
-    game.save()
+        room.put(socket)
+        JsonResponse(socket, params, {}, WAITING, 'waiting for opponent to join')
 
-    print "player1", game.player1cheat, "player2", game.player2cheat
-    if game.player1cheat!=None and game.player2cheat!=None:
-        game.finish_time=datetime.now()
-        game.save()
-        pay = payout(cheat, hecheat)
-        player.score+= pay
+@login_required
+@required_params('message')
+def message(socket, params):
+    result = {'message': params['message']}
+    JsonResponse(socket.opponent, params, result, OK, '')
+    JsonResponse(socket, params, {}, OK, '')
+
+
+@login_required
+def change_stats(socket, params):
+    try:
+        player = Player.objects.get(id=int(params['player_id']))
+        player.score += params['score'] if 'score' in params else 0
+        player.score += params['level'] if 'level' in params else 0
+        player.score += params['xp'] if 'xp' in params else 0
+        player.score += params['gem'] if 'gem' in params else 0
+        result = {'player_id': player.id, 'player_name': player.player_name,
+                  'score': player.score, 'xp': player.xp, 'level': player.level}
         player.save()
-        result = {'status':OK, 'opponent_cheat':hecheat, 'gain':pay, 'new_score':player.score}
-        return JsonResponse({'status':OK})
-    elif game.finish_time != None:  # opponent timed out
-        return JsonResponse({'status':'opponent_timed_out'})
-    else:
-        return JsonResponse({'status':'waiting'})
-
-
-def player_split(socket, player_id, game_id):
-    return player_cheat(socket, player_id, game_id, False)
-
-def player_timed_out(socket, player_id, game_id):
-    game = Game.objects.get(id=int(game_id))
-    try:
-        player = Player.objects.get(id=int(player_id))
+        return JsonResponse(socket, params, result, OK, '')
     except:
-        return JsonResponse(FAIL)
-    player.score -= TIMEOUT_PENALTY
-    player.save()
-    game.finish_time = datetime.now()
-    game.save()
-    return JsonResponse({'status':'timed_out', 'gain':-TIMEOUT_PENALTY, 'new_score':player.score})
+        return JsonResponse(socket, params, {}, ERROR, 'player_id:' + params['player_id'] + ' not found')
 
-def leaders_overall(socket):
+@login_required
+@required_params('outcome')
+def record_game(socket, params):
+    game = GameRecord()
+    outcome = params['outcome'] # a list of players
+    players = {}
+    players_attrs = {}
+    ranks = {}
+    for o in outcome:
+        pid = int(o['player_id'])
+        player = Player.objects.get(pid)
+        players_attrs[pid] = o
+
+    player_ids = [int(p['player_id']) for p in outcome]
+    for pid in player_ids:
+        game.players.add(Player.objects.get(id=pid))
+
+
+
+def leaders_overall(socket, params):
     players = Player.objects.order_by('-score')[:20]
-    player_list = [{'player_name':p.player_name, 'score':p.score} for p in players]
-    return JsonResponse({'status':OK, 'players': player_list})
+    player_list = [{'player_name': p.player_name, 'score': p.score, 'level': p.level, 'xp:': p.xp} for p in players]
+    return JsonResponse(socket, params, {'status': OK, 'players': player_list}, OK, '')
+
 
 def rank_overall(socket, player_id):
     try:
         player = Player.objects.get(id=int(player_id))
     except:
         return JsonResponse(FAIL)
-    rank = Player.objects.filter(score__gt=player.score).count()+1
-    return JsonResponse({'status':OK, 'rank':rank})
+    rank = Player.objects.filter(score__gt=player.score).count() + 1
+    return JsonResponse(socket, params, {'rank': rank}, OK, '')
+
 
 def leaders_country(socket, player_id):
     try:
@@ -231,15 +226,18 @@ def leaders_country(socket, player_id):
     except:
         return JsonResponse(FAIL)
     players = Player.objects.filter(country=player.country).order_by('-score')
-    player_list = [{'player_name':p.player_name, 'score':p.score} for p in players]
-    return JsonResponse({'status':OK, 'players': player_list})
+    player_list = [{'player_name': p.player_name, 'score': p.score} for p in players]
+    return JsonResponse({'status': OK, 'players': player_list})
+
+
 def rank_country(socket, player_id):
     try:
         player = Player.objects.get(id=int(player_id))
     except:
         return JsonResponse(FAIL)
-    rank = Player.objects.filter(score__gt=player.score, country=player.country).count()+1
-    return JsonResponse({'status':OK, 'rank':rank})
+    rank = Player.objects.filter(score__gt=player.score, country=player.country).count() + 1
+    return JsonResponse({'status': OK, 'rank': rank})
+
 
 def leaders_city(socket, player_id):
     try:
@@ -247,14 +245,15 @@ def leaders_city(socket, player_id):
     except:
         return JsonResponse(FAIL)
     players = Player.objects.filter(country=player.country, city=player.city).order_by('-score')
-    player_list = [{'player_name':p.player_name, 'score':p.score} for p in players]
-    return JsonResponse({'status':OK, 'players': player_list})
+    player_list = [{'player_name': p.player_name, 'score': p.score} for p in players]
+    return JsonResponse({'status': OK, 'players': player_list})
+
 
 def rank_city(socket, player_id):
     try:
         player = Player.objects.get(id=int(player_id))
     except:
         return JsonResponse(FAIL)
-    rank = Player.objects.filter(score__gt=player.score, country=player.country, city=player.city).count()+1
-    return JsonResponse({'status':OK, 'rank':rank})
+    rank = Player.objects.filter(score__gt=player.score, country=player.country, city=player.city).count() + 1
+    return JsonResponse({'status': OK, 'rank': rank})
 

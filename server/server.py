@@ -5,6 +5,8 @@ from twisted.internet import reactor
 import django, json, sys, logging
 from gametheory.core.models import *
 import views
+import Queue
+import threading
 
 
 serial =1
@@ -42,6 +44,23 @@ if __name__ == '__main__':
     port = int(sys.argv[1]) 
 
     factory = WebSocketServerFactory("ws://localhost:%d" % (port,), debug=True)
+    factory.gamerooms = {}  # dict of dict of queue,  game-->room-->queue
+    # the following should be read from somewhere
+    factory.game_specs = {}  # dict of dict game-->attrs
+    factory.game_specs['gametheory']={}
+    factory.game_specs['gametheory']['num_player'] = 2
+
+    factory.gamerooms['gamethoery'] = {}
+    factory.gamerooms['gamethoery']['room1']=Queue.Queue()
+    factory.gamerooms['gamethoery']['room2']=Queue.Queue()
+
+    factory.locks = {}
+    for g in factory.gamerooms:
+        factory.locks[g] = {}
+        for r in factory.gamerooms[g]:
+            factory.locks[g][r] = threading.Lock()
+
+
     factory.protocol = MyServerProtocol
 
     reactor.listenTCP(port, factory)

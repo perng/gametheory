@@ -1,59 +1,63 @@
 import time, json
-
+from views import OK, WAITING, ERROR
 from autobahn.twisted.websocket import WebSocketClientProtocol, \
     WebSocketClientFactory
 
-STATUS_OK = {"status":"ok"}
-cmd_response =[
-                ({"cmd":"noop"}, STATUS_OK ),
-                ({"cmd":"register", "uuid":"bcde", "uuid_type":"fb", "player_name":"Charles Perng"}, STATUS_OK), 
-            ]
+STATUS_OK = {"status": "ok"}
+cmd_response = [
+    ({"cmd": "noop"}, STATUS_OK ),
+    ({"cmd": "register", "uuid": "bcde", "uuid_type": "fb", "player_name": "Charles Perng"}, STATUS_OK),
+]
+
 
 class MyClientProtocol(WebSocketClientProtocol):
-
     def onConnect(self, response):
         self.current_test = 0
         print("Server connected: {0}".format(response.peer))
 
     def onOpen(self):
         print("WebSocket connection open.")
-        self.test()
+        self.test({})
 
     def onMessage(self, payload, isBinary):
         print "onMessage called"
         print("Text message received: {0}".format(payload.decode('utf8')))
         self.test(payload)
-            #self.sendMessage(u'{"cmd":"get_player_id_by_id", "player_id":1}'.encode('utf8'), False)
+        # self.sendMessage(u'{"cmd":"get_player_id_by_id", "player_id":1}'.encode('utf8'), False)
 
     def onClose(self, wasClean, code, reason):
         print("WebSocket connection closed: {0}".format(reason))
 
-    def sendMsg(self, msg):
-        msg=json.dumps(msg)
+    def sendMsg(self, msg, tracker):
+        msg['_tracker'] = tracker
+        msg = json.dumps(msg)
         self.sendMessage(msg.encode('utf8'), False)
 
-    def test(self, response=None):
-        print 'current_test', self.current_test
-        print 'test called, response=', response
-        if response:
-            print 'response type', type(response)
-            responsejson = json.loads(response)
-            print cmd_response[self.current_test][1]
-            if 'msg' in responsejson:
-                print 'msg=',responsejson['msg']
-            for k in cmd_response[self.current_test][1]:
-                assert responsejson[k] == cmd_response[self.current_test][1][k]
-            print "Test OK!"
-            self.current_test += 1
-            #if self.current_test >= len(cmd_response):
-            #    self.sendClose()
+    def test(self, response):
+        if not response:
+            return self.sendMsg({"cmd": "noop"}, 0)
+        rjson = json.loads(response)
+        tracker = rjson['_tracker']
+        if tracker == 0:
+            assert rjson['status'] == OK
+            print 'NOOP Test OK'
+            return self.sendMsg({"cmd": "register", "uuid": "bcde", "uuid_type": "FB",
+                                     "player_name": "Charles Perng"}, 1)
+        if tracker == 1:
+            assert rjson['status'] == OK
+            print 'Register Test OK'
+            self.player_id = rjson['player_id']
+            return self.sendMsg({"cmd": "login", "player_id": self.player_id}, 2)
+        if tracker == 2:
+            assert rjson['status'] == OK
+            print 'Login Test OK'
+            return self.sendMsg({"cmd":"get_gamerooms", 'game_name':"gametheory"}, 3)
+        if tracker == 3:
+            print 'gameroom test', rjson
+            assert len(rjson['game_rooms']) >0
+            print 'Get Game room Test OK!  game rooms:', rjson['game_rooms']
+        self.sendClose()
 
-        print 'current_test', self.current_test
-        if self.current_test < len(cmd_response):
-            time.sleep(5)
-            print 'send:',cmd_response[self.current_test][0]
-            self.sendMsg(cmd_response[self.current_test][0])
-            time.sleep(5)
 
 
 if __name__ == '__main__':
@@ -65,7 +69,7 @@ if __name__ == '__main__':
 
     log.startLogging(sys.stdout)
 
-    if len(sys.argv) >= 2 and sys.argv[1]=='remote':
+    if len(sys.argv) >= 2 and sys.argv[1] == 'remote':
         print 'connect to gametheory.olidu.com:9000'
         factory = WebSocketClientFactory("ws://gametheory.olidu.com:9000", debug=False)
     else:
