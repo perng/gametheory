@@ -70,10 +70,14 @@ def login_required(func):
 def noop(socket, params):
     return JsonResponse(socket, params, {}, OK, 'No operation')
 
+def get_game_names(socket, params):
+    return JsonResponse(socket, params, {'game_names': socket.factory.gamerooms.keys()}, OK, '')
+
 @required_params('game_name')
-def get_gamerooms(socket, params):
+def get_game_rooms(socket, params):
     gname = params['game_name']
     if gname in socket.factory.gamerooms:
+        print 'gamerooms:', socket.factory.gamerooms[gname]
         return JsonResponse(socket, params, {'game_rooms': socket.factory.gamerooms[gname].keys()}, OK, '')
     print 'get_gamerooms error'
 
@@ -97,7 +101,7 @@ def register(socket, params):
         player.lat = float(tokens[9])
     player.save()
     socket.player = player
-    result = player.stats()
+    result =player.info()
 
     return JsonResponse(socket, params, result, OK, msg)
 
@@ -106,15 +110,16 @@ def register(socket, params):
 def login(socket, params):
     try:
         socket.player = Player.objects.get(id=params['player_id'])
-        return get_my_stats(socket, params)
+        return JsonResponse(socket, params, {}, OK, '')
     except:
         pass
     return JsonResponse(socket, params, {}, ERROR, "Login failed, player_id invalid")
 
 
 @login_required
+@required_params('game_name')
 def get_my_stats(socket, params):
-    return JsonResponse(socket, params, socket.player.stats(), OK, '')
+    return JsonResponse(socket, params, socket.player.stats(params['game_name']), OK, '')
 
 
 def get_player_stats(socket, params):

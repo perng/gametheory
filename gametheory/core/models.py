@@ -1,17 +1,47 @@
 from django.db import models
 from django.contrib import admin
 
+class GameSpec(models.Model):
+    name =  models.CharField(max_length=100, unique=True)
+    description = models.CharField(max_length=100, null=True)
+    num_players_min = models.IntegerField(default=2)
+    num_players_max = models.IntegerField(default=2)
+    matching_time_min = models.IntegerField(default=0) # second
+    matching_time_max = models.IntegerField(default=15) # second
+    starting_score = models.IntegerField(default=1200)
+    starting_xp = models.IntegerField(default=0)
+    starting_level = models.IntegerField(default=1)
+    starting_gem = models.IntegerField(default=10)
+
+class GameSpecAdmin(admin.ModelAdmin):
+    fields = ['name', 'description']
+admin.site.register(GameSpec, GameSpecAdmin)
+
+class GameRoom(models.Model):
+    name =  models.CharField(max_length=100)
+    description = models.CharField(max_length=100, null=True)
+    gamespec = models.ForeignKey(GameSpec)
+    order = models.IntegerField()
+
+class PlayerStats(models.Model):
+    player = models.ForeignKey('Player')
+    game = models.ForeignKey(GameSpec)
+    score = models.IntegerField(default = 0)
+    level = models.IntegerField(default = 1)
+    xp = models.IntegerField(default = 0)
+    gem = models.IntegerField(default = 0)
+    def details(self):
+        return {'player_id': self.player.id, 'score': self.score, 'level': self.level,
+                'xp': self.xp, 'gem': self.gem}
+
 class Player(models.Model):
     player_name = models.CharField(max_length=100)
     player_uuid = models.CharField(max_length=40)
     uuid_type = models.CharField(max_length=40)
-    score = models.IntegerField(default = 1200)
-    level = models.IntegerField(default = 1)
-    xp = models.IntegerField(default = 0)
-    gem = models.IntegerField(default = 0)
-
     join_time = models.DateTimeField(auto_now_add=True, null=True)
     last_play_time = models.DateTimeField(auto_now=True, null=True)
+
+    games = models.ManyToManyField(GameSpec, through=PlayerStats)
 
     ip_address = models.CharField(max_length=20, null=True)
     country = models.CharField(max_length=50, null=True)
@@ -20,11 +50,25 @@ class Player(models.Model):
     zipcode =  models.CharField(max_length=10, null=True)
     long = models.FloatField(null=True)
     lat = models.FloatField(null=True)
-    def stats(self):
+    friends = models.ManyToManyField('Player')
+    def info(self):
         return {'player_id': self.id, 'player_name': self.player_name,
-              'score': self.score, 'xp': self.xp, 'level': self.level, 'gem': self.gem}
+                'ip_address': self.ip_address, 'country': self.country,
+                'state': self.state, 'city': self.city, 'zipcode': self.zipcode,
+                'long': self.long, 'lat': self.lat}
+    def stats(self, game_name):
+        try:
+            game = GameSpec.objects.get(name=game_name)
+        except:
+            return None
+        try:
+            return PlayerStats.objects.get(player = self, game = game).details()
+        except:
+            return None
+
     def __str__(self):
         return self.player_name+':'+self.player_uuid
+
 class PlayerAdmin(admin.ModelAdmin):
     fields = ['player_name', 'player_uuid', 'score', 'ip_address',
               'country','state', 'city']

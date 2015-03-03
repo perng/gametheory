@@ -41,20 +41,33 @@ class MyClientProtocol(WebSocketClientProtocol):
         if tracker == 0:
             assert rjson['status'] == OK
             print 'NOOP Test OK'
-            return self.sendMsg({"cmd": "register", "uuid": "bcde", "uuid_type": "FB",
-                                     "player_name": "Charles Perng"}, 1)
+            return self.sendMsg({"cmd": "get_game_names"}, 1)
         if tracker == 1:
+            assert len(rjson['game_names']) >0
+            print 'Game names:', rjson['game_names']
+            print 'get_game_names test OK'
+            game = rjson['game_names'][0]
+            return self.sendMsg({"cmd": "get_game_rooms", 'game_name': game}, 2)
+        if tracker == 2:
+            print rjson
+            assert len(rjson['game_rooms']) >= 2
+            print 'Game room:', rjson['game_rooms']
+            print 'get_game_rooms test OK'
+            return self.sendMsg({"cmd": "register", "uuid": "bcde", "uuid_type": "FB",
+                                     "player_name": "Charles Perng"}, 3)
+        if tracker == 3:
             assert rjson['status'] == OK
             print 'Register Test OK'
             self.player_id = rjson['player_id']
-            return self.sendMsg({"cmd": "login", "player_id": self.player_id}, 2)
-        if tracker == 2:
+            print 'player_id:', self.player_id
+            return self.sendMsg({"cmd": "login", "player_id": self.player_id}, 4)
+        if tracker == 4:
             assert rjson['status'] == OK
             print 'Login Test OK'
-            return self.sendMsg({"cmd":"get_gamerooms", 'game_name':"gametheory"}, 3)
-        if tracker == 3:
-            print 'gameroom test', rjson
-            assert len(rjson['game_rooms']) >0
+            return self.sendMsg({"cmd":"get_my_stats", 'game_name':"gametheory"}, 5)
+        if tracker == 5:
+            assert rjson['status'] == OK
+
             print 'Get Game room Test OK!  game rooms:', rjson['game_rooms']
         self.sendClose()
 

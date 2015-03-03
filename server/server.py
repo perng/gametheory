@@ -5,9 +5,8 @@ from twisted.internet import reactor
 import django, json, sys, logging
 from gametheory.core.models import *
 import views
-import Queue
+from Queue import Queue
 import threading
-
 
 serial =1
 class MyServerProtocol(WebSocketServerProtocol):
@@ -35,6 +34,24 @@ class MyServerProtocol(WebSocketServerProtocol):
     def onClose(self, wasClean, code, reason):
         print("WebSocket connection closed: {0}".format(reason))
 
+def create_gamerooms(factory):
+    factory.gamerooms = {}
+    factory.locks = {}
+    gamerooms = GameRoom.objects.all()
+    for gameroom in gamerooms:
+        if gameroom.gamespec.name not in factory.gamerooms:
+            factory.gamerooms[gameroom.gamespec.name] = {}
+            factory.locks[gameroom.gamespec.name] = {}
+        factory.gamerooms[gameroom.gamespec.name][gameroom.name] = Queue()
+        factory.locks[gameroom.gamespec.name][gameroom.name] = threading.Lock()
+
+def add_test_gamerooms():
+    game, created = GameSpec.objects.get_or_create(name="Game Theory")
+    game.save()
+    gr, created = GameRoom.objects.get_or_create(gamespec = game, name = "Room 1", order = 0)
+    gr.save()
+    gr, created = GameRoom.objects.get_or_create(gamespec = game, name = "Room 2", order = 1)
+    gr.save()
 
 if __name__ == '__main__':
     django.setup()
@@ -44,15 +61,9 @@ if __name__ == '__main__':
     port = int(sys.argv[1]) 
 
     factory = WebSocketServerFactory("ws://localhost:%d" % (port,), debug=True)
-    factory.gamerooms = {}  # dict of dict of queue,  game-->room-->queue
-    # the following should be read from somewhere
-    factory.game_specs = {}  # dict of dict game-->attrs
-    factory.game_specs['gametheory']={}
-    factory.game_specs['gametheory']['num_player'] = 2
 
-    factory.gamerooms['gamethoery'] = {}
-    factory.gamerooms['gamethoery']['room1']=Queue.Queue()
-    factory.gamerooms['gamethoery']['room2']=Queue.Queue()
+    add_test_gamerooms()
+    create_gamerooms(factory)
 
     factory.locks = {}
     for g in factory.gamerooms:
