@@ -4,11 +4,10 @@ from twisted.python import log
 from twisted.internet import reactor
 import django, json, sys, logging
 from gametheory.core.models import *
-import views
+import game, player
 from Queue import Queue
 import threading
 
-serial =1
 class MyServerProtocol(WebSocketServerProtocol):
 
     def onConnect(self, request):
@@ -29,8 +28,8 @@ class MyServerProtocol(WebSocketServerProtocol):
     def onMessage(self, payload, isBinary):
         print 'from port', self.port, 'received:', payload
         params=json.loads(payload)
-        getattr(views, params['cmd'])(self, params)
-
+        #getattr(game, params['cmd'])(self, params)
+        self.factory.methods[params['cmd']](self, params)
     def onClose(self, wasClean, code, reason):
         print("WebSocket connection closed: {0}".format(reason))
 
@@ -53,6 +52,12 @@ def add_test_gamerooms():
     gr, created = GameRoom.objects.get_or_create(gamespec = game, name = "Room 2", order = 1)
     gr.save()
 
+def methods():
+    ans = []
+    for modu in [game, player]:
+        ans += modu.__dict__.items()
+    return dict(ans)
+
 if __name__ == '__main__':
     django.setup()
     logging.basicConfig(filename='example.log',level=logging.INFO)
@@ -61,6 +66,7 @@ if __name__ == '__main__':
     port = int(sys.argv[1]) 
 
     factory = WebSocketServerFactory("ws://localhost:%d" % (port,), debug=True)
+    factory.methods = methods()
 
     add_test_gamerooms()
     create_gamerooms(factory)

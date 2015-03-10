@@ -1,8 +1,21 @@
-# gametheory
+# Testing Tool
+websocket client chrome extension:  https://chrome.google.com/webstore/detail/simple-websocket-client/pfdhoblngboilpfeibdedpjgfnlcodoo  
 
-* websocket client chrome extension:  https://chrome.google.com/webstore/detail/simple-websocket-client/pfdhoblngboilpfeibdedpjgfnlcodoo
+
+# Server Address
 * websocket server  ws://gametheory.olidu.com:80
 
+# Operation Model
+Each client/app starts by establishing a websocket connection with the server. All activities are done sequentially in
+this connection. Websocket is bi-directional, either side can initiate a "dialog". 
+
+Currently, all communication is in Json
+
+# Security assumptions (Strong assumptions, may lift in the future)
+  # No client/app is compromised. 
+  # Communication is secure, data integrity is guaranteed. 
+
+# 
 * No operation (testing):
   * request: {"cmd":"noop"}
   * response: {"status": "ok", "msg": "No operation", "reply_cmd": "noop"}

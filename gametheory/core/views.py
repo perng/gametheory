@@ -1,6 +1,6 @@
 from django.shortcuts import render
 from django.http import HttpResponse
-from models import Player,  Game
+from models import Player
 from datetime import datetime
 from datetime import timedelta
 from django.core.cache import caches

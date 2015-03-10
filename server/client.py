@@ -1,5 +1,5 @@
 import time, json
-from views import OK, WAITING, ERROR
+from game import OK, WAITING, ERROR
 from autobahn.twisted.websocket import WebSocketClientProtocol, \
     WebSocketClientFactory
 
@@ -64,11 +64,12 @@ class MyClientProtocol(WebSocketClientProtocol):
         if tracker == 4:
             assert rjson['status'] == OK
             print 'Login Test OK'
-            return self.sendMsg({"cmd":"get_my_stats", 'game_name':"gametheory"}, 5)
+            return self.sendMsg({"cmd":"get_my_stats", 'game_name':"Game Theory"}, 5)
         if tracker == 5:
             assert rjson['status'] == OK
-
-            print 'Get Game room Test OK!  game rooms:', rjson['game_rooms']
+            print 'stats =', response
+            print 'get_my_stats Test OK'
+            #print 'Get Game room Test OK!  game rooms:', rjson['game_rooms']
         self.sendClose()
 
 

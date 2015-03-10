@@ -12,16 +12,17 @@ class GameSpec(models.Model):
     starting_xp = models.IntegerField(default=0)
     starting_level = models.IntegerField(default=1)
     starting_gem = models.IntegerField(default=10)
-
-class GameSpecAdmin(admin.ModelAdmin):
-    fields = ['name', 'description']
-admin.site.register(GameSpec, GameSpecAdmin)
+    def __str__(self):
+        return self.name
+admin.site.register(GameSpec)
 
 class GameRoom(models.Model):
-    name =  models.CharField(max_length=100)
+    name = models.CharField(max_length=100)
     description = models.CharField(max_length=100, null=True)
     gamespec = models.ForeignKey(GameSpec)
     order = models.IntegerField()
+
+admin.site.register(GameRoom)
 
 class PlayerStats(models.Model):
     player = models.ForeignKey('Player')
@@ -33,6 +34,7 @@ class PlayerStats(models.Model):
     def details(self):
         return {'player_id': self.player.id, 'score': self.score, 'level': self.level,
                 'xp': self.xp, 'gem': self.gem}
+admin.site.register(PlayerStats)
 
 class Player(models.Model):
     player_name = models.CharField(max_length=100)
@@ -56,23 +58,35 @@ class Player(models.Model):
                 'ip_address': self.ip_address, 'country': self.country,
                 'state': self.state, 'city': self.city, 'zipcode': self.zipcode,
                 'long': self.long, 'lat': self.lat}
-    def stats(self, game_name):
+    def get_stats(self, game_name):
+        try:
+            return self.game_stats[game_name]
+        except:
+            pass
+
         try:
             game = GameSpec.objects.get(name=game_name)
         except:
             return None
+        stats, created =PlayerStats.objects.get_or_create(player = self, game = game)
+        if created:
+            stats.score = game.starting_score
+            stats.xp = game.starting_xp
+            stats.level = game.starting_level
+            stats.gem = game.starting_gem
+            stats.save()
+
         try:
-            return PlayerStats.objects.get(player = self, game = game).details()
+            self.game_stats[game_name] = stats
         except:
-            return None
+            self.game_stats = {game_name : stats}
+
+        return stats.details()
 
     def __str__(self):
         return self.player_name+':'+self.player_uuid
 
-class PlayerAdmin(admin.ModelAdmin):
-    fields = ['player_name', 'player_uuid', 'score', 'ip_address',
-              'country','state', 'city']
-admin.site.register(Player, PlayerAdmin)
+admin.site.register(Player)
 
 
 class GameResult(models.Model):
@@ -81,6 +95,7 @@ class GameResult(models.Model):
     is_winner = models.BooleanField(default=False)
     score = models.IntegerField(null=True)
     rank = models.IntegerField(null=True)
+admin.site.register(GameResult)
 
 class GameRecord(models.Model):
     players = models.ManyToManyField(Player, through=GameResult)
@@ -93,7 +108,4 @@ class GameRecord(models.Model):
     def opponents(self, my_id):
         return [p for p in self.players.all() if p.id != my_id]
 
-class GameRecordAdmin(admin.ModelAdmin):
-    fields = [
-              'start_time', 'finish_time']
-admin.site.register(GameRecord, GameRecordAdmin)
+admin.site.register(GameRecord)
