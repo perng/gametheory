@@ -1,0 +1,41 @@
+Broadcast example
+
+== About ==
+
+This package demonstrate python/autobahn/twisted broadcasting. 
+
+Basically, it's like a chatroom: when server is started, a client can connect to the server,
+and send message to all other clients. There is no limit of clients.
+
+== Code ==
+
+client.py and server.py are from:
+[1] https://github.com/tavendo/AutobahnPython/tree/master/examples/twisted/websocket/broadcast
+[2] http://autobahn.ws/python/websocket/examples.html
+
+client.html is from:
+[3] https://github.com/tavendo/AutobahnPython/blob/master/examples/twisted/websocket/echo/client.html
+
+Modified client.py to add the function of getting console stdio input from user.
+Modified server.py to avoid sending to self when broadcast.
+Modified client.html to add the textbox for user input. Also modified output format.
+
+== Usage ==
+
+Right now this package runs locally, connect to localhost (127.0.0.1).
+It can be easily changed to use remotely, by changing the host.
+
+To start server:
+$ python server.py
+
+To start client:
+$ python client.py
+
+To start client.html in a browser:
+open client.html in a browser.
+
+To exit console server or client, press Ctrl-C.
+
+
+X. Chen
+3/15/2015
