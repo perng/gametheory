@@ -1,11 +1,17 @@
 Broadcast example
 
+By: X. Chen
+Last modified: 3/15/2015
+
+
 == About ==
 
 This package demonstrate python/autobahn/twisted broadcasting. 
 
 Basically, it's like a chatroom: when server is started, a client can connect to the server,
-and send message to all other clients. There is no limit of clients.
+and send message to all other clients. There is no limit on the number of clients.
+
+This can be easily extended to other multi-user games, from 2 players to any number of players.
 
 == Code ==
 
@@ -18,12 +24,12 @@ client.html is from:
 
 Modified client.py to add the function of getting console stdio input from user.
 Modified server.py to avoid sending to self when broadcast.
-Modified client.html to add the textbox for user input. Also modified output format.
+Modified client.html to add the textbox for user input, and modified output format.
 
 == Usage ==
 
-Right now this package runs locally, connect to localhost (127.0.0.1).
-It can be easily changed to use remotely, by changing the host.
+Right now this package runs locally, connect to localhost port 9000 (127.0.0.1:9000).
+It can be easily changed to be used remotely, by changing the host and port value.
 
 To start server:
 $ python server.py
@@ -31,11 +37,15 @@ $ python server.py
 To start client:
 $ python client.py
 
+To exit server or client from console, press Ctrl-C.
+
 To start client.html in a browser:
 open client.html in a browser.
 
-To exit console server or client, press Ctrl-C.
+
+== Change Log ==
+
+-- 3/15/2015 --
+Creation.
 
 
-X. Chen
-3/15/2015
