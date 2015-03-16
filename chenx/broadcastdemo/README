@@ -8,7 +8,7 @@ Last modified: 3/15/2015
 
 This package demonstrate python/autobahn/twisted broadcasting. 
 
-Basically, it's like a chatroom: when server is started, a client can connect to the server,
+Basically, it's a chatroom: when server is started, a client can connect to the server,
 and send message to all other clients. There is no limit on the number of clients.
 
 This can be easily extended to other multi-user games, from 2 players to any number of players.
