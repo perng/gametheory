@@ -2,7 +2,7 @@
 #
 # The MIT License (MIT)
 #
-# Copyright (c) Tavendo GmbH, X. Chen
+# Copyright (c) Tavendo GmbH
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -27,6 +27,7 @@
 #
 # This is modified from the code of T. GmbH,
 # by adding Echo class, which accepts local stdio input and send to server.
+# Modified BroadcastClientProtocol class to register Echo class.
 # X. Chen, 3/15/2015 
 #
 
@@ -68,7 +69,7 @@ class BroadcastClientProtocol(WebSocketClientProtocol):
     message every 2 seconds and print everything it receives.
     """
 
-    def sendMsg(self, msg):
+    def sendMsg(self, msg): 
         if msg != "":
             self.sendMessage(msg.encode('utf8'))
 
@@ -78,7 +79,7 @@ class BroadcastClientProtocol(WebSocketClientProtocol):
 
     def onOpen(self):
         self.sendHello()
-        stdio.StandardIO(Echo(self.sendMsg))
+        stdio.StandardIO(Echo(self.sendMsg))  # register stdio. X.C. 
 
     def onMessage(self, payload, isBinary):
         if not isBinary:

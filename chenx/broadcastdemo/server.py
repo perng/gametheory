@@ -24,6 +24,11 @@
 #
 ###############################################################################
 
+#
+# Slight modification to 1) avoid send to self when broadcast, 2) output format.
+# X.C. 3/15/2015
+# 
+
 import sys
 
 from twisted.internet import reactor
@@ -90,7 +95,7 @@ class BroadcastServerFactory(WebSocketServerFactory):
     def broadcast(self, msg, sender):
         print("broadcasting message '{}' ..".format(msg) + " - sender: " + sender)
         for c in self.clients:
-            if c.peer != sender: # This avoids a client boardcasting to self.
+            if c.peer != sender: # This avoids a client boardcasting to self. X.C.
                 c.sendMessage(msg.encode('utf8'))
                 print("message sent to {}".format(c.peer))
 
