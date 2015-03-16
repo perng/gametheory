@@ -7,6 +7,7 @@ from gametheory.core.models import *
 import game, player
 from Queue import Queue
 import threading
+import argparse
 
 class MyServerProtocol(WebSocketServerProtocol):
 
@@ -59,6 +60,8 @@ def methods():
     return dict(ans)
 
 if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description='Start game theory websocket server.')
+
     django.setup()
     logging.basicConfig(filename='example.log',level=logging.INFO)
     log.startLogging(sys.stdout)

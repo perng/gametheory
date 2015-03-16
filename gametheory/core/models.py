@@ -81,7 +81,7 @@ class Player(models.Model):
         except:
             self.game_stats = {game_name : stats}
 
-        return stats.details()
+        return stats
 
     def __str__(self):
         return self.player_name+':'+self.player_uuid

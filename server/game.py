@@ -54,17 +54,6 @@ def get_game_rooms(socket, params):
 
 
 
-@required_params('player_id')
-def login(socket, params):
-    try:
-        socket.player = Player.objects.get(id=params['player_id'])
-        return JsonResponse(socket, params, {}, OK, '')
-    except:
-        pass
-    return JsonResponse(socket, params, {}, ERROR, "Login failed, player_id invalid")
-
-
-
 @login_required
 @required_params('game_name', 'room')
 def start_game(socket, params):

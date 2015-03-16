@@ -12,11 +12,8 @@ import json, urllib2, logging
 from Queue import Empty
 from utils import *
 
-
-
 def noop(socket, params):
     return JsonResponse(socket, params, {}, OK, 'No operation')
-
 
 @required_params('uuid', 'uuid_type', 'player_name')
 def register(socket, params):
@@ -27,62 +24,71 @@ def register(socket, params):
         msg = "User renamed"
     player.player_name = params['player_name']
     ip = socket.ip
-    tokens = urllib2.urlopen(geoprefix + ip).readline().split(';')
-    if tokens[0] == 'OK':
-        player.ip_address = ip
-        player.country = tokens[4]
-        player.state = tokens[5]
-        player.city = tokens[6]
-        player.zipcode = tokens[7]
-        player.long = float(tokens[8])
-        player.lat = float(tokens[9])
+    player.ip_address = ip
+    # tokens = urllib2.urlopen(geoprefix + ip).readline().split(';')
+    # if tokens[0] == 'OK' :
+    #     player.country = tokens[4]
+    #     player.state = tokens[5]
+    #     player.city = tokens[6]
+    #     player.zipcode = tokens[7]
+    #     player.long = float(tokens[8])
+    #     player.lat = float(tokens[9])
     player.save()
     socket.player = player
     result = player.info()
-
     return JsonResponse(socket, params, result, OK, msg)
+
+@required_params('player_id')
+def login(socket, params):
+    try:
+        socket.player = Player.objects.get(id=params['player_id'])
+        return JsonResponse(socket, params, {}, OK, '')
+    except:
+        pass
+    return JsonResponse(socket, params, {}, ERROR, "Login failed, player_id invalid")
+
+
 
 @login_required
 @required_params('game_name')
 def get_my_stats(socket, params):
     stats = PlayerStats
     stats = socket.player.get_stats(params['game_name'])
-    return JsonResponse(socket, params, stats, OK, '')
+    return JsonResponse(socket, params, stats.details(), OK, '')
 
 
-
+@required_params('player_id','game_name')
 def get_player_stats(socket, params):
-    if 'player_id' in params:
-        try:
-            player = Player.objects.get(id=int(params['player_id']))
-        except:
-            return JsonResponse(socket, params, {}, ERROR, 'player_id:' + params['player_id'] + ' not found')
-    elif 'uuid' in params and 'uuid_type' in params:
-        try:
-            player = Player.objects.get(uuid=params['uuid'], uuid_type=params['uuid_type'])
-        except:
-            return JsonResponse(socket, params, {}, ERROR, 'uuid:' + params['uuid'] + ' not found')
-    else:
-        return JsonResponse(socket, params, {}, ERROR, 'no id info')
-    player.save()  # update last_play_time
-    return JsonResponse(socket, params, player.stats(), OK, '')
-
-
-
-@login_required
-def change_stats(socket, params):
     try:
+        print 'get_player_stats:', params
         player = Player.objects.get(id=int(params['player_id']))
-        player.score += params['score'] if 'score' in params else 0
-        player.score += params['level'] if 'level' in params else 0
-        player.score += params['xp'] if 'xp' in params else 0
-        player.score += params['gem'] if 'gem' in params else 0
-        result = {'player_id': player.id, 'player_name': player.player_name,
-                  'score': player.score, 'xp': player.xp, 'level': player.level}
-        player.save()
-        return JsonResponse(socket, params, result, OK, '')
     except:
         return JsonResponse(socket, params, {}, ERROR, 'player_id:' + params['player_id'] + ' not found')
+    stats = player.get_stats(params['game_name'])
+    if stats:
+        return JsonResponse(socket, params, stats.details(), OK, '')
+    return JsonResponse(socket, params, {}, ERROR, 'game_name:' + params['game_name'] + ' not found')
+
+@required_params('player_id','game_name')
+@login_required
+def update_stats(socket, params):
+    try:
+        player = Player.objects.get(id=int(params['player_id']))
+    except:
+        return JsonResponse(socket, params, {}, ERROR, 'player_id:' + params['player_id'] + ' not found')
+
+    stats = player.get_stats(params['game_name'])
+    if not stats:
+        return JsonResponse(socket, params, {}, ERROR, 'game_name:' + params['game_name'] + ' not found')
+
+    stats.score += params['score'] if 'score' in params else 0
+    stats.level += params['level'] if 'level' in params else 0
+    stats.xp += params['xp'] if 'xp' in params else 0
+    stats.gem += params['gem'] if 'gem' in params else 0
+#    result = {'player_id': player.id, 'player_name': player.player_name,
+#              'score': player.score, 'xp': player.xp, 'level': player.level}
+    stats.save()
+    return JsonResponse(socket, params, stats.details(), OK, '')
 
 
 
