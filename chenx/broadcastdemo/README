@@ -6,7 +6,7 @@ Last modified: 3/15/2015
 
 == About ==
 
-This package demonstrate python/autobahn/twisted broadcasting. 
+This package demonstrate broadcasting using python/autobahn/twisted websocket. 
 
 Basically, it's a chatroom: when server is started, a client can connect to the server,
 and send message to all other clients. There is no limit on the number of clients.
@@ -29,7 +29,7 @@ Modified client.html to add the textbox for user input, and modified output form
 == Usage ==
 
 Right now this package runs locally, connect to localhost port 9000 (127.0.0.1:9000).
-It can be easily changed to be used remotely, by changing the host and port value.
+It can be easily changed to be used remotely, by changing the host and port values.
 
 To start server:
 $ python server.py
