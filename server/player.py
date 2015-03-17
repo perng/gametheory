@@ -35,6 +35,7 @@ def register(socket, params):
     #     player.lat = float(tokens[9])
     player.save()
     socket.player = player
+    player.socket = socket
     result = player.info()
     return JsonResponse(socket, params, result, OK, msg)
 
@@ -42,6 +43,8 @@ def register(socket, params):
 def login(socket, params):
     try:
         socket.player = Player.objects.get(id=params['player_id'])
+        socket.player.socket = socket
+        #socket.factory.datastore.players[socket.player.id] = socket.player
         return JsonResponse(socket, params, {}, OK, '')
     except:
         pass
@@ -53,7 +56,7 @@ def login(socket, params):
 @required_params('game_name')
 def get_my_stats(socket, params):
     stats = PlayerStats
-    stats = socket.player.get_stats(params['game_name'])
+    stats = socket.player.get_stats_by_name(params['game_name'])
     return JsonResponse(socket, params, stats.details(), OK, '')
 
 
@@ -64,7 +67,7 @@ def get_player_stats(socket, params):
         player = Player.objects.get(id=int(params['player_id']))
     except:
         return JsonResponse(socket, params, {}, ERROR, 'player_id:' + params['player_id'] + ' not found')
-    stats = player.get_stats(params['game_name'])
+    stats = player.get_stats_by_name(params['game_name'])
     if stats:
         return JsonResponse(socket, params, stats.details(), OK, '')
     return JsonResponse(socket, params, {}, ERROR, 'game_name:' + params['game_name'] + ' not found')
@@ -77,7 +80,7 @@ def update_stats(socket, params):
     except:
         return JsonResponse(socket, params, {}, ERROR, 'player_id:' + params['player_id'] + ' not found')
 
-    stats = player.get_stats(params['game_name'])
+    stats = player.get_stats_by_name(params['game_name'])
     if not stats:
         return JsonResponse(socket, params, {}, ERROR, 'game_name:' + params['game_name'] + ' not found')
 

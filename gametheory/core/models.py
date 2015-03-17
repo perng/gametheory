@@ -4,6 +4,13 @@ from django.contrib import admin
 class GameSpec(models.Model):
     name =  models.CharField(max_length=100, unique=True)
     description = models.CharField(max_length=100, null=True)
+    # whether a player is automatically matched with opponents or
+    auto_match = models.BooleanField(default=True)
+    # whether player join a table after the table is marked 'playing'
+    accept_player_while_playing = models.BooleanField(default=False)
+    # allow people observe a table without participate
+    allow_kibitz = models.BooleanField(default=True)
+
     num_players_min = models.IntegerField(default=2)
     num_players_max = models.IntegerField(default=2)
     matching_time_min = models.IntegerField(default=0) # second
@@ -21,8 +28,8 @@ class GameRoom(models.Model):
     description = models.CharField(max_length=100, null=True)
     gamespec = models.ForeignKey(GameSpec)
     order = models.IntegerField()
-
 admin.site.register(GameRoom)
+
 
 class PlayerStats(models.Model):
     player = models.ForeignKey('Player')
@@ -58,16 +65,8 @@ class Player(models.Model):
                 'ip_address': self.ip_address, 'country': self.country,
                 'state': self.state, 'city': self.city, 'zipcode': self.zipcode,
                 'long': self.long, 'lat': self.lat}
-    def get_stats(self, game_name):
-        try:
-            return self.game_stats[game_name]
-        except:
-            pass
 
-        try:
-            game = GameSpec.objects.get(name=game_name)
-        except:
-            return None
+    def get_states_by_gamespec(self, game):
         stats, created =PlayerStats.objects.get_or_create(player = self, game = game)
         if created:
             stats.score = game.starting_score
@@ -77,11 +76,25 @@ class Player(models.Model):
             stats.save()
 
         try:
-            self.game_stats[game_name] = stats
+            self.game_stats[game.name] = stats
         except:
-            self.game_stats = {game_name : stats}
+            self.game_stats = {game.name : stats}
 
         return stats
+
+
+    def get_stats_by_name(self, game_name):
+        try:
+            return self.game_stats[game_name]
+        except:
+            pass
+        try:
+            game = GameSpec.objects.get(name=game_name)
+        except:
+            return None
+        return self.get_states_by_gamespec(game)
+
+
 
     def __str__(self):
         return self.player_name+':'+self.player_uuid
