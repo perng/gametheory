@@ -14,6 +14,7 @@
          }
          function doConnect() {
          //window.onload = function() {
+            document.getElementById('btnConnect').disabled = true;
             appendChatroom("<font color='orange'>connecting ...</font>");
             var ws = "ws://" + document.getElementById('ws').value;
             socket = new WebSocket(ws); 
@@ -26,6 +27,7 @@
             }
             socket.onerror = function() {
                 appendChatroom("<font color='red'>Connection not opened.</font>");
+                document.getElementById('btnConnect').disabled = false;
             }
             socket.onmessage = function(e) {
                if (typeof e.data == "string") {
