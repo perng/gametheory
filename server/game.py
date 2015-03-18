@@ -52,26 +52,24 @@ def get_game_rooms(socket, params):
     except:
         return JsonResponse(socket, params, {}, ERROR, "game or room doesn't exist")
 
-    game_rooms = [r.name for r in GameRoom.objects.filter(gamespec = game)]
+    game_rooms = [{'room_name': r.name, 'room_id': r.id}  for r in GameRoom.objects.filter(gamespec = game)]
     return JsonResponse(socket, params, {'game_rooms': game_rooms}, OK, '')
 
 @login_required
-@required_params('game_name', 'room')
-def sit_for_game(socket, params):
+@required_params('room_id')
+def sit_for_auto_match_game(socket, params):
     ''' This only applies to auto-matching game.
     Sit in the game room to be auto-matched. If not enough players, get a reply of 'waiting'.
     Once game starts, the player get a message for game starting
     :return:
     '''
     try:
-        game_name, room = params['game_name'], params['room']
-        room = socket.factory.gamerooms[game_name][room]
-        spec = socket.factory.gamespecs[game_name]
+        room = GameRoom.objects.get(id=int(params['room_id']))
     except:
-        return JsonResponse(socket, params, {}, ERROR, "game or room doesn't exist")
+        return JsonResponse(socket, params, {}, ERROR, "game room doesn't exist")
 
-    socket.datastore.sit_to_play(socket.player, room)
-
+    table = socket.factory.datastore.sit_to_play_auto_match(socket.player, room)
+    return JsonResponse(socket, params, {'table_id': table.id, 'game_status': table.status}, OK, '')
 
 @login_required
 @required_params('game_name', 'room')
