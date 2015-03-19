@@ -1,4 +1,4 @@
-Broadcast example
+GTChat - Websocket Chatroom Application
 
 By: X. Chen
 Last modified: 3/18/2015
@@ -8,7 +8,9 @@ Last modified: 3/18/2015
 
 This package is a chatroom implemented using using python/autobahn/twisted websocket. 
 
-This is extended from the previous broadcastdemo package, and will be a testing client for the gametheory server.
+This is extended from the previous broadcastdemo package, and will be a testing client for the gametheory server. 
+The concept is to build a simplified and specific server, and a fully functioning client based on this. The client
+can can be used to test the more complex and generic gametheory server.
 
 Basically, it's a chatroom: when server is started, a client can connect to the server and join a room,
 then send message to all other clients. 
@@ -18,7 +20,9 @@ This can be easily extended to other multi-user games, from 2 players to any num
 
 == Server API ==
 
-Communication is done in Json.
+Communication is done in Json. 
+
+No persistence is used at this time, user data is cached in memory.
 
 commands: register, login, update_pwd, create_room, invite, join_room, leave_room, speak
 
