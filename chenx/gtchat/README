@@ -96,6 +96,14 @@ ok/fail (optional)
 # server will send to all clients in this room:
 message
 
+-- broadcast
+# this is available only to superuser, who has access to broadcast_key.
+# server expects to receive:
+{"cmd":"speak", "usr":"user1", "broadcast_key", "msg":"broadcast"}
+
+# server will send to all clients
+message.
+
 
 Examples:
 
