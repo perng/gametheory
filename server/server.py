@@ -8,6 +8,7 @@ import game, player
 from Queue import Queue
 import threading
 import argparse
+from data import *
 
 class MyServerProtocol(WebSocketServerProtocol):
 
@@ -32,18 +33,22 @@ class MyServerProtocol(WebSocketServerProtocol):
         #getattr(game, params['cmd'])(self, params)
         self.factory.methods[params['cmd']](self, params)
     def onClose(self, wasClean, code, reason):
+        try:
+            del self.factory.players[self.player.id]
+        except:
+            pass
         print("WebSocket connection closed: {0}".format(reason))
 
-def create_gamerooms(factory):
-    factory.gamerooms = {}
-    factory.locks = {}
-    gamerooms = GameRoom.objects.all()
-    for gameroom in gamerooms:
-        if gameroom.gamespec.name not in factory.gamerooms:
-            factory.gamerooms[gameroom.gamespec.name] = {}
-            factory.locks[gameroom.gamespec.name] = {}
-        factory.gamerooms[gameroom.gamespec.name][gameroom.name] = Queue()
-        factory.locks[gameroom.gamespec.name][gameroom.name] = threading.Lock()
+# def create_gamerooms(factory):
+#     factory.gamerooms = {}
+#     factory.locks = {}
+#     gamerooms = GameRoom.objects.all()
+#     for gameroom in gamerooms:
+#         if gameroom.gamespec.name not in factory.gamerooms:
+#             factory.gamerooms[gameroom.gamespec.name] = {}
+#             factory.locks[gameroom.gamespec.name] = {}
+#         factory.gamerooms[gameroom.gamespec.name][gameroom.name] = Queue()
+#         factory.locks[gameroom.gamespec.name][gameroom.name] = threading.Lock()
 
 def add_test_gamerooms():
     game, created = GameSpec.objects.get_or_create(name="Game Theory")
@@ -71,14 +76,11 @@ if __name__ == '__main__':
     factory = WebSocketServerFactory("ws://localhost:%d" % (port,), debug=True)
     factory.methods = methods()
 
-    add_test_gamerooms()
-    create_gamerooms(factory)
+    factory.datastore = RunTimeDataStore(factory)
 
-    factory.locks = {}
-    for g in factory.gamerooms:
-        factory.locks[g] = {}
-        for r in factory.gamerooms[g]:
-            factory.locks[g][r] = threading.Lock()
+    add_test_gamerooms()
+    #create_gamerooms(factory)
+
 
 
     factory.protocol = MyServerProtocol

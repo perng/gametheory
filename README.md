@@ -45,17 +45,42 @@ The result of each round of game is recorded.
     # msg: debugging info, not to be displayed in client. 
     # (optional) _tracker :  return the same _tracker value as in the request. 
 
+
+
 # Test API 
-* No operation (testing):
+* noop: No operation (testing): (done)
   * request: {"cmd":"noop"}
   * response: {"status": "ok", "msg": "No operation", "reply_cmd": "noop"}
 
 # Player API
-* Registration: for first-time registration, or rename. Client should save 'player_id' for later communication
+* register: for first-time registration, or rename. Client should save 'player_id' for later communication
   * requet: {"cmd": "register", "player_name": "Charles Perng", "uuid": "bcde", "uuid_type": "FB"}
   * response: {"player_id": 2, "status": "ok", "reply_cmd": "register", "msg": "New user registered", "player.score": 1200}
   
-* Login: need to be called after connected
+* login: need to be called after connected
   * request: {"cmd":"login", "player_id":2}
   * response: {"status": "ok", "player_name": "Charles Perng", "level": 1, "reply_cmd": "login", "msg": "", "score": 1200, "player_id": 2, "xp": 0}
-  * 
+
+* get_my_stats : Get the stats of the logged-in user for a particular game
+  * request: 
+  * response:
+* get_player_stats : Get the stats of another player for a particular game
+  * request: 
+  * response:
+* update_stats: Update the state for a player. This is usually called after a round of game, to increase or descrease each item. The values in the message are the delta. Send in negative value to decrease stats. 
+  * request: 
+  * response:
+
+# Game API
+* get_game_names : Get game information of all games.
+  * request: 
+  * response:
+* get_game_rooms : Get the list of game room of a game
+  * request: 
+  * response:
+* sit_for_auto_match_game : Request to sit and play in a game room
+  * request: 
+  * response:
+
+
+

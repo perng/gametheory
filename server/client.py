@@ -1,7 +1,11 @@
-import time, json
+import time, json, sys
 from game import OK, WAITING, ERROR
 from autobahn.twisted.websocket import WebSocketClientProtocol, \
     WebSocketClientFactory
+import argparse
+from twisted.python import log
+from twisted.internet import reactor
+
 
 STATUS_OK = {'status': 'ok'}
 cmd_response = [
@@ -37,7 +41,10 @@ class MyClientProtocol(WebSocketClientProtocol):
         if not response:
             return self.sendMsg({'cmd': 'noop'}, 0)
         rjson = json.loads(response)
-        tracker = rjson['_tracker']
+        try:
+            tracker = rjson['_tracker']
+        except:
+            return
         if tracker == 0:
             assert rjson['status'] == OK
             print 'NOOP Test OK'
@@ -53,8 +60,12 @@ class MyClientProtocol(WebSocketClientProtocol):
             assert len(rjson['game_rooms']) >= 2
             print 'Game room:', rjson['game_rooms']
             print 'get_game_rooms test OK'
-            return self.sendMsg({'cmd': 'register', 'uuid': 'bcde', 'uuid_type': 'FB',
-                                     'player_name': 'Charles Perng'}, 3)
+            self.gamerooms = rjson['game_rooms']
+
+            uuid = self.factory.args.uuid if self.factory.args.uuid else 'bcde'
+            username = self.factory.args.username if self.factory.args.username else 'Charles Perng'
+            return self.sendMsg({'cmd': 'register', 'uuid': uuid, 'uuid_type': 'FB',
+                                     'player_name': username}, 3)
         if tracker == 3:
             assert rjson['status'] == OK
             print 'Register Test OK'
@@ -81,19 +92,25 @@ class MyClientProtocol(WebSocketClientProtocol):
             assert rjson['status'] == OK
             print 'update_stats Test OK'
             print 'current player stats is', response
+            print 'gamerooms', self.gamerooms
+            return self.sendMsg({'cmd': 'sit_for_auto_match_game', 'room_id': self.gamerooms[0]['room_id']}, 8)
 
-
+        if tracker == 8:
+            print 'rjson', rjson
+            assert rjson['status'] == OK
+            return
             #print 'Get Game room Test OK!  game rooms:', rjson['game_rooms']
+        else:
+            print 'received', rjson
         self.sendClose()
 
 
 
 if __name__ == '__main__':
 
-    import sys
-
-    from twisted.python import log
-    from twisted.internet import reactor
+    parser = argparse.ArgumentParser(description='Client emaulation with unit tests.')
+    parser.add_argument('--username', dest='username', help='user name', )
+    parser.add_argument('--uuid', dest='uuid', help='uuid')
 
     log.startLogging(sys.stdout)
 
@@ -103,6 +120,10 @@ if __name__ == '__main__':
     else:
         factory = WebSocketClientFactory('ws://localhost:9000', debug=False)
     factory.protocol = MyClientProtocol
+
+    factory.args = parser.parse_args()
+
+    print factory.args.username, factory.args.uuid
 
     reactor.connectTCP('127.0.0.1', 9000, factory)
     reactor.run()
