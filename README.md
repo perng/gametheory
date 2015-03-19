@@ -45,20 +45,47 @@ The result of each round of game is recorded.
     # msg: debugging info, not to be displayed in client. 
     # (optional) _tracker :  return the same _tracker value as in the request. 
 
+
+
 # Test API 
-* No operation (testing):
-  * request: {"cmd":"noop"}
-  * response: {"status": "ok", "msg": "No operation", "reply_cmd": "noop"}
+* noop: No operation (testing): (done)
+  * request: {"_tracker": 0, "cmd": "noop"}    
+  * response: {"status": "ok", "msg": "No operation", "reply_cmd": "noop", "_tracker": 0}
 
 # Player API
-* Registration: for first-time registration, or rename. Client should save 'player_id' for later communication
-  * requet: {"cmd": "register", "player_name": "Charles Perng", "uuid": "bcde", "uuid_type": "FB"}
-  * response: {"player_id": 2, "status": "ok", "reply_cmd": "register", "msg": "New user registered", "player.score": 1200}
+* register: for first-time registration, or rename. Client should save 'player_id' for later communication
+  * requet: {"_tracker": 3, "cmd": "register", "player_name": "Albert Einstein", "uuid": "xxxxx", "uuid_type": "FB"} 
+  * response: {"status": "ok", "player_name": "Albert Einstein", "reply_cmd": "register", "msg": "User renamed", "player_id": 3, "_tracker": 3, "ip_address": "127.0.0.1"}  
   
-* Login: need to be called after connected
-  * request: {"cmd":"login", "player_id":2}
-  * response: {"status": "ok", "player_name": "Charles Perng", "level": 1, "reply_cmd": "login", "msg": "", "score": 1200, "player_id": 2, "xp": 0}
-  * 
+* login: need to be called after connected
+  * request: {"player_id": 3, "_tracker": 4, "cmd": "login"}
+  * response: {"status": "ok", "msg": "", "reply_cmd": "login", "_tracker": 4}
 
-* Get game names 
-  * request: 
+* get_my_stats : Get the stats of the logged-in user for a particular game
+  * request: {"_tracker": 5, "cmd": "get_my_stats", "game_name": "Game Theory"}
+  * response: {"status": "ok", "level": 11, "reply_cmd": "get_my_stats", "msg": "", "score": 2430, "player_id": 3, "_tracker": 5, "xp": 0, "gem": 0}
+  
+* get_player_stats : Get the stats of another player for a particular game
+  * request: {"player_id": 3, "_tracker": 6, "cmd": "get_player_stats", "game_name": "Game Theory"}
+  * response:{"status": "ok", "level": 11, "reply_cmd": "get_player_stats", "msg": "", "score": 2430, "player_id": 3, "_tracker": 6, "xp": 0, "gem": 0}
+* update_stats: Update the state for a player. This is usually called after a round of game, to increase or descrease each item. The values in the message are the delta. Send in negative value to decrease stats. 
+  * request: {"level": 1, "cmd": "update_stats", "score": 123, "game_name": "Game Theory", "player_id": 3, "_tracker": 7, "gem": -1}
+  * response: {"status": "ok", "level": 12, "reply_cmd": "update_stats", "msg": "", "score": 2553, "player_id": 3, "_tracker": 7, "xp": 0, "gem": -1}
+
+# Game API
+* get_games : Get game information of all games.
+  * request: {"_tracker": 1, "cmd": "get_games"}
+  * response: {"status": "ok", "msg": "", "reply_cmd": "get_games", "games": [{"game_id": 1, "game_name": "Game Theory"}], "_tracker": 1}
+
+* get_game_rooms : Get the list of game room of a game
+  * request: {"_tracker": 2, "cmd": "get_game_rooms", "game_name": "Game Theory"}
+  * response: {"status": "ok", "game_rooms": [{"room_id": 1, "room_name": "Room 1"}, {"room_id": 2, "room_name": "Room 2"}], "_tracker": 2, "reply_cmd": "get_game_rooms", "msg": ""}
+
+* sit_for_auto_match_game : Request to sit and play in a game room
+  * request: {"_tracker": 8, "cmd": "sit_for_auto_match_game", "room_id": 1}
+  * response (waiting for player): {"status": "ok", "reply_cmd": "sit_for_auto_match_game", "game_status": "WAITING", "table_id": 3, "msg": "", "_tracker": 8}
+  * Once enough players have joine, server send msg like {"players": [2, 3], "table_id": 3, "msg_type": "game_start"}
+  
+* leave_table (not implemented yet)
+  
+

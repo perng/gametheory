@@ -59,7 +59,7 @@ class GameTable:
         # Game start if enough players, TODO: time-based game-start
         if self.num_players()>= self.game_room.gamespec.num_players_min:
             game = self.game_room.gamespec
-            msg = {'msg_type': 'game_start',
+            msg = {'table_id': self.id, 'msg_type': 'game_start',
                    'players': [p.id for p in self.players.values()]}
             self.status = PLAYING
             BroadCast([p.socket for p in self.players.values()], msg)

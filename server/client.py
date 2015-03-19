@@ -48,12 +48,12 @@ class MyClientProtocol(WebSocketClientProtocol):
         if tracker == 0:
             assert rjson['status'] == OK
             print 'NOOP Test OK'
-            return self.sendMsg({'cmd': 'get_game_names'}, 1)
+            return self.sendMsg({'cmd': 'get_games'}, 1)
         if tracker == 1:
-            assert len(rjson['game_names']) >0
-            print 'Game names:', rjson['game_names']
+            assert len(rjson['games']) >0
+            print 'Games:', rjson['games']
             print 'get_game_names test OK'
-            game = rjson['game_names'][0]
+            game = rjson['games'][0]['game_name']
             return self.sendMsg({'cmd': 'get_game_rooms', 'game_name': game}, 2)
         if tracker == 2:
             print rjson

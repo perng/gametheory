@@ -52,19 +52,21 @@ class Player(models.Model):
 
     games = models.ManyToManyField(GameSpec, through=PlayerStats)
 
-    ip_address = models.CharField(max_length=20, null=True)
-    country = models.CharField(max_length=50, null=True)
-    state = models.CharField(max_length=30, null=True)
-    city =  models.CharField(max_length=30, null=True)
-    zipcode =  models.CharField(max_length=10, null=True)
-    long = models.FloatField(null=True)
-    lat = models.FloatField(null=True)
+    ip_address = models.CharField(max_length=20, default='')
+    country = models.CharField(max_length=50, default='')
+    state = models.CharField(max_length=30, default='')
+    city =  models.CharField(max_length=30, default='')
+    zipcode =  models.CharField(max_length=10, default='')
+    long = models.FloatField(default='')
+    lat = models.FloatField(default='')
     friends = models.ManyToManyField('Player')
     def info(self):
         return {'player_id': self.id, 'player_name': self.player_name,
-                'ip_address': self.ip_address, 'country': self.country,
-                'state': self.state, 'city': self.city, 'zipcode': self.zipcode,
-                'long': self.long, 'lat': self.lat}
+                'ip_address': self.ip_address,
+                #'country': self.country,
+                #'state': self.state, 'city': self.city, 'zipcode': self.zipcode,
+                #'long': self.long, 'lat': self.lat
+        }
 
     def get_states_by_gamespec(self, game):
         stats, created =PlayerStats.objects.get_or_create(player = self, game = game)

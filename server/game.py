@@ -30,9 +30,9 @@ def clean_up():
 
 
 
-def get_game_names(socket, params):
-    game_names = [g.name for g in GameSpec.objects.all()]
-    return JsonResponse(socket, params, {'game_names': game_names}, OK, '')
+def get_games(socket, params):
+    games = [{'game_name': g.name, 'game_id' : g.id} for g in GameSpec.objects.all()]
+    return JsonResponse(socket, params, {'games': games}, OK, '')
 
 
 @required_params('game_name')
@@ -72,34 +72,12 @@ def sit_for_auto_match_game(socket, params):
     return JsonResponse(socket, params, {'table_id': table.id, 'game_status': table.status}, OK, '')
 
 @login_required
-@required_params('game_name', 'room')
-def start_game(socket, params):
-
+@required_params('table_id')
+def stand(socket, params):
     try:
-        game_name, room = params['game_name'], params['room']
-        room = socket.factory.gamerooms[game_name][room]
-        lock = socket.factory.locks[game_name][room]
-        spec = socket.factory.gamespecs[game_name]
+        room = GameRoom.objects.get(id=int(params['room_id']))
     except:
-        return JsonResponse(socket, params, {}, ERROR, "game or room doesn't exist")
-    lock.acquire(True)
-    if len(room) + 1 >= spec['num_player']:  # game can start
-        game = Game([socket])
-        socket.game = game
-        game.add_player(socket)
-        lock.acquire()
-        for i in range(spec['num_player'] - 1):
-            opp_socket = room.get()
-            game.add_player(opp_socket)
-            opp_socket.game = game
-        lock.release()
-        players_info = [s.player.stats() for s in game.sockets]
-        msg = 'Game start!'
-        JsonResponse(socket, params, {'players': players_info}, OK, msg)
-        return
-    else:
-        room.put(socket)
-        JsonResponse(socket, params, {}, WAITING, 'waiting for opponent to join')
+        return JsonResponse(socket, params, {}, ERROR, "game room doesn't exist")
 
 
 @login_required
