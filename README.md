@@ -59,3 +59,6 @@ The result of each round of game is recorded.
   * request: {"cmd":"login", "player_id":2}
   * response: {"status": "ok", "player_name": "Charles Perng", "level": 1, "reply_cmd": "login", "msg": "", "score": 1200, "player_id": 2, "xp": 0}
   * 
+
+* Get game names 
+  * request: 
