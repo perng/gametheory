@@ -51,12 +51,14 @@ class MyServerProtocol(WebSocketServerProtocol):
 #         factory.locks[gameroom.gamespec.name][gameroom.name] = threading.Lock()
 
 def add_test_gamerooms():
-    game, created = GameSpec.objects.get_or_create(name="Game Theory")
-    game.save()
-    gr, created = GameRoom.objects.get_or_create(gamespec = game, name = "Room 1", order = 0)
-    gr.save()
-    gr, created = GameRoom.objects.get_or_create(gamespec = game, name = "Room 2", order = 1)
-    gr.save()
+    for gname in ['Six Pieces', 'Tick-Tac-Tao', 'Game Theory']:
+        game, created = GameSpec.objects.get_or_create(name=gname)
+        game.save()
+        gr, created = GameRoom.objects.get_or_create(gamespec = game, name = "Room 1", order = 0)
+        gr.save()
+        gr, created = GameRoom.objects.get_or_create(gamespec = game, name = "Room 2", order = 1)
+        gr.save()
+
 
 def methods():
     ans = []
