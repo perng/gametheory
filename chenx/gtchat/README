@@ -33,28 +33,85 @@ commands: register, login, update_pwd, create_room, invite, join_room, leave_roo
 Password should be at least 8 chars in length.
 
 -- login
-{"cmd":"register","usr":"username","pwd":"password"}
+For regisered user:
+{"cmd":"login", "type":"reg", "usr":"user1","pwd":"password"}
+
+For unregistered temporary user:
+{"cmd":"login", "type":"tmp", "usr":"user2"}
 
 -- update_pwd
 {"cmd":"update_pwd", "usr":"username", "pwd":"old_pwd", "new_pwd":"pwd", "new_pwd2":"pwd"}
 
 -- create_room
+{"cmd":"create_room", "room_name":"room1", "usr":"user1"}
 
 -- invite
+{"cmd":"invite", "room_name":"room1", "invitee":"user2", "usr":"user1"}
 
 -- join_room
+{"cmd":"join_room", "room_name":"room1", "usr":"user1"}
 
 -- leave_room
+{"cmd":"leave_room", "room_name":"room1", "usr":"user1"}
 
 -- speak
+{"cmd":"speak", "room_name":"room1", "usr":"user1", "msg":"to room1 only"}
 
 Examples:
+
+>>> General test.
 
 {"cmd":"register","usr":"user1","pwd":"pwd1abcd"}
 {"cmd":"register","usr":"user2","pwd":"pwd1efgh"}
 {"cmd":"update_pwd", "usr":"user1", "pwd":"pwd1abcd", "new_pwd":"12345678", "new_pwd2":"12345678"}
 {"cmd":"login", "type":"reg", "usr":"user2","pwd":"pwd1efgh"}
 {"cmd":"login", "type":"tmp", "usr":"user2"}
+
+{"cmd":"create_room", "room_name":"nerdhaus", "usr":"user2"}
+{"cmd":"create_room", "room_name":"nerdhaus", "usr":"user3"}
+{"cmd":"create_room", "room_name":"nerdhaus", "usr":"user2"}
+
+{"cmd":"login", "type":"tmp", "usr":"anonymous"}
+{"cmd":"join_room", "room_name":"nerdhaus", "usr":"anonymous"}
+{"cmd":"leave_room", "room_name":"nerdhaus", "usr":"anonymous"}
+{"cmd":"leave_room", "room_name":"nerdhaus", "usr":"user2"}
+
+{"cmd":"speak", "room_name":"nerdhaus", "usr":"user2", "msg":"to nerdhaus"}
+
+>>> test chatroom boardcast
+
+{"cmd":"register","usr":"user1","pwd":"pwd1abcd"}
+{"cmd":"login", "type":"reg", "usr":"user1", "pwd":"pwd1abcd"}
+{"cmd":"create_room", "room_name":"nerdhaus", "usr":"user1"}
+
+{"cmd":"register","usr":"user2","pwd":"pwd1abcd"}
+{"cmd":"login", "type":"reg", "usr":"user2", "pwd":"pwd1abcd"}
+{"cmd":"join_room", "room_name":"nerdhaus", "usr":"user2"}
+
+{"cmd":"register","usr":"user3","pwd":"pwd1abcd"}
+{"cmd":"login", "type":"reg", "usr":"user3", "pwd":"pwd1abcd"}
+
+{"cmd":"speak", "room_name":"nerdhaus", "usr":"user1", "msg":"to nerdhaus only"}
+# only user1 and user2 should receive this.
+
+{"cmd":"invite", "room_name":"nerdhaus", "invitee":"user3", "usr":"user1"}
+# only user3 should receive this.
+
+
+>>> Other notes:
+
+# Right now there is this problem: multiple-login: a user login multiple times.
+# Ideally it should be solved this way: if a user login from a new location,
+# the previous one should be kicked out.
+#
+# Also for user valication, each time should validate his src also:
+# i.e., only when both usr and src match, it's valid. This prevents
+# identity spoofing.
+#
+# Basically:
+# - from one src there can be only one active user
+# - one active user can be from only one src
+
 
 == Client API ==
 
