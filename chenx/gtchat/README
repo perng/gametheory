@@ -1,0 +1,89 @@
+Broadcast example
+
+By: X. Chen
+Last modified: 3/18/2015
+
+
+== About ==
+
+This package is a chatroom implemented using using python/autobahn/twisted websocket. 
+
+This is extended from the previous broadcastdemo package, and will be a testing client for the gametheory server.
+
+Basically, it's a chatroom: when server is started, a client can connect to the server and join a room,
+then send message to all other clients. 
+
+This can be easily extended to other multi-user games, from 2 players to any number of players.
+
+
+== Server API ==
+
+Communication is done in Json.
+
+commands: register, login, update_pwd, create_room, invite, join_room, leave_room, speak
+
+-- register
+{"cmd":"register","usr":"username","pwd":"password"}
+
+Password should be at least 8 chars in length.
+
+-- login
+{"cmd":"register","usr":"username","pwd":"password"}
+
+-- update_pwd
+{"cmd":"update_pwd", "usr":"username", "pwd":"old_pwd", "new_pwd":"pwd", "new_pwd2":"pwd"}
+
+-- create_room
+
+-- invite
+
+-- join_room
+
+-- leave_room
+
+-- speak
+
+Examples:
+
+{"cmd":"register","usr":"user1","pwd":"pwd1abcd"}
+{"cmd":"register","usr":"user2","pwd":"pwd1efgh"}
+{"cmd":"update_pwd", "usr":"user1", "pwd":"pwd1abcd", "new_pwd":"12345678", "new_pwd2":"12345678"}
+{"cmd":"login", "type":"reg", "usr":"user2","pwd":"pwd1efgh"}
+{"cmd":"login", "type":"tmp", "usr":"user2"}
+
+== Client API ==
+
+
+== Code ==
+
+client.py and server.py are from:
+[1] https://github.com/tavendo/AutobahnPython/tree/master/examples/twisted/websocket/broadcast
+[2] http://autobahn.ws/python/websocket/examples.html
+
+client.html is from:
+[3] https://github.com/tavendo/AutobahnPython/blob/master/examples/twisted/websocket/echo/client.html
+
+Modified client.py to add the function of getting console stdio input from user.
+Modified server.py to avoid sending to self when broadcast, and added class API_Chatroom.
+Modified client.html to add the textbox for user input, and modified output format.
+
+== Usage ==
+
+To start server:
+$ ./s.sh
+
+To start client:
+$ ./c.sh
+
+To exit server or client from console, press Ctrl-C.
+
+To start client.html in a browser:
+open client.html in a browser.
+
+
+== Change Log ==
+
+-- 3/18/2015 --
+Creation.
+
+
