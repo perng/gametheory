@@ -32,6 +32,9 @@ commands: register, login, update_pwd, create_room, invite, join_room, leave_roo
 
 Password should be at least 8 chars in length.
 
+In case of mobile user, usr/pwd can be replaced by uuid. 
+But often the user also will pick up a nickname (which servers as usr here).
+
 -- login
 # server expects to receive:
 For regisered user:
@@ -41,7 +44,7 @@ For unregistered temporary user:
 {"cmd":"login", "type":"tmp", "usr":"user2"}
 
 # server will send to this client:
-ok(session id)/fail
+ok(session_id, user list, room list)/fail
 
 -- update_pwd
 # server expects to receive:
@@ -55,7 +58,7 @@ ok/fail
 {"cmd":"create_room", "room_name":"room1", "usr":"user1"}
 
 # server will send to this client:
-ok/fail
+ok (the client should add user to this new chatroom)/fail
 # server will send to all clients:
 new room created.
 
@@ -71,7 +74,7 @@ invite information (room_name, inviter)
 {"cmd":"join_room", "room_name":"room1", "usr":"user1"}
 
 # server will send to this client:
-ok (room information: users in room)/fail
+ok (room information: users in room, the client then will put this user to the room)/fail
 # server will send to all clients in this room:
 new client in room
 
@@ -80,7 +83,7 @@ new client in room
 {"cmd":"leave_room", "room_name":"room1", "usr":"user1"}
 
 # server will send to this client:
-ok/fail (optional)
+ok (the client will remove the user from the room)/fail (optional)
 # server will send to all clients in this room:
 new client in room
 
