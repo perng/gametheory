@@ -346,6 +346,23 @@ class Cls_Chatroom():
         All users receive this (optionally, this will be expensive)
         A registered user can have multiple login sessions.
         """
+
+        """
+        Note if a src already exists, and 
+        1) usr is also the same, then abort, since this user already logged in.
+        2) usr is different. Then this may be the same user logging in with 
+           different account. So first cleanup the previous login session
+           (remove previous account from room if any, and remove from storage),
+           then assign new information.
+        """
+        if src in self.T_users_active:
+            if usr == self.T_users_active[src].name:
+                raise Exception("user " + usr + " from " + src + " already logged in")
+            else:
+                # clear previous session.
+                prev_usr = self.T_users_active[src].name
+                self.exit_cleanup(prev_usr, src)
+
         if (type == 'reg'): # register user
             if usr not in self.T_users or self.T_users[usr] != pwd:
                 raise Exception("invalid login information")
@@ -410,10 +427,15 @@ class Cls_Chatroom():
         and clear its entry in storage.
         """
         self.validate_user(src)
+        self.exit_cleanup(usr, src)
 
+
+    def exit_cleanup(self, usr, src):
         room_name = self.T_users_active[src].room
         if room_name != "":
             self.T_rooms[room_name].removeUser(src)
+            if self.T_rooms[room_name].isEmpty():
+                del self.T_rooms[room_name]
 
         del self.T_users_active[src]
         del self.T_users_src[usr]
