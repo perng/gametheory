@@ -65,13 +65,16 @@ new room created.
 -- invite
 # server expects to receive:
 {"cmd":"invite", "room_name":"room1", "invitee":"user2", "usr":"user1"}
+# conditions: usr is in room, invitee is not.
 
 # server will send to invitee:
-invite information (room_name, inviter)
+{"cmd":"c_invited", "msg":msg, "room_name":room_name, "usr":usr}
+# c_invited is a client side API call, that client should handle for properly display.
 
 -- join_room
 # server expects to receive:
 {"cmd":"join_room", "room_name":"room1", "usr":"user1"}
+# condition: usr is not in the room yet.
 
 # server will send to this client:
 ok (room information: users in room, the client then will put this user to the room)/fail
@@ -81,6 +84,7 @@ new client in room
 -- leave_room
 # server expects to receive:
 {"cmd":"leave_room", "room_name":"room1", "usr":"user1"}
+# condition: usr is in the room.
 
 # server will send to this client:
 ok (the client will remove the user from the room)/fail (optional)
@@ -93,8 +97,9 @@ new client in room
 
 # server will send to this client:
 ok/fail (optional)
-# server will send to all clients in this room:
-message
+# server will send to all other clients in this room:
+{"cmd":"c_speak", "msg":msg, "usr":usr, "room_name":room_name}
+c_speak is a client side API call, that should be handled by client for proper display.
 
 -- broadcast
 # this is available only to superuser, who has access to broadcast_key.
