@@ -72,7 +72,7 @@ class Cls_Chatroom():
 
         # entry = name:pwd
         self.T_users = {}
-        self.T_users_src = {} # entry = name:src. E.g., usr1:tcp4:127.0.0.1:57778
+        self.T_users_src = {} # entry = name:src. E.g. usr1:tcp4:127.0.0.1:57778
  
         # entry = name:type,room. type=reg|tmp
         self.T_users_active = {}
@@ -80,20 +80,9 @@ class Cls_Chatroom():
         # entry = name:user_list
         self.T_rooms = {}
 
-        # entry = name:client.
-        # Provide a way to access a client using username.
-        # This is needed to send broadcast in each room efficiently.
-        #self.T_user_client = {}
-
-        # entry = src:client.
-        # This is like a duplicate of T_usr_client, since
-        # usr - src - client is a 1 : 1 : 1 match.
-        # But this is convenient for access sometimes.
-        #self.T_src_client  = {}
-
         if DEBUG:
             print ">>> new Cls_Chatroom instance created"
-        pass
+
 
     def handle(self, msg, src, client):
         if DEBUG:
@@ -144,6 +133,11 @@ class Cls_Chatroom():
                 room_name = self.get_param('room_name')
                 self.api_speak(msg, room_name, usr, src)
 
+            #elif cmd == "whisper":
+            #    msg = self.get_param('msg')
+            #    target_usr = self.get_param('target_usr')
+            #    self.api_whisper(msg, target_usr, usr, src)
+
             else:
                 raise Exception("unknown cmd")
 
@@ -155,6 +149,14 @@ class Cls_Chatroom():
             return "failed:" + str(err)
 
         return "ok"
+
+
+    def send_msg(self, usr, msg):
+        # assumption: usr has been validated in caller.
+        #if not usr in self.T_users_active:
+        #    raise Exception("send_msg(): Not active user: " + usr)
+
+        self.T_users_active[usr].getClient().sendMessage(msg.encode('utf8'))
 
 
     def get_param(self, param):
@@ -190,10 +192,28 @@ class Cls_Chatroom():
         Only users in this room receive this message.
         """
         users = self.T_rooms[room_name].getUserNameList();
+        msg = self.make_msg_c_speak(msg, usr, room_name)
         for user in users:
             if user != usr:  # do not send to self.
-                self.T_users_active[user].getClient().sendMessage(msg.encode('utf8'))
+                self.send_msg(user, msg)
 
+
+    """
+    'c_speak' is a client side API call. This msg will be sent to clients.
+    """
+    def make_msg_c_speak(self, msg, usr, room_name):
+        data = {"cmd":"c_speak", "msg":msg, "usr":usr, "room_name":room_name}
+        return json.JSONEncoder().encode(data)
+
+
+    #def api_whisper(self, target_usr, msg, usr, src):
+    #    """
+    #    speak to an individual
+    #    """
+    #    self.validate_user(usr)
+    #    self.validate_user(target_usr)
+    #    self.send_msg(target_usr, msg)
+    
 
     def api_create_room(self, room_name, usr, src):
         """
@@ -218,7 +238,7 @@ class Cls_Chatroom():
 
     def api_invite(self, invitee, room_name, usr, src):
         """
-        A user can invite another into a room only when he is in the room himself.
+        A user can invite another into a room only when he is in the room.
         Only invitee receives this.
         """
         self.validate_user(usr)
@@ -226,21 +246,39 @@ class Cls_Chatroom():
         self.validate_room_user(room_name, usr)
         self.validate_user(invitee)
 
+        # If invitee is already in room, shouln't receive another invitation.
+        if self.T_rooms[room_name].containsUser(invitee):
+            raise Exception("api_invite(): invitee " + invitee + 
+                  " is already in room " + room_name)
+
         """
         Now, send room invitation message to the invitee.
-        TO DO
         """
-        msg = "{\"cmd\":\"invite\", \"room_name\":\"" + room_name + "\" \"invitee\":\"" + invitee + "\"}"
-        print("api_invite: " + msg)
-        self.T_users_active[invitee].getClient().sendMessage(msg.encode('utf8'))
+        msg = self.make_msg_c_invited(invitee, room_name, usr)
+        self.send_msg(invitee, msg)
+
+
+    """
+    'c_invited' is a client side API call.
+    """
+    def make_msg_c_invited(self, invitee, room_name, usr):
+        msg = usr + " invited you to room " + room_name
+        data = {"cmd":"c_invited", 
+                "msg":msg, "room_name":room_name, "usr":usr}
+        return json.JSONEncoder().encode(data)
 
 
     def api_join_room(self, room_name, usr, src):
         """
-        Only users in this room receives this.
+        Only users in this room receive this.
         """
         self.validate_user(usr)
         self.validate_room_name(room_name)
+
+        # A user already in a room cannot join again.
+        if self.T_rooms[room_name].containsUser(usr):
+            raise Exception("api_join_room(): user " + usr + 
+                  " is already in room " + room_name)
 
         self.T_rooms[room_name].addUser(usr)
         self.T_users_active[usr].setRoom(room_name)
@@ -251,7 +289,7 @@ class Cls_Chatroom():
 
     def api_leave_room(self, room_name, usr, src):
         """
-        Only users in this room receives this.
+        Only users in this room receive this.
         """
         self.validate_user(usr)
         self.validate_room_name(room_name)
@@ -268,7 +306,7 @@ class Cls_Chatroom():
 
     def api_login(self, type, usr, pwd, src, client):
         """
-        The user can be a registered user, or a tmp anonymous user (not registered).
+        The user can be a registered user, or a tmp user (un-registered).
         Once logged in, the user is added to active user list.
         All users receive this (optionally, this will be expensive)
         """
@@ -306,7 +344,7 @@ class Cls_Chatroom():
 
     def api_register(self, usr, pwd, src):
         """
-        After register, the user still needs to login to become an active user.
+        After register, the user still need to login to become an active user.
         Only usr himself receives a response.
         """
         if len(usr) == 0:
@@ -393,11 +431,13 @@ class BroadcastServerProtocol(WebSocketServerProtocol):
             ret = self.factory.gametheory_handler.handle(payload.decode('utf8'), self.peer, self);
             print "=> gametheory_handler.handle() returns: " + ret
 
+            """
             if debug:
                 msg = "{} from {}".format(payload.decode('utf8'), self.peer)
             else:
                 msg = "{}>>> {}".format(self.peer, payload.decode('utf8'))
             self.factory.broadcast(msg, self.peer)
+            """
 
     def connectionLost(self, reason):
         WebSocketServerProtocol.connectionLost(self, reason)
