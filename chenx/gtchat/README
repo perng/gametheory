@@ -232,6 +232,21 @@ which one to invite? A easy answer is: any one of the active sessions.
 So can use a reverse hash of usr=>src for this, which only needs to keep one usr session's src.
 
 
+#
+# Summary on the final design:
+#
+ * Allow a user to have multiple login sessions
+ * Each session is identified by the connection src (i.e., src == client.peer == tcp4:ip:port).
+   This essentially means that the connection src (tcp4:ip:port) is used as a session_id that cannot be spoofed.
+ * Only 'register' and 'login' requests provide user name, all other requests will obtain user name from src.
+ * This way, one cannot spoof the identity of another user by attaching the user name in request as in previous design.
+ * If a second 'login' request comes in an active connection src, then:
+   1) if user name is the same, then abort the login request, since the user is already logged in.
+   2) if user name is different, this probably is the same user is logging in with a different account, 
+      and didn't properly shutdown the previous session. In this case, clean up the previous session
+      (drop the previous account from chatroom, and clean up relevant storage), and initialize the new session.
+
+
 == Client API ==
 
 
