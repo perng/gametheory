@@ -47,15 +47,16 @@ For unregistered temporary user:
 ok(session_id, user list, room list)/fail
 
 -- update_pwd
+# only a logged in user can change his/her password.
 # server expects to receive:
-{"cmd":"update_pwd", "usr":"username", "pwd":"old_pwd", "new_pwd":"pwd", "new_pwd2":"pwd"}
+{"cmd":"update_pwd", "pwd":"old_pwd", "new_pwd":"pwd", "new_pwd2":"pwd"}
 
 # server will send to this client:
 ok/fail
 
 -- create_room
 # server expects to receive:
-{"cmd":"create_room", "room_name":"room1", "usr":"user1"}
+{"cmd":"create_room", "room_name":"room1"}
 
 # server will send to this client:
 ok (the client should add user to this new chatroom)/fail
@@ -64,7 +65,7 @@ new room created.
 
 -- invite
 # server expects to receive:
-{"cmd":"invite", "room_name":"room1", "invitee":"user2", "usr":"user1"}
+{"cmd":"invite", "room_name":"room1", "invitee":"user2"}
 # conditions: usr is in room, invitee is not.
 
 # server will send to invitee:
@@ -73,7 +74,7 @@ new room created.
 
 -- join_room
 # server expects to receive:
-{"cmd":"join_room", "room_name":"room1", "usr":"user1"}
+{"cmd":"join_room", "room_name":"room1"}
 # condition: usr is not in the room yet.
 
 # server will send to this client:
@@ -83,7 +84,7 @@ new client in room
 
 -- leave_room
 # server expects to receive:
-{"cmd":"leave_room", "room_name":"room1", "usr":"user1"}
+{"cmd":"leave_room", "room_name":"room1"}
 # condition: usr is in the room.
 
 # server will send to this client:
@@ -93,7 +94,7 @@ new client in room
 
 -- speak
 # server expects to receive:
-{"cmd":"speak", "room_name":"room1", "usr":"user1", "msg":"to room1 only"}
+{"cmd":"speak", "room_name":"room1", "msg":"to room1 only"}
 
 # server will send to this client:
 ok/fail (optional)
@@ -101,13 +102,24 @@ ok/fail (optional)
 {"cmd":"c_speak", "msg":msg, "usr":usr, "room_name":room_name}
 c_speak is a client side API call, that should be handled by client for proper display.
 
--- broadcast
+-- broadcast 
 # this is available only to superuser, who has access to broadcast_key.
 # server expects to receive:
-{"cmd":"speak", "usr":"user1", "broadcast_key", "msg":"broadcast"}
+{"cmd":"broadcast", "broadcast_key", "msg":"broadcast"}
 
 # server will send to all clients
 message.
+
+-- exit
+# server expects to receive:
+{"cmd":"exit"}
+
+# For a proper exit, the user should be removed from chat room if any, 
+# and also clear its entry in storage.
+
+# server will send this update to clients in the room
+user exit from room.
+# server will send this update to all clients (optional, can be expensive)
 
 
 Examples:
@@ -116,49 +128,46 @@ Examples:
 
 {"cmd":"register","usr":"user1","pwd":"pwd1abcd"}
 {"cmd":"register","usr":"user2","pwd":"pwd1efgh"}
-{"cmd":"update_pwd", "usr":"user1", "pwd":"pwd1abcd", "new_pwd":"12345678", "new_pwd2":"12345678"}
+{"cmd":"update_pwd", "pwd":"pwd1abcd", "new_pwd":"12345678", "new_pwd2":"12345678"}
 {"cmd":"login", "type":"reg", "usr":"user2","pwd":"pwd1efgh"}
 {"cmd":"login", "type":"tmp", "usr":"user2"}
 
-{"cmd":"create_room", "room_name":"nerdhaus", "usr":"user2"}
-{"cmd":"create_room", "room_name":"nerdhaus", "usr":"user3"}
-{"cmd":"create_room", "room_name":"nerdhaus", "usr":"user2"}
+{"cmd":"create_room", "room_name":"nerdhaus"}
 
 {"cmd":"login", "type":"tmp", "usr":"anonymous"}
-{"cmd":"join_room", "room_name":"nerdhaus", "usr":"anonymous"}
-{"cmd":"leave_room", "room_name":"nerdhaus", "usr":"anonymous"}
-{"cmd":"leave_room", "room_name":"nerdhaus", "usr":"user2"}
+{"cmd":"join_room", "room_name":"nerdhaus"}
+{"cmd":"leave_room", "room_name":"nerdhaus"}
 
-{"cmd":"speak", "room_name":"nerdhaus", "usr":"user2", "msg":"to nerdhaus"}
+{"cmd":"speak", "room_name":"nerdhaus", "msg":"to nerdhaus"}
 
 >>> test chatroom boardcast
 
 # client 1
 {"cmd":"register","usr":"user1","pwd":"pwd1abcd"}
 {"cmd":"login", "type":"reg", "usr":"user1", "pwd":"pwd1abcd"}
-{"cmd":"create_room", "room_name":"nerdhaus", "usr":"user1"}
+{"cmd":"create_room", "room_name":"nerdhaus"}
 
 # client 2
 {"cmd":"register","usr":"user2","pwd":"pwd1abcd"}
 {"cmd":"login", "type":"reg", "usr":"user2", "pwd":"pwd1abcd"}
-{"cmd":"join_room", "room_name":"nerdhaus", "usr":"user2"}
+{"cmd":"join_room", "room_name":"nerdhaus"}
 
 # client 3
 {"cmd":"register","usr":"user3","pwd":"pwd1abcd"}
 {"cmd":"login", "type":"reg", "usr":"user3", "pwd":"pwd1abcd"}
 
 # only client 2 should receive this. (client 1 sent this himself)
-{"cmd":"speak", "room_name":"nerdhaus", "usr":"user1", "msg":"to nerdhaus only"}
+{"cmd":"speak", "room_name":"nerdhaus", "msg":"to nerdhaus only"}
 
 # only client 3 should receive this, since he is the one being invited.
-{"cmd":"invite", "room_name":"nerdhaus", "invitee":"user3", "usr":"user1"}
+{"cmd":"invite", "room_name":"nerdhaus", "invitee":"user3"}
 
 
 >>> test invite
 client 1:
 {"cmd":"register","usr":"user1","pwd":"pwd1abcd"}
 {"cmd":"login", "type":"reg", "usr":"user1", "pwd":"pwd1abcd"}
-{"cmd":"create_room", "room_name":"nerdhaus", "usr":"user1"}
+{"cmd":"create_room", "room_name":"nerdhaus"}
 client 2:
 {"cmd":"register","usr":"user2","pwd":"pwd1abcd"}
 {"cmd":"login", "type":"reg", "usr":"user2", "pwd":"pwd1abcd"}
@@ -168,12 +177,12 @@ client 3:
 {"cmd":"login", "type":"reg", "usr":"user3", "pwd":"pwd1abcd"}
 
 client 1:
-{"cmd":"invite", "invitee":"user2", "room_name":"nerdhaus", "usr":"user1"}
+{"cmd":"invite", "invitee":"user2", "room_name":"nerdhaus"}
 # only client2 should receive this.
 
 client 2:
-{"cmd":"join_room", "room_name":"nerdhaus", "usr":"user2"}
-{"cmd":"speak", "room_name":"nerdhaus", "usr":"user2", "msg":"to nerdhaus"}
+{"cmd":"join_room", "room_name":"nerdhaus"}
+{"cmd":"speak", "room_name":"nerdhaus", "msg":"to nerdhaus"}
 
 
 == Security Issues ==
@@ -194,12 +203,32 @@ client 2:
 
 1) If from the same src come 2 or more different usrs, that can be identity spoofing.
 
-In this case, the second usr's messages should be dropped, and a warning returned (or nothing returned at all, to save bandwidth).
+In this case, the second usr's messages should be dropped, and a warning returned 
+(or nothing returned at all, to save bandwidth).
+
 2) If from the same usr comes from different srcs, the user may be logged in from different locations.
 
 In this case, one can either:
 a) not allow it, auto logout from the first src,
 b) allow it, and maybe attach a seq_no to the latter connections.
+
+Well, ideally, a person should be able to log in multiple sessions, like in QQ and gtalk, 
+so he can be in multiple rooms at the same time. So, maybe should use src as index key, not usr.  
+If a user log in with different session, he will have different src (port number).
+
+Then in T_users_active, use src as key, username becomes a field value. Can assign a session_id to be used.
+
+So for every request from the same src, use the associated username for all requests; 
+unless it's a login request with different username, then it may be a spoof, 
+just either 1) drop new login request, or 2) terminate old session. 
+Guess will go with the 2nd case, since it's always possible a user have different accounts, 
+but a previous account may not be shutdown due to networking issues.  
+For case 2), also there is no need to unregister the client, just flush and replace 
+the user's information in T_users_active, and kick the previous user out from all chatrooms if any.
+
+The only issue with this, is that if the invited person has multiple login sessions, 
+which one to invite? A easy answer is: any one of the active sessions. 
+So can use a reverse hash of usr=>src for this, which only needs to keep one usr session's src.
 
 
 == Client API ==
