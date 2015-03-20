@@ -2,7 +2,7 @@
 === GTChat - Chatroom based on Websocket ===
 
 By: X. Chen
-Last modified: 3/18/2015
+Last modified: 3/19/2015
 
 
 == About ==
@@ -262,6 +262,11 @@ open client.html in a browser.
 
 
 == Change Log ==
+
+-- 3/19/2015 --
+* Finished change to use src to index T_users_active instead of username, to avoid identity spoofing.
+* As a consequence, now only commands 'register' and 'login' need to provide user name.
+* Also added api_exit API call. 
 
 -- 3/18/2015 --
 Creation.
