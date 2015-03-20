@@ -66,19 +66,15 @@ DEBUG = True
 # Cls_Chatroom is a singleton: only one instance is running at any time.
 #
 class Cls_Chatroom():
+
     def __init__(self):
-
-        # Storage (database)
-
-        # entry = name:pwd
-        self.T_users = {}
-        self.T_users_src = {} # entry = name:src. E.g. usr1:tcp4:127.0.0.1:57778
- 
-        # entry = src:Cls_ActiveUser_object
-        self.T_users_active = {}
-
-        # entry = name:user_list
-        self.T_rooms = {}
+        """
+        Storage (database tables)
+        """
+        self.T_users = {}         # entry = name:pwd
+        self.T_users_src = {}     # entry = name:src. E.g. usr1:tcp4:127.0.0.1:57778
+        self.T_users_active = {}  # entry = src:Cls_ActiveUser_object
+        self.T_rooms = {}         # entry = name:user_list
 
         if DEBUG:
             print ">>> new Cls_Chatroom instance created"
