@@ -74,7 +74,7 @@ class Cls_Chatroom():
         self.T_users = {}
         self.T_users_src = {} # entry = name:src. E.g. usr1:tcp4:127.0.0.1:57778
  
-        # entry = name:type,room. type=reg|tmp
+        # entry = src:Cls_ActiveUser_object
         self.T_users_active = {}
 
         # entry = name:user_list
@@ -84,7 +84,9 @@ class Cls_Chatroom():
             print ">>> new Cls_Chatroom instance created"
 
 
-    def handle(self, msg, src, client):
+    def handle(self, msg, client):
+        src = client.peer;
+
         if DEBUG:
             print(' ')
             print ('==' + src + ':: ' + msg)
@@ -93,8 +95,8 @@ class Cls_Chatroom():
             self.params = json.loads(msg)
 
             cmd = self.get_param('cmd')
-            usr = self.get_param('usr')
-            if DEBUG: print("cmd = " + cmd + ", usr = " + usr)
+            usr = self.get_param_usr(cmd, src)
+            if DEBUG: print("cmd = " + cmd + ", usr = " + usr + ", src = " + src)
 
             if cmd == "register":
                 pwd = self.get_param('pwd')
@@ -133,6 +135,9 @@ class Cls_Chatroom():
                 room_name = self.get_param('room_name')
                 self.api_speak(msg, room_name, usr, src)
 
+            elif cmd == "exit":
+                self.api_exit(usr, src)
+
             #elif cmd == "whisper":
             #    msg = self.get_param('msg')
             #    target_usr = self.get_param('target_usr')
@@ -144,19 +149,19 @@ class Cls_Chatroom():
         except Exception as err:
             #return JsonResponse(FAIL)
             #print(err.args)
-            sys.stdout.write(":exception: ")
-            print(err)
-            return "failed:" + str(err)
+            #sys.stdout.write(":exception: ")
+            #print(err)
+            return "failed:exception:" + str(err)
 
         return "ok"
 
 
-    def send_msg(self, usr, msg):
+    def send_msg(self, src, msg):
         # assumption: usr has been validated in caller.
         #if not usr in self.T_users_active:
         #    raise Exception("send_msg(): Not active user: " + usr)
 
-        self.T_users_active[usr].getClient().sendMessage(msg.encode('utf8'))
+        self.T_users_active[src].getClient().sendMessage(msg.encode('utf8'))
 
 
     def get_param(self, param):
@@ -164,10 +169,32 @@ class Cls_Chatroom():
             raise Exception("invalid request parameter: " + param)
         return self.params[param]
 
+ 
+    def get_param_usr(self, cmd, src):
+        """
+        Only when cmd = 'regiser'/'login', get usr from params;
+        For any other cmd, get usr from T_users_active.
+        This avoids identity spoofing.
+        """
+        if cmd == "login" or cmd == "register":
+            usr = self.get_param('usr')
+        else:
+            usr = self.get_src_username(src)
 
-    def validate_user(self, usr):
-        if usr not in self.T_users_active:
+        if usr == '':
+            raise Exception("handle(): unknown user from src " + src)
+
+        return usr
+
+
+    def validate_user(self, src):
+        if src not in self.T_users_active:
             raise Exception("Invalid user")
+
+
+    def validate_user_name(self, usr):
+        if usr not in self.T_users_src:
+            raise Exception("Invalid user name")
 
 
     def validate_room_name(self, room_name):
@@ -175,26 +202,33 @@ class Cls_Chatroom():
             raise Exception("Room name must be at least one char")
 
 
-    def validate_room_user(self, room_name, usr):
+    def validate_room_user(self, room_name, src):
         if room_name not in self.T_rooms:
             raise Exception("Invalid room")
-        if not self.T_rooms[room_name].containsUser(usr):
-            raise Exception("User " + usr + " is not in room " + room_name)
+        if not self.T_rooms[room_name].containsUser(src):
+            raise Exception("User " + self.get_src_username(src) + " is not in room " + room_name)
+
+
+    def get_src_username(self, src):
+        if src in self.T_users_active:
+            return self.T_users_active[src].name
+        else:
+            return ''
 
 
     def api_speak(self, msg, room_name, usr, src):
-        self.validate_user(usr)
+        self.validate_user(src)
         self.validate_room_name(room_name)
-        self.validate_room_user(room_name, usr)
+        self.validate_room_user(room_name, src)
 
         """
         Now broadcast to users in this room.
         Only users in this room receive this message.
         """
-        users = self.T_rooms[room_name].getUserNameList();
+        users = self.T_rooms[room_name].getUserSrcList();
         msg = self.make_msg_c_speak(msg, usr, room_name)
         for user in users:
-            if user != usr:  # do not send to self.
+            if user != src:  # do not send to self.
                 self.send_msg(user, msg)
 
 
@@ -220,15 +254,15 @@ class Cls_Chatroom():
         When a room is created, the user automatically enters this room.
         All users receive this message (optional, this can be expensive).
         """
-        self.validate_user(usr)
+        self.validate_user(src)
         self.validate_room_name(room_name)
 
         if room_name in self.T_rooms:
             raise Exception("Room name already exists")
 
         room = Cls_Room(room_name)  # create a Room object.
-        room.addUser(usr);         # add first user.
-        self.T_users_active[usr].setRoom(room_name)
+        room.addUser(src, usr);         # add first user.
+        self.T_users_active[src].setRoom(room_name)
 
         self.T_rooms[room_name] = room  # add room to room list.
 
@@ -241,13 +275,13 @@ class Cls_Chatroom():
         A user can invite another into a room only when he is in the room.
         Only invitee receives this.
         """
-        self.validate_user(usr)
+        self.validate_user(src)
         self.validate_room_name(room_name)
-        self.validate_room_user(room_name, usr)
-        self.validate_user(invitee)
+        self.validate_room_user(room_name, src)
+        self.validate_user_name(invitee)
 
         # If invitee is already in room, shouln't receive another invitation.
-        if self.T_rooms[room_name].containsUser(invitee):
+        if self.T_rooms[room_name].containsUsername(invitee):
             raise Exception("api_invite(): invitee " + invitee + 
                   " is already in room " + room_name)
 
@@ -255,7 +289,8 @@ class Cls_Chatroom():
         Now, send room invitation message to the invitee.
         """
         msg = self.make_msg_c_invited(invitee, room_name, usr)
-        self.send_msg(invitee, msg)
+        user = self.T_users_src[invitee]  # get latest src of invitee
+        self.send_msg(user, msg)
 
 
     """
@@ -272,16 +307,16 @@ class Cls_Chatroom():
         """
         Only users in this room receive this.
         """
-        self.validate_user(usr)
+        self.validate_user(src)
         self.validate_room_name(room_name)
 
         # A user already in a room cannot join again.
-        if self.T_rooms[room_name].containsUser(usr):
+        if self.T_rooms[room_name].containsUsername(usr):
             raise Exception("api_join_room(): user " + usr + 
                   " is already in room " + room_name)
 
-        self.T_rooms[room_name].addUser(usr)
-        self.T_users_active[usr].setRoom(room_name)
+        self.T_rooms[room_name].addUser(src, usr)
+        self.T_users_active[src].setRoom(room_name)
 
         if DEBUG:
             self.dump_db("T_rooms", self.T_rooms)
@@ -291,11 +326,11 @@ class Cls_Chatroom():
         """
         Only users in this room receive this.
         """
-        self.validate_user(usr)
+        self.validate_user(src)
         self.validate_room_name(room_name)
  
-        self.T_rooms[room_name].removeUser(usr)
-        self.T_users_active[usr].setRoom('')
+        self.T_rooms[room_name].removeUser(src)
+        self.T_users_active[src].setRoom('')
 
         if self.T_rooms[room_name].isEmpty():
             del self.T_rooms[room_name]
@@ -309,6 +344,7 @@ class Cls_Chatroom():
         The user can be a registered user, or a tmp user (un-registered).
         Once logged in, the user is added to active user list.
         All users receive this (optionally, this will be expensive)
+        A registered user can have multiple login sessions.
         """
         if (type == 'reg'): # register user
             if usr not in self.T_users or self.T_users[usr] != pwd:
@@ -320,7 +356,11 @@ class Cls_Chatroom():
                 raise Exception("this username already exists (1)")
 
         user = Cls_ActiveUser(usr, src, client)
-        self.T_users_active[usr] = user
+        self.T_users_active[src] = user
+
+        # Record the src of the lastest logging session of a user.
+        # used by api_invite: usr -> src -> T_users_active[src] object.
+        self.T_users_src[usr] = src  
 
  
     def api_update_pwd(self, usr, old_pwd, new_pwd, new_pwd2, src):
@@ -357,11 +397,26 @@ class Cls_Chatroom():
 
         # add new user to database.
         self.T_users[usr] = pwd
-        self.T_users_src[usr] = src
+        #self.T_users_src[usr] = src
 
         if DEBUG:
             self.dump_db("T_users", self.T_users)
-            self.dump_db("T_users_src", self.T_users_src)
+            #self.dump_db("T_users_src", self.T_users_src)
+
+
+    def api_exit(self, usr, src):
+        """
+        For a proper exit, remove user from chat room if any, 
+        and clear its entry in storage.
+        """
+        self.validate_user(src)
+
+        room_name = self.T_users_active[src].room
+        if room_name != "":
+            self.T_rooms[room_name].removeUser(src)
+
+        del self.T_users_active[src]
+        del self.T_users_src[usr]
 
 
     def dump_db(self, tbl_name, tbl):
@@ -379,9 +434,6 @@ class Cls_ActiveUser():
     def setRoom(self, room):
         self.room = room
 
-    def getRoom(self):
-        return self.room 
-
     def getSrc(self):
         return self.src
 
@@ -392,7 +444,7 @@ class Cls_ActiveUser():
 class Cls_Room():
     def __init__(self, room_name):
         self.room_name = room_name
-        self.user_list = {}
+        self.user_list = {}  # entry: src:usr
 
     def __str__(self):
         return "[room - name: " + self.room_name \
@@ -401,17 +453,23 @@ class Cls_Room():
     def __repr__(self):
         return self.__str__()
 
-    def addUser(self, usr):
-        self.user_list[usr] = usr
+    def addUser(self, src, usr):
+        self.user_list[src] = usr
 
-    def removeUser(self, usr):
-        if usr in self.user_list:
-            del self.user_list[usr]
+    def removeUser(self, src):
+        if src in self.user_list:
+            del self.user_list[src]
 
-    def containsUser(self, usr):
-        return usr in self.user_list
+    def containsUser(self, src):
+        return src in self.user_list
+
+    def containsUsername(self, usr):
+        return usr in self.user_list.values()
 
     def getUserNameList(self):
+        return self.user_list.values()
+
+    def getUserSrcList(self):
         return self.user_list.keys()
 
     def isEmpty(self):
@@ -424,12 +482,11 @@ class BroadcastServerProtocol(WebSocketServerProtocol):
 
     def onOpen(self):  
         self.factory.register(self)
-        #self.chatroom = chatroom  # Cls_Chatroom()
 
     def onMessage(self, payload, isBinary):
         if not isBinary:
-            ret = self.factory.gametheory_handler.handle(payload.decode('utf8'), self.peer, self);
-            print "=> gametheory_handler.handle() returns: " + ret
+            ret = self.factory.game_handler.handle(payload.decode('utf8'), self);
+            print "=> game_handler.handle() returns: " + ret
 
             """
             if debug:
@@ -513,8 +570,7 @@ if __name__ == '__main__':
                             debug=debug,
                             debugCodePaths=debug)
 
-    #chatroom = Cls_Chatroom()
-    factory.gametheory_handler = Cls_Chatroom()
+    factory.game_handler = Cls_Chatroom()
     factory.protocol = BroadcastServerProtocol
     factory.setProtocolOptions(allowHixie76=True)
     listenWS(factory)
