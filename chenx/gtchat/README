@@ -228,12 +228,13 @@ For case 2), also there is no need to unregister the client, just flush and repl
 the user's information in T_users_active, and kick the previous user out from all chatrooms if any.
 
 The only issue with this, is that if the invited person has multiple login sessions, 
-which one to invite? A easy answer is: any one of the active sessions. 
-So can use a reverse hash of usr=>src for this, which only needs to keep one usr session's src.
+which one to invite? A easy answer is: any one of the active sessions.
+A probable good answer is: the last logged in session, since it may be the most active.
+So can use a hash of usr=>src for this, which only needs to keep src of the user's lastest session.
 
 
 #
-# Summary on the final design:
+# Summary on the final design: (this design has been fully implemented)
 #
  * Allow a user to have multiple login sessions
  * Each session is identified by the connection src (i.e., src == client.peer == tcp4:ip:port).
