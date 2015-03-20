@@ -154,7 +154,29 @@ Examples:
 {"cmd":"invite", "room_name":"nerdhaus", "invitee":"user3", "usr":"user1"}
 
 
->>> Other notes:
+>>> test invite
+client 1:
+{"cmd":"register","usr":"user1","pwd":"pwd1abcd"}
+{"cmd":"login", "type":"reg", "usr":"user1", "pwd":"pwd1abcd"}
+{"cmd":"create_room", "room_name":"nerdhaus", "usr":"user1"}
+client 2:
+{"cmd":"register","usr":"user2","pwd":"pwd1abcd"}
+{"cmd":"login", "type":"reg", "usr":"user2", "pwd":"pwd1abcd"}
+
+client 3:
+{"cmd":"register","usr":"user3","pwd":"pwd1abcd"}
+{"cmd":"login", "type":"reg", "usr":"user3", "pwd":"pwd1abcd"}
+
+client 1:
+{"cmd":"invite", "invitee":"user2", "room_name":"nerdhaus", "usr":"user1"}
+# only client2 should receive this.
+
+client 2:
+{"cmd":"join_room", "room_name":"nerdhaus", "usr":"user2"}
+{"cmd":"speak", "room_name":"nerdhaus", "usr":"user2", "msg":"to nerdhaus"}
+
+
+== Security Issues ==
 
 # Right now there is this problem: multiple-login: a user login multiple times.
 # Ideally it should be solved this way: if a user login from a new location,
@@ -167,6 +189,17 @@ Examples:
 # Basically:
 # - from one src there can be only one active user
 # - one active user can be from only one src
+
+(usr, src) is a pair that should match for a single user.
+
+1) If from the same src come 2 or more different usrs, that can be identity spoofing.
+
+In this case, the second usr's messages should be dropped, and a warning returned (or nothing returned at all, to save bandwidth).
+2) If from the same usr comes from different srcs, the user may be logged in from different locations.
+
+In this case, one can either:
+a) not allow it, auto logout from the first src,
+b) allow it, and maybe attach a seq_no to the latter connections.
 
 
 == Client API ==
