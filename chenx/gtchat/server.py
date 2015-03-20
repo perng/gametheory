@@ -30,21 +30,9 @@
 # Modifications: 
 # 1) avoid send to self when broadcast, 
 # 2) output format.
-# 3) add Cls_chatroom
+# 3) added Chatroom API classes Cls_chatroom, Cls_ActiveUser, Cls_Rooms.
 #
-# Right now there is this problem: multiple-login: a user login multiple times.
-# Ideally it should be solved this way: if a user login from a new location,
-# the previous one should be kicked out.
-#
-# Also for user valication, each time should validate his src also:
-# i.e., only when both usr and src match, it's valid. This prevents 
-# identity spoofing.
-#
-# Basically: 
-# - from one src there can be only one active user
-# - one active user can be from only one src
-#
-# X.C. (3/18/2015 -  )
+# X.C. (3/18/2015 - 3/19/2015)
 # 
 
 import sys
