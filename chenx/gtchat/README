@@ -335,6 +335,16 @@ To start client.html in a browser:
 open client.html in a browser.
 
 
+== TO DO List ==
+
+- testing framework:
+  - provide suites of test cases,
+  - multiple clients test
+- separate chatroom.py from server.py as a single file
+- client.html
+- client.py (optional)
+
+
 == Change Log ==
 
 -- 3/20/2015 --
