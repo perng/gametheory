@@ -312,6 +312,15 @@ open client.html in a browser.
 
 == Change Log ==
 
+-- 3/20/2015 --
+* fixed identity spoofing problem (done)
+* added api calls:
+  - api_whisper: (done)
+  - api_broadcast: (done)
+  - api_admin_show_table: (done)
+* added tracker to each request msg. (done)
+* added response message c_response to each server API call, to send back to client. (done)
+
 -- 3/19/2015 --
 * Finished change to use src to index T_users_active instead of username, to avoid identity spoofing.
 * As a consequence, now only commands 'register' and 'login' need to provide user name.
