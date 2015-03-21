@@ -9,9 +9,11 @@
 # The lines in the test file are defined as:
 # - Blank lines are ignored.
 # - If a line starts with "#", then it's a comment line, and will be printed as is.
-# - If a line starts with "#" and then only "blank" after this, it'll print an empty line.
-#   There can be spaces between "#" and "blank".
-# - Otherwise, it is a command to be sent to server as a test case.
+# - If a line starts with "#" and then only "blank" after this, it will print
+#   an empty line. There can be spaces between "#" and "blank".
+# - If a line starts with "out:", then it's a test case expected output.
+# - Otherwise, it is a test case input to be sent to server as a command.
+# - The number of test cases input and output must equal.
 #
 # The command lines will be sent to server as test cases, response will be read from
 # server, and compared to expected output. In the end, a summary will be printed about
