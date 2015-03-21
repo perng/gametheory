@@ -49,6 +49,9 @@ from autobahn.twisted.websocket import WebSocketServerFactory, \
 
 
 DEBUG = True
+#DEBUG = False
+LOG = True
+#LOG = False
 
 #
 # Cls_Chatroom is a singleton: only one instance is running at any time.
@@ -71,8 +74,8 @@ class Cls_Chatroom():
     def handle(self, msg, client):
         src = client.peer;
 
-        if DEBUG:
-            print(' ')
+        if DEBUG or LOG:
+            if DEBUG: print(' ')   # if debug, add an empty line for better display.
             print ('==' + src + ':: ' + msg)
 
         try:
@@ -119,23 +122,31 @@ class Cls_Chatroom():
                 room_name = self.get_param('room_name')
                 self.api_speak(msg, room_name, usr, src)
 
+            elif cmd == "whisper":
+                msg = self.get_param('msg')
+                target_usr = self.get_param('target_user')
+                self.api_whisper(msg, target_usr, usr, src)
+
+            elif cmd == "broadcast":
+                msg = self.get_param('msg')
+                self.api_broadcast(msg, usr, src)
+
+            elif cmd == "admin_show_table":
+                table_name = self.get_param('table')
+                self.api_admin_show_table(table_name, usr, src)
+
             elif cmd == "exit":
                 self.api_exit(usr, src)
 
-            #elif cmd == "whisper":
-            #    msg = self.get_param('msg')
-            #    target_usr = self.get_param('target_usr')
-            #    self.api_whisper(msg, target_usr, usr, src)
-
             else:
-                raise Exception("unknown cmd")
+                raise Exception("unknown cmd: " + cmd)
 
         except Exception as err:
             #return JsonResponse(FAIL)
             #print(err.args)
             #sys.stdout.write(":exception: ")
             #print(err)
-            return "failed:exception:" + str(err)
+            return ":exception:" + str(err)
 
         return "ok"
 
@@ -171,14 +182,18 @@ class Cls_Chatroom():
         return usr
 
 
-    def validate_user(self, src):
+    def validate_active_user(self, src):
         if src not in self.T_users_active:
             raise Exception("Invalid user")
 
 
-    def validate_user_name(self, usr):
+    def validate_active_user_name(self, usr):
         if usr not in self.T_users_src:
             raise Exception("Invalid user name")
+
+
+    def validate_is_admin(self, usr, src):
+        pass  # TO DO: maybe user name must be "admin"
 
 
     def validate_room_name(self, room_name):
@@ -200,8 +215,42 @@ class Cls_Chatroom():
             return ''
 
 
+    def api_admin_show_table(self, table_name, usr, src):
+        """
+        Return table contents to client. For admin/testing purposes only.
+        """
+        self.validate_active_user(src)
+        self.validate_is_admin(usr, src)
+
+        msg = self.make_msg_c_show_table(table_name)
+        self.send_msg(src, msg)
+
+
+    """
+    'c_show_table' is a client side API call. This msg will be sent to clients.
+    """
+    def make_msg_c_show_table(self, table_name):
+        if table_name == "T_users":
+            msg = self.T_users
+        elif table_name == "T_users_src":
+            msg = self.T_users_src
+        elif table_name == "T_users_active":
+            msg = []
+            for user in self.T_users_active.values():
+                msg.append(user.name)
+        elif table_name == "T_rooms":
+            msg = []
+            for room in self.T_rooms.values():
+                msg.append([room.room_name, room.getUserNameList()])
+        else:
+            raise Exception("unknown table: " + table_name)
+
+        data = {"cmd":"c_show_table", "table":table_name, "content":msg}
+        return json.JSONEncoder().encode(data)
+
+
     def api_speak(self, msg, room_name, usr, src):
-        self.validate_user(src)
+        self.validate_active_user(src)
         self.validate_room_name(room_name)
         self.validate_room_user(room_name, src)
 
@@ -209,7 +258,7 @@ class Cls_Chatroom():
         Now broadcast to users in this room.
         Only users in this room receive this message.
         """
-        users = self.T_rooms[room_name].getUserSrcList();
+        users = self.T_rooms[room_name].getUserSrcList()
         msg = self.make_msg_c_speak(msg, usr, room_name)
         for user in users:
             if user != src:  # do not send to self.
@@ -224,13 +273,54 @@ class Cls_Chatroom():
         return json.JSONEncoder().encode(data)
 
 
-    #def api_whisper(self, target_usr, msg, usr, src):
-    #    """
-    #    speak to an individual
-    #    """
-    #    self.validate_user(usr)
-    #    self.validate_user(target_usr)
-    #    self.send_msg(target_usr, msg)
+    def api_whisper(self, msg, target_usr, usr, src):
+        """
+        Optional API call. Speak to an individual in private, not in a chatroom.
+        Client will define a way to display this message.
+        A user cannot whisper to himself.
+        """
+        self.validate_active_user(src)
+        self.validate_active_user_name(target_usr)
+        if usr == target_usr:
+            raise Exception("a user cannot whisper to self")
+
+        target_src = self.T_users_src[target_usr]
+        msg = self.make_msg_c_whisper(msg, usr)
+        self.send_msg(target_src, msg)
+
+    """
+    'c_whisper' is a client side API call. This msg will be sent to clients.
+    """
+    def make_msg_c_whisper(self, msg, usr):
+        data = {"cmd":"c_whisper", "msg":msg, "usr":usr}
+        return json.JSONEncoder().encode(data)
+
+  
+    def api_broadcast(self, msg, usr, src):
+        """
+        A broadcast goes to all logged in, except sender himself.
+        Client will define how to display this.
+
+        Note: if a user has more than one login session, broadcast message
+        from another user will reach all sessions; if the sender is himself,
+        the message will reach his own other sessions (except the session
+        that sends the message). It is easy to make it such that broadcast
+        sender's message don't go to any of his own sessions. But I decide
+        to make it possible to reach the sender's other sessions.
+        """
+        self.validate_active_user(src)
+
+        msg = self.make_msg_c_broadcast(msg, usr)
+        for target_src in self.T_users_active:
+            if target_src != src:  # do not send to self.
+                self.send_msg(target_src, msg)
+
+    """
+    'c_broadcast' is a client side API call. This msg will be sent to clients.
+    """
+    def make_msg_c_broadcast(self, msg, usr):
+        data = {"cmd":"c_broadcast", "msg":msg, "usr":usr}
+        return json.JSONEncoder().encode(data)
     
 
     def api_create_room(self, room_name, usr, src):
@@ -238,7 +328,7 @@ class Cls_Chatroom():
         When a room is created, the user automatically enters this room.
         All users receive this message (optional, this can be expensive).
         """
-        self.validate_user(src)
+        self.validate_active_user(src)
         self.validate_room_name(room_name)
 
         if room_name in self.T_rooms:
@@ -259,10 +349,10 @@ class Cls_Chatroom():
         A user can invite another into a room only when he is in the room.
         Only invitee receives this.
         """
-        self.validate_user(src)
+        self.validate_active_user(src)
         self.validate_room_name(room_name)
         self.validate_room_user(room_name, src)
-        self.validate_user_name(invitee)
+        self.validate_active_user_name(invitee)
 
         # If invitee is already in room, shouln't receive another invitation.
         if self.T_rooms[room_name].containsUsername(invitee):
@@ -291,7 +381,7 @@ class Cls_Chatroom():
         """
         Only users in this room receive this.
         """
-        self.validate_user(src)
+        self.validate_active_user(src)
         self.validate_room_name(room_name)
 
         # A user already in a room cannot join again.
@@ -299,8 +389,15 @@ class Cls_Chatroom():
             raise Exception("api_join_room(): user " + usr + 
                   " is already in room " + room_name)
 
-        self.T_rooms[room_name].addUser(src, usr)
+        # If user was in another room, he needs to quit there first.
+        # Ideally a user will call api_leave_room first before calling
+        # api_join_room, but sometimes it may not be done properly by client.
+        prev_room = self.T_users_active[src].room
+        if prev_room != "":
+            self.api_leave_room(prev_room, usr, src)
+
         self.T_users_active[src].setRoom(room_name)
+        self.T_rooms[room_name].addUser(src, usr)
 
         if DEBUG:
             self.dump_db("T_rooms", self.T_rooms)
@@ -310,7 +407,7 @@ class Cls_Chatroom():
         """
         Only users in this room receive this.
         """
-        self.validate_user(src)
+        self.validate_active_user(src)
         self.validate_room_name(room_name)
  
         self.T_rooms[room_name].removeUser(src)
@@ -410,7 +507,7 @@ class Cls_Chatroom():
         For a proper exit, remove user from chat room if any, 
         and clear its entry in storage.
         """
-        self.validate_user(src)
+        self.validate_active_user(src)
         self.exit_cleanup(usr, src)
 
 
@@ -492,7 +589,8 @@ class BroadcastServerProtocol(WebSocketServerProtocol):
     def onMessage(self, payload, isBinary):
         if not isBinary:
             ret = self.factory.game_handler.handle(payload.decode('utf8'), self);
-            print "=> game_handler.handle() returns: " + ret
+            if DEBUG or LOG:
+                print "=> game_handler.handle() returns: " + ret
 
             """
             if debug:
@@ -530,7 +628,7 @@ class BroadcastServerFactory(WebSocketServerFactory):
 
     def register(self, client):
         if client not in self.clients:
-            print("registered client {}".format(client.peer))
+            print("\nregistered client {}".format(client.peer))
             self.clients.append(client)
 
     def unregister(self, client):

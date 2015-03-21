@@ -80,7 +80,7 @@ class BroadcastClientProtocol(WebSocketClientProtocol):
         #reactor.callLater(5, self.sendHello)
 
     def onOpen(self):
-        self.sendHello()
+        #self.sendHello()
         stdio.StandardIO(Echo(self.sendMsg))  # register stdio. X.C. 
 
     def onMessage(self, payload, isBinary):
