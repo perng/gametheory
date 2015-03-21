@@ -72,7 +72,10 @@ class Cls_Chatroom():
 
 
     def handle(self, msg, client):
-        src = client.peer;
+        src = client.peer
+        cmd = ''
+        usr = ''
+        tracker = ''
 
         if DEBUG or LOG:
             if DEBUG: print(' ')   # if debug, add an empty line for better display.
@@ -83,80 +86,89 @@ class Cls_Chatroom():
 
             cmd = self.get_param('cmd')
             usr = self.get_param_usr(cmd, src)
-            if DEBUG: print("cmd = " + cmd + ", usr = " + usr + ", src = " + src)
+            tracker = str(self.params['tracker']) if self.params.get('tracker') else '0'
+            if DEBUG: print("cmd = " + cmd + ", usr = " + usr + ", src = " + src \
+                            + ", tracker = " + tracker)
 
             if cmd == "register":
                 pwd = self.get_param('pwd')
-                self.api_register(usr, pwd, src)
+                self.api_register(usr, pwd, src, client, tracker)
 
             elif cmd == "login":
                 type = self.get_param('type')
                 pwd = self.get_param('pwd') if type == 'reg' else ''
-                self.api_login(type, usr, pwd, src, client)
+                self.api_login(type, usr, pwd, src, client, tracker)
 
             elif cmd == "update_pwd":
                 old_pwd = self.get_param('pwd')
                 new_pwd = self.get_param('new_pwd')
                 new_pwd2 = self.get_param('new_pwd2')
-                self.api_update_pwd(usr, old_pwd, new_pwd, new_pwd2, src)
+                self.api_update_pwd(usr, old_pwd, new_pwd, new_pwd2, src, tracker)
 
             elif cmd == "create_room":
                 room_name = self.get_param('room_name')
-                self.api_create_room(room_name, usr, src)
+                self.api_create_room(room_name, usr, src, tracker)
 
             elif cmd == "invite":
                 invitee = self.get_param('invitee')
                 room_name = self.get_param('room_name')
-                self.api_invite(invitee, room_name, usr, src)
+                self.api_invite(invitee, room_name, usr, src, tracker)
 
             elif cmd == "join_room":
                 room_name = self.get_param('room_name')
-                self.api_join_room(room_name, usr, src)
+                self.api_join_room(room_name, usr, src, tracker)
 
             elif cmd == "leave_room":
                 room_name = self.get_param('room_name')
-                self.api_leave_room(room_name, usr, src)
+                self.api_leave_room(room_name, usr, src, tracker)
 
             elif cmd == "speak":
                 msg = self.get_param('msg')
                 room_name = self.get_param('room_name')
-                self.api_speak(msg, room_name, usr, src)
+                self.api_speak(msg, room_name, usr, src, tracker)
 
             elif cmd == "whisper":
                 msg = self.get_param('msg')
                 target_usr = self.get_param('target_user')
-                self.api_whisper(msg, target_usr, usr, src)
+                self.api_whisper(msg, target_usr, usr, src, tracker)
 
             elif cmd == "broadcast":
                 msg = self.get_param('msg')
-                self.api_broadcast(msg, usr, src)
+                self.api_broadcast(msg, usr, src, tracker)
 
             elif cmd == "admin_show_table":
                 table_name = self.get_param('table')
-                self.api_admin_show_table(table_name, usr, src)
+                self.api_admin_show_table(table_name, usr, src, tracker)
 
             elif cmd == "exit":
-                self.api_exit(usr, src)
+                self.api_exit(usr, src, tracker)
 
             else:
                 raise Exception("unknown cmd: " + cmd)
 
         except Exception as err:
-            #return JsonResponse(FAIL)
-            #print(err.args)
             #sys.stdout.write(":exception: ")
-            #print(err)
-            return ":exception:" + str(err)
+            err_msg = str(err)
+            self.send_c_response("error", cmd, err_msg, usr, client, tracker)
+            return "error:" + err_msg
 
         return "ok"
 
 
-    def send_msg(self, src, msg):
+    def send_msg(self, client, msg):
         # assumption: usr has been validated in caller.
         #if not usr in self.T_users_active:
         #    raise Exception("send_msg(): Not active user: " + usr)
 
-        self.T_users_active[src].getClient().sendMessage(msg.encode('utf8'))
+        # Note: client is not empty only when called from send-c_response.
+        #       this is because register call does not add the request user
+        #       to T_users_active list, so must provide the client to send 
+        #       response.
+
+        #if client == '':
+        #    self.T_users_active[src].getClient().sendMessage(msg.encode('utf8'))
+        #else:
+        client.sendMessage(msg.encode('utf8'))
 
 
     def get_param(self, param):
@@ -177,7 +189,7 @@ class Cls_Chatroom():
             usr = self.get_src_username(src)
 
         if usr == '':
-            raise Exception("handle(): unknown user from src " + src)
+            raise Exception("unknown user ''")
 
         return usr
 
@@ -215,15 +227,37 @@ class Cls_Chatroom():
             return ''
 
 
-    def api_admin_show_table(self, table_name, usr, src):
+    def get_client(self, src):
+        """ 
+        Pre-assumption: src is valid 
+        """
+        return self.T_users_active[src].getClient()
+
+
+    def send_c_response(self, status, last_cmd, msg, usr, client, tracker):
+        """
+        Send response message to request sender.
+        In theory for each request, a response should be sent,
+        although sometimes it may be ignored without any issue.
+        """
+        data = {"cmd":"c_response", "status":status, "last_cmd":last_cmd, \
+                "msg":msg, "tracker":tracker}
+        msg = json.JSONEncoder().encode(data)
+        #print "send response now.."
+        self.send_msg(client, msg)
+
+
+    def api_admin_show_table(self, table_name, usr, src, tracker):
         """
         Return table contents to client. For admin/testing purposes only.
         """
         self.validate_active_user(src)
         self.validate_is_admin(usr, src)
 
-        msg = self.make_msg_c_show_table(table_name)
-        self.send_msg(src, msg)
+        # send response message to sender.
+        client = self.get_client(src)
+        response_msg = self.make_msg_c_show_table(table_name)
+        self.send_c_response("ok", "admin_show_table", response_msg, usr, client, tracker)
 
 
     """
@@ -245,11 +279,11 @@ class Cls_Chatroom():
         else:
             raise Exception("unknown table: " + table_name)
 
-        data = {"cmd":"c_show_table", "table":table_name, "content":msg}
+        data = {"table":table_name, "content":msg}
         return json.JSONEncoder().encode(data)
 
 
-    def api_speak(self, msg, room_name, usr, src):
+    def api_speak(self, msg, room_name, usr, src, tracker):
         self.validate_active_user(src)
         self.validate_room_name(room_name)
         self.validate_room_user(room_name, src)
@@ -258,22 +292,28 @@ class Cls_Chatroom():
         Now broadcast to users in this room.
         Only users in this room receive this message.
         """
-        users = self.T_rooms[room_name].getUserSrcList()
-        msg = self.make_msg_c_speak(msg, usr, room_name)
-        for user in users:
-            if user != src:  # do not send to self.
-                self.send_msg(user, msg)
+        target_src_list = self.T_rooms[room_name].getUserSrcList()
+        msg = self.make_msg_c_speak(msg, usr, room_name, tracker)
+        for target_src in target_src_list:
+            if target_src != src:  # do not send to self.
+                self.send_msg(self.get_client(target_src), msg)
+
+        # send response message to sender.
+        response_msg = "message is sent"
+        client = self.get_client(src)
+        self.send_c_response("ok", "speak", response_msg, usr, client, tracker)
 
 
     """
     'c_speak' is a client side API call. This msg will be sent to clients.
     """
-    def make_msg_c_speak(self, msg, usr, room_name):
-        data = {"cmd":"c_speak", "msg":msg, "usr":usr, "room_name":room_name}
+    def make_msg_c_speak(self, msg, usr, room_name, tracker):
+        data = {"cmd":"c_speak", "msg":msg, "usr":usr, "room_name":room_name, \
+                "tracker":tracker}
         return json.JSONEncoder().encode(data)
 
 
-    def api_whisper(self, msg, target_usr, usr, src):
+    def api_whisper(self, msg, target_usr, usr, src, tracker):
         """
         Optional API call. Speak to an individual in private, not in a chatroom.
         Client will define a way to display this message.
@@ -285,18 +325,24 @@ class Cls_Chatroom():
             raise Exception("a user cannot whisper to self")
 
         target_src = self.T_users_src[target_usr]
-        msg = self.make_msg_c_whisper(msg, usr)
-        self.send_msg(target_src, msg)
+        msg = self.make_msg_c_whisper(msg, usr, tracker)
+        self.send_msg(self.get_client(target_src), msg)
+
+        # send response message to sender.
+        response_msg = "message is whispered to user '" + target_user + "'"
+        client = self.get_client(src)
+        self.send_c_response("ok", "whisper", response_msg, usr, client, tracker)
+
 
     """
     'c_whisper' is a client side API call. This msg will be sent to clients.
     """
-    def make_msg_c_whisper(self, msg, usr):
-        data = {"cmd":"c_whisper", "msg":msg, "usr":usr}
+    def make_msg_c_whisper(self, msg, usr, tracker):
+        data = {"cmd":"c_whisper", "msg":msg, "usr":usr, "tracker":tracker}
         return json.JSONEncoder().encode(data)
 
   
-    def api_broadcast(self, msg, usr, src):
+    def api_broadcast(self, msg, usr, src, tracker):
         """
         A broadcast goes to all logged in, except sender himself.
         Client will define how to display this.
@@ -310,20 +356,26 @@ class Cls_Chatroom():
         """
         self.validate_active_user(src)
 
-        msg = self.make_msg_c_broadcast(msg, usr)
+        msg = self.make_msg_c_broadcast(msg, usr, tracker)
         for target_src in self.T_users_active:
             if target_src != src:  # do not send to self.
-                self.send_msg(target_src, msg)
+                self.send_msg(self.get_client(target_src), msg)
+
+        # send response message to sender.
+        response_msg = "message is broadcasted"
+        client = self.get_client(src)
+        self.send_c_response("ok", "broadcast", response_msg, usr, client, tracker)
+
 
     """
     'c_broadcast' is a client side API call. This msg will be sent to clients.
     """
-    def make_msg_c_broadcast(self, msg, usr):
-        data = {"cmd":"c_broadcast", "msg":msg, "usr":usr}
+    def make_msg_c_broadcast(self, msg, usr, tracker):
+        data = {"cmd":"c_broadcast", "msg":msg, "usr":usr, "tracker":tracker}
         return json.JSONEncoder().encode(data)
     
 
-    def api_create_room(self, room_name, usr, src):
+    def api_create_room(self, room_name, usr, src, tracker):
         """
         When a room is created, the user automatically enters this room.
         All users receive this message (optional, this can be expensive).
@@ -332,7 +384,7 @@ class Cls_Chatroom():
         self.validate_room_name(room_name)
 
         if room_name in self.T_rooms:
-            raise Exception("Room name already exists")
+            raise Exception("Room '" + room_name + "' already exists")
 
         room = Cls_Room(room_name)  # create a Room object.
         room.addUser(src, usr);         # add first user.
@@ -343,8 +395,13 @@ class Cls_Chatroom():
         if DEBUG: 
             self.dump_db("T_rooms", self.T_rooms)
 
+        # send response message to sender.
+        response_msg = "user '" + usr + "' has created room '" + room_name + "'"
+        client = self.get_client(src)
+        self.send_c_response("ok", "create_room", response_msg, usr, client, tracker)
 
-    def api_invite(self, invitee, room_name, usr, src):
+
+    def api_invite(self, invitee, room_name, usr, src, tracker):
         """
         A user can invite another into a room only when he is in the room.
         Only invitee receives this.
@@ -356,28 +413,33 @@ class Cls_Chatroom():
 
         # If invitee is already in room, shouln't receive another invitation.
         if self.T_rooms[room_name].containsUsername(invitee):
-            raise Exception("api_invite(): invitee " + invitee + 
-                  " is already in room " + room_name)
+            raise Exception("api_invite(): invitee '" + invitee + \
+                  "' is already in room '" + room_name + "'")
 
         """
         Now, send room invitation message to the invitee.
         """
-        msg = self.make_msg_c_invited(invitee, room_name, usr)
-        user = self.T_users_src[invitee]  # get latest src of invitee
-        self.send_msg(user, msg)
+        msg = self.make_msg_c_invited(invitee, room_name, usr, tracker)
+        target_src = self.T_users_src[invitee]  # get latest src of invitee
+        self.send_msg(self.get_client(target_src), msg)
+
+        # send response message to sender.
+        response_msg = "user '" + invitee + "' is invited to room '" + room_name + "'"
+        client = self.get_client(src)
+        self.send_c_response("ok", "invite", response_msg, usr, client, tracker)
 
 
     """
     'c_invited' is a client side API call.
     """
-    def make_msg_c_invited(self, invitee, room_name, usr):
+    def make_msg_c_invited(self, invitee, room_name, usr, tracker):
         msg = usr + " invited you to room " + room_name
         data = {"cmd":"c_invited", 
-                "msg":msg, "room_name":room_name, "usr":usr}
+                "msg":msg, "room_name":room_name, "usr":usr, "tracker":tracker}
         return json.JSONEncoder().encode(data)
 
 
-    def api_join_room(self, room_name, usr, src):
+    def api_join_room(self, room_name, usr, src, tracker):
         """
         Only users in this room receive this.
         """
@@ -386,8 +448,8 @@ class Cls_Chatroom():
 
         # A user already in a room cannot join again.
         if self.T_rooms[room_name].containsUsername(usr):
-            raise Exception("api_join_room(): user " + usr + 
-                  " is already in room " + room_name)
+            raise Exception("api_join_room(): user '" + usr + \
+                  "' is already in room '" + room_name + "'")
 
         # If user was in another room, he needs to quit there first.
         # Ideally a user will call api_leave_room first before calling
@@ -402,8 +464,13 @@ class Cls_Chatroom():
         if DEBUG:
             self.dump_db("T_rooms", self.T_rooms)
 
+        # send response message to sender.
+        response_msg = "user '" + usr + "' entered room '" + room_name + "'"
+        client = self.get_client(src)
+        self.send_c_response("ok", "join_room", response_msg, usr, client, tracker)
 
-    def api_leave_room(self, room_name, usr, src):
+
+    def api_leave_room(self, room_name, usr, src, tracker):
         """
         Only users in this room receive this.
         """
@@ -419,8 +486,13 @@ class Cls_Chatroom():
         if DEBUG:
             self.dump_db("T_rooms", self.T_rooms)
 
+        # send response message to sender.
+        response_msg = "user '" + usr + "' left room '" + room_name + "'"
+        client = self.get_client(src)
+        self.send_c_response("ok", "leave_room", response_msg, usr, client, tracker)
 
-    def api_login(self, type, usr, pwd, src, client):
+
+    def api_login(self, type, usr, pwd, src, client, tracker):
         """
         The user can be a registered user, or a tmp user (un-registered).
         Once logged in, the user is added to active user list.
@@ -438,7 +510,7 @@ class Cls_Chatroom():
         """
         if src in self.T_users_active:
             if usr == self.T_users_active[src].name:
-                raise Exception("user " + usr + " from " + src + " already logged in")
+                raise Exception("user " + usr + " already logged in from this connection")
             else:
                 # clear previous session.
                 prev_usr = self.T_users_active[src].name
@@ -451,7 +523,7 @@ class Cls_Chatroom():
             #    raise Exception("this user has already logged in")
         else: # 'tmp'. anonymous user
             if usr in self.T_users:
-                raise Exception("this username already exists (1)")
+                raise Exception("this username has been taken")
 
         user = Cls_ActiveUser(usr, src, client)
         self.T_users_active[src] = user
@@ -460,8 +532,13 @@ class Cls_Chatroom():
         # used by api_invite: usr -> src -> T_users_active[src] object.
         self.T_users_src[usr] = src  
 
+        # send response message to sender.
+        response_msg = "user '" + usr + "' is logged in"
+        client = self.get_client(src)
+        self.send_c_response("ok", "login", response_msg, usr, client, tracker)
+
  
-    def api_update_pwd(self, usr, old_pwd, new_pwd, new_pwd2, src):
+    def api_update_pwd(self, usr, old_pwd, new_pwd, new_pwd2, src, tracker):
         """
         Only usr himself receives a response.
         """
@@ -479,8 +556,13 @@ class Cls_Chatroom():
         if DEBUG: 
             self.dump_db("T_users", self.T_users)
 
+        # send response message to sender.
+        response_msg = "password of user '" + usr + "' is changed"
+        client = self.get_client(src)
+        self.send_c_response("ok", "update_pwd", response_msg, usr, client, tracker)
 
-    def api_register(self, usr, pwd, src):
+
+    def api_register(self, usr, pwd, src, client, tracker):
         """
         After register, the user still need to login to become an active user.
         Only usr himself receives a response.
@@ -491,24 +573,31 @@ class Cls_Chatroom():
             raise Exception("user password length should >= 8")
 
         if usr in self.T_users:
-            raise Exception("this username already exists (0)")
+            raise Exception("this username is not available")
 
         # add new user to database.
         self.T_users[usr] = pwd
-        #self.T_users_src[usr] = src
 
         if DEBUG:
             self.dump_db("T_users", self.T_users)
-            #self.dump_db("T_users_src", self.T_users_src)
+
+        # send response message to sender.
+        response_msg = "user '" + usr + "' is registerd"
+        self.send_c_response("ok", "register", response_msg, usr, client, tracker)
 
 
-    def api_exit(self, usr, src):
+    def api_exit(self, usr, src, tracker):
         """
         For a proper exit, remove user from chat room if any, 
         and clear its entry in storage.
         """
         self.validate_active_user(src)
         self.exit_cleanup(usr, src)
+
+        # send response message to sender.
+        response_msg = "user '" + usr + "' exits"
+        client = self.get_client(src)
+        self.send_c_response("ok", "exit", response_msg, usr, client, tracker)
 
 
     def exit_cleanup(self, usr, src):
@@ -628,7 +717,7 @@ class BroadcastServerFactory(WebSocketServerFactory):
 
     def register(self, client):
         if client not in self.clients:
-            print("\nregistered client {}".format(client.peer))
+            print("registered client {}".format(client.peer))
             self.clients.append(client)
 
     def unregister(self, client):
