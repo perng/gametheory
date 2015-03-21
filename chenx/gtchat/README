@@ -26,7 +26,9 @@ Communication is done in Json.
 
 No persistence is used at this time, user data is cached in memory.
 
-commands: register, login, update_pwd, create_room, invite, join_room, leave_room, speak
+commands: 
+register, login, update_pwd, create_room, invite, join_room, leave_room, speak, whisper, broadcast, 
+admin_show_table
 
 -- register
 {"cmd":"register","usr":"username","pwd":"password"}
@@ -103,13 +105,23 @@ ok/fail (optional)
 {"cmd":"c_speak", "msg":msg, "usr":usr, "room_name":room_name}
 c_speak is a client side API call, that should be handled by client for proper display.
 
--- broadcast 
-# this is available only to superuser, who has access to broadcast_key.
+-- whisper
+# this is to send private message to a singler person anywhere, not tied to a room.
 # server expects to receive:
-{"cmd":"broadcast", "broadcast_key", "msg":"broadcast"}
+{"cmd":"whisper", "target_user":usr, "msg":"message"}
+
+-- broadcast 
+# this should be available only to users with broadcast permission, such as admin.
+# server expects to receive:
+{"cmd":"broadcast", "msg":"message"}
 
 # server will send to all clients
 message.
+
+-- admin_show_table
+# this should be available only to admin, for admin/testing purposes.
+# server expects to receive:
+{"cmd":"admin_show_table", "table":"table_name"}
 
 -- exit
 # server expects to receive:
@@ -165,10 +177,12 @@ Examples:
 
 
 >>> test invite
+
 client 1:
 {"cmd":"register","usr":"user1","pwd":"pwd1abcd"}
 {"cmd":"login", "type":"reg", "usr":"user1", "pwd":"pwd1abcd"}
 {"cmd":"create_room", "room_name":"nerdhaus"}
+
 client 2:
 {"cmd":"register","usr":"user2","pwd":"pwd1abcd"}
 {"cmd":"login", "type":"reg", "usr":"user2", "pwd":"pwd1abcd"}
@@ -198,7 +212,11 @@ client 2:
 #
 # Basically:
 # - from one src there can be only one active user
-# - one active user can be from only one src
+# - one active user can be from only one src, or alternatively can be logged in from multiple places.
+
+#
+# Considerations
+#
 
 (usr, src) is a pair that should match for a single user.
 
