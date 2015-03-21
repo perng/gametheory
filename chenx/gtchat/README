@@ -296,6 +296,31 @@ Modified client.py to add the function of getting console stdio input from user.
 Modified server.py to avoid sending to self when broadcast, and added class API_Chatroom.
 Modified client.html to add the textbox for user input, and modified output format.
 
+
+== testing ==
+
+Testing can be done with test.py, which creates process(es) of client.py, and sends requests to server.
+It compares returned output and expected output to make testing judgement. 
+
+usage: test.py [test_filename]
+
+This script reads from given test file.
+The test file contains a series of test cases.
+
+The lines in the test file are defined as:
+- Blank lines are ignored.
+- If a line starts with "#", then it's a comment line, and will be printed as is.
+- If a line starts with "#" and then only "blank" after this, it will print
+  an empty line. There can be spaces between "#" and "blank".
+- If a line starts with "out:", then it's a test case expected output.
+- Otherwise, it is a test case input to be sent to server as a command.
+- The number of test cases input and output must equal.
+
+The command lines will be sent to server as test cases, response will be read, 
+and compared to expected output. In the end, a summary will be printed about
+the testing.
+
+
 == Usage ==
 
 To start server:
@@ -320,6 +345,7 @@ open client.html in a browser.
   - api_admin_show_table: (done)
 * added tracker to each request msg. (done)
 * added response message c_response to each server API call, to send back to client. (done)
+* added unit testing utility test.py.
 
 -- 3/19/2015 --
 * Finished change to use src to index T_users_active instead of username, to avoid identity spoofing.
