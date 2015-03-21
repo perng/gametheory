@@ -199,6 +199,20 @@ client 2:
 {"cmd":"join_room", "room_name":"nerdhaus"}
 {"cmd":"speak", "room_name":"nerdhaus", "msg":"to nerdhaus"}
 
+>>> test api_whisper: 
+{"cmd":"whisper","target_user":"user2","msg":"I'm whispering .. "}
+      
+>>> api_broadcast: 
+{"cmd":"broadcast", "msg":"I'm broadcasting .. "}
+      
+>>> api_admin_show_table: 
+# for the purpose of returning table contents to client, for admin/testing purpose only.
+{"cmd":"admin_show_table", "table":"table_name"}
+{"cmd":"admin_show_table", "table":"T_users"}
+{"cmd":"admin_show_table", "table":"T_users_active"}
+{"cmd":"admin_show_table", "table":"T_users_src"}
+{"cmd":"admin_show_table", "table":"T_rooms"}
+
 
 == Security Issues ==
 
