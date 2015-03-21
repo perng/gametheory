@@ -1,0 +1,16 @@
+#
+# test register
+#
+{"cmd":"register","usr":"user1","pwd":"pwd1abcd", "tracker":"1"}
+out: {"status": "ok", "last_cmd": "register", "cmd": "c_response", "tracker": "1", "msg": "user 'user1' is registerd"}
+
+{"cmd":"register","usr":"user1","pwd":"pwd1abcd", "tracker":"2"}
+out: {"status": "error", "last_cmd": "register", "cmd": "c_response", "tracker": "2", "msg": "this username is not available"}
+
+# blank
+#
+# test login
+#
+{"cmd":"login", "type":"reg", "usr":"user1", "pwd":"pwd1abcd"}
+out: {"status": "ok", "last_cmd": "login", "cmd": "c_response", "tracker": "0", "msg": "user 'user1' is logged in"}
+
