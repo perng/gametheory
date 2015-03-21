@@ -91,7 +91,9 @@ class Test():
                 self.print_stdout(cmd)
         else:
             self.print_stdout("")
-            self.print_stdout("==>test(" + str(self.test_no + 1) + "): " + cmd)
+            print("==>test(" + str(self.test_no + 1) + ")"),
+            self.print_stdout(": " + cmd)
+            #self.print_stdout("==>test(" + str(self.test_no + 1) + "): " + cmd)
 
             writer(cmd + '\n')
             self.test_no += 1
@@ -136,7 +138,8 @@ class Test():
                         print "... pass"
                         pass_count += 1
                     else:
-                        print "... fail. expected: " + expected_out 
+                        print "... fail"
+                        self.print_stdout(". expected: " + expected_out) 
 
             except OSError:
                 # the os throws an exception if there is no data
