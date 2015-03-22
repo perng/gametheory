@@ -17,6 +17,7 @@ cmd_response = [
 class MyClientProtocol(WebSocketClientProtocol):
     def onConnect(self, response):
         self.current_test = 0
+        self.peer_msg_count = 0
         print('Server connected: {0}'.format(response.peer))
 
     def onOpen(self):
@@ -24,10 +25,8 @@ class MyClientProtocol(WebSocketClientProtocol):
         self.test({})
 
     def onMessage(self, payload, isBinary):
-        print 'onMessage called'
         print('Text message received: {0}'.format(payload.decode('utf8')))
         self.test(payload)
-        # self.sendMessage(u'{'cmd':'get_player_id_by_id', 'player_id':1}'.encode('utf8'), False)
 
     def onClose(self, wasClean, code, reason):
         print('WebSocket connection closed: {0}'.format(reason))
@@ -41,6 +40,23 @@ class MyClientProtocol(WebSocketClientProtocol):
         if not response:
             return self.sendMsg({'cmd': 'noop'}, 0)
         rjson = json.loads(response)
+        print 'get msg', rjson
+
+        if 'sys_cmd' in rjson:  # server initiated msg
+            sys_msg = rjson['sys_cmd']
+            if sys_msg == 'game_start':
+                self.opponents = [p for p in rjson['players'] if p!= self.player_id]
+                self.table_id = rjson['table_id']
+                return self.sendMsg({'cmd': 'get_leaders', 'table_id': self.table_id }, 9)
+            if sys_msg == 'peer_message':
+                print 'Peer Message:', rjson['message']
+                self.peer_msg_count += 1
+                print "# peer messages", self.peer_msg_count
+                if self.peer_msg_count>=2:
+                    return  self.sendMsg({'cmd': 'leave_table', 'table_id': self.table_id }, 11)
+            return
+
+
         try:
             tracker = rjson['_tracker']
         except:
@@ -96,12 +112,20 @@ class MyClientProtocol(WebSocketClientProtocol):
             return self.sendMsg({'cmd': 'sit_for_auto_match_game', 'room_id': self.gamerooms[0]['room_id']}, 8)
 
         if tracker == 8:
-            print 'rjson', rjson
             assert rjson['status'] == OK
             return
             #print 'Get Game room Test OK!  game rooms:', rjson['game_rooms']
+        if tracker == 9:  # get_leaders
+            assert rjson['status'] == OK
+            print 'leaders=', rjson['leaders']
+            msg = "Message from player %d: messages  can be any format encoded as string." % self.player_id
+            return self.sendMsg({'cmd': 'broadcast_in_table', 'table_id': self.table_id, 'message': msg}, 10)
+        if tracker == 11:  # get_leaders
+            assert rjson['status'] == OK
+            return
         else:
             print 'received', rjson
+            return
         self.sendClose()
 
 

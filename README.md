@@ -85,7 +85,18 @@ The result of each round of game is recorded.
   * request: {"_tracker": 8, "cmd": "sit_for_auto_match_game", "room_id": 1}
   * response (waiting for player): {"status": "ok", "reply_cmd": "sit_for_auto_match_game", "game_status": "WAITING", "table_id": 3, "msg": "", "_tracker": 8}
   * Once enough players have joine, server send msg like {"players": [2, 3], "table_id": 3, "msg_type": "game_start"}
+
+* get_leaders : If a game requires a client serves as a leader, send this command to get an ordered list for leaders
+  * request: {"_tracker": 9, "cmd": "get_leaders", "table_id": 1}
+  * response:  {"status": "ok", "msg": "", "reply_cmd": "get_leaders", "leaders": [2, 3], "_tracker": 9}
+
+* broadcast_in_table: Send a message to everyone sitting on the table
+  * request: {"_tracker": 10, "message": "Message from player 3: messages  can be any format encoded as string.", "cmd": "broadcast_in_table", "table_id": 1}
+  * all playerre receive: {"sys_cmd": "peer_message", "message": "Message from player 3: messages  can be any format encoded as string.", "sender_id": 3}
   
-* leave_table (not implemented yet)
+* leave_table
+  * request: {"_tracker": 11, "cmd": "leave_table", "table_id": 1}
+  * response: {u'status': u'ok', u'msg': u'', u'reply_cmd': u'leave_table', u'_tracker': 11}
+  
   
 
