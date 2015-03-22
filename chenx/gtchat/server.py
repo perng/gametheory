@@ -140,8 +140,8 @@ class Cls_Chatroom():
                 table_name = self.get_param('table')
                 self.api_admin_show_table(table_name, usr, src, tracker)
 
-            elif cmd == "exit":
-                self.api_exit(usr, src, tracker)
+            elif cmd == "logout":
+                self.api_logout(usr, src, tracker)
 
             else:
                 raise Exception("unknown cmd: " + cmd)
@@ -201,7 +201,7 @@ class Cls_Chatroom():
 
     def validate_active_user_name(self, usr):
         if usr not in self.T_users_src:
-            raise Exception("Invalid user name")
+            raise Exception("Invalid user name '" + usr + "'")
 
 
     def validate_is_admin(self, usr, src):
@@ -211,6 +211,10 @@ class Cls_Chatroom():
     def validate_room_name(self, room_name):
         if len(room_name) == 0:
             raise Exception("Room name must be at least one char")
+
+    def validate_active_room(self, room_name):
+        if not room_name in self.T_rooms:
+            raise Exception("Room '" + room_name + "' does not exist")
 
 
     def validate_room_user(self, room_name, src):
@@ -285,18 +289,22 @@ class Cls_Chatroom():
 
     def api_speak(self, msg, room_name, usr, src, tracker):
         self.validate_active_user(src)
-        self.validate_room_name(room_name)
+        self.validate_active_room(room_name)
         self.validate_room_user(room_name, src)
 
         """
         Now broadcast to users in this room.
         Only users in this room receive this message.
         """
-        target_src_list = self.T_rooms[room_name].getUserSrcList()
+        # send event message to users in this room.
         msg = self.make_msg_c_speak(msg, usr, room_name, tracker)
-        for target_src in target_src_list:
-            if target_src != src:  # do not send to self.
-                self.send_msg(self.get_client(target_src), msg)
+        self.broadcast_to_room(room_name, msg, src)
+
+        #target_src_list = self.T_rooms[room_name].getUserSrcList()
+        #msg = self.make_msg_c_speak(msg, usr, room_name, tracker)
+        #for target_src in target_src_list:
+        #    if target_src != src:  # do not send to self.
+        #        self.send_msg(self.get_client(target_src), msg)
 
         # send response message to sender.
         response_msg = "message is sent"
@@ -357,9 +365,10 @@ class Cls_Chatroom():
         self.validate_active_user(src)
 
         msg = self.make_msg_c_broadcast(msg, usr, tracker)
-        for target_src in self.T_users_active:
-            if target_src != src:  # do not send to self.
-                self.send_msg(self.get_client(target_src), msg)
+        self.broadcast_to_all(msg, src)
+        #for target_src in self.T_users_active:
+        #    if target_src != src:  # do not send to self.
+        #        self.send_msg(self.get_client(target_src), msg)
 
         # send response message to sender.
         response_msg = "message is broadcasted"
@@ -373,6 +382,12 @@ class Cls_Chatroom():
     def make_msg_c_broadcast(self, msg, usr, tracker):
         data = {"cmd":"c_broadcast", "msg":msg, "usr":usr, "tracker":tracker}
         return json.JSONEncoder().encode(data)
+
+
+    def broadcast_to_all(self, msg, src):
+        for target_src in self.T_users_active:
+            if target_src != src:  # do not send to self.
+                self.send_msg(self.get_client(target_src), msg)
     
 
     def api_create_room(self, room_name, usr, src, tracker):
@@ -407,13 +422,13 @@ class Cls_Chatroom():
         Only invitee receives this.
         """
         self.validate_active_user(src)
-        self.validate_room_name(room_name)
+        self.validate_active_room(room_name)
         self.validate_room_user(room_name, src)
         self.validate_active_user_name(invitee)
 
         # If invitee is already in room, shouln't receive another invitation.
         if self.T_rooms[room_name].containsUsername(invitee):
-            raise Exception("api_invite(): invitee '" + invitee + \
+            raise Exception("invitee '" + invitee + \
                   "' is already in room '" + room_name + "'")
 
         """
@@ -444,11 +459,11 @@ class Cls_Chatroom():
         Only users in this room receive this.
         """
         self.validate_active_user(src)
-        self.validate_room_name(room_name)
+        self.validate_active_room(room_name)
 
         # A user already in a room cannot join again.
         if self.T_rooms[room_name].containsUsername(usr):
-            raise Exception("api_join_room(): user '" + usr + \
+            raise Exception("user '" + usr + \
                   "' is already in room '" + room_name + "'")
 
         # If user was in another room, he needs to quit there first.
@@ -469,13 +484,38 @@ class Cls_Chatroom():
         client = self.get_client(src)
         self.send_c_response("ok", "join_room", response_msg, usr, client, tracker)
 
+        # send event message to users in this room.
+        msg = self.make_msg_c_event(msg, "join_room", usr, tracker)
+        self.broadcast_to_room(room_name, msg, src)
+
+
+    def broadcast_to_room(self, room_name, msg, src):
+        """
+        broadcase a message to all users in a room, except the sender.
+        """
+        self.validate_active_room(room_name)
+
+        target_src_list = self.T_rooms[room_name].getUserSrcList()
+        for target_src in target_src_list:
+            if target_src != src:  # do not send to self.
+                self.send_msg(self.get_client(target_src), msg)
+
+
+    def make_msg_c_event(self, type, usr, tracker):
+        """
+        make message to send to target_user that usr has done something defined by type:
+        1) login, 2) logout, 3) join_room, 4) leave_room.
+        """
+        data = {"cmd":"c_event", "type":type, "user":usr, "tracker":tracker}
+        return json.JSONEncoder().encode(data)
+
 
     def api_leave_room(self, room_name, usr, src, tracker):
         """
         Only users in this room receive this.
         """
         self.validate_active_user(src)
-        self.validate_room_name(room_name)
+        self.validate_active_room(room_name)
  
         self.T_rooms[room_name].removeUser(src)
         self.T_users_active[src].setRoom('')
@@ -490,6 +530,14 @@ class Cls_Chatroom():
         response_msg = "user '" + usr + "' left room '" + room_name + "'"
         client = self.get_client(src)
         self.send_c_response("ok", "leave_room", response_msg, usr, client, tracker)
+
+        # if room became empty and was removed, just return.
+        if not room_name in self.T_rooms:  
+            return  
+
+        # otherwise room still exists, send event message to users in this room.
+        msg = self.make_msg_c_event(msg, "leave_room", usr, tracker)
+        self.broadcast_to_room(room_name, msg, src)
 
 
     def api_login(self, type, usr, pwd, src, client, tracker):
@@ -514,7 +562,7 @@ class Cls_Chatroom():
             else:
                 # clear previous session.
                 prev_usr = self.T_users_active[src].name
-                self.exit_cleanup(prev_usr, src)
+                self.logout_cleanup(prev_usr, src)
 
         if (type == 'reg'): # register user
             if usr not in self.T_users or self.T_users[usr] != pwd:
@@ -586,21 +634,22 @@ class Cls_Chatroom():
         self.send_c_response("ok", "register", response_msg, usr, client, tracker)
 
 
-    def api_exit(self, usr, src, tracker):
+    def api_logout(self, usr, src, tracker):
         """
-        For a proper exit, remove user from chat room if any, 
+        For a proper logout, remove user from chat room if any, 
         and clear its entry in storage.
         """
         self.validate_active_user(src)
-        self.exit_cleanup(usr, src)
 
         # send response message to sender.
-        response_msg = "user '" + usr + "' exits"
+        response_msg = "user '" + usr + "' logout"
         client = self.get_client(src)
-        self.send_c_response("ok", "exit", response_msg, usr, client, tracker)
+        self.send_c_response("ok", "logout", response_msg, usr, client, tracker)
+
+        self.logout_cleanup(usr, src)
 
 
-    def exit_cleanup(self, usr, src):
+    def logout_cleanup(self, usr, src):
         room_name = self.T_users_active[src].room
         if room_name != "":
             self.T_rooms[room_name].removeUser(src)
