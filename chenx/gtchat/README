@@ -333,10 +333,11 @@ These types are defined: c_response
 
 -- c_event
 # For message to be sent certain group of users that user usr has done something defined by type:
-# 1) login - send to all users (optional, this can be expensive)
-# 2) logout - send to all users (optional, this can be expensive), or another user in private chatting with usr.
-# 3) join_room - send to all users in the room
-# 4) leave_room - send to all users in the room
+# 1) join_room - send to all users in the room
+# 2) leave_room - send to all users in the room
+# 3) login - send to all users (optional, since this is expensive. don't do this now)
+# 4) logout - send to all users (optional, since this is expensive. don't do this now)
+#             but can consider send this event to another user in active private chat with usr.
 # the client expects to receive:
 {"cmd":"c_event", "type":type, "user":usr, "tracker":tracker}
 
