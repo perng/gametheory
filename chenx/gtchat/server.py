@@ -140,8 +140,8 @@ class Cls_Chatroom():
                 table_name = self.get_param('table')
                 self.api_admin_show_table(table_name, usr, src, tracker)
 
-            elif cmd == "exit":
-                self.api_exit(usr, src, tracker)
+            elif cmd == "logout":
+                self.api_logout(usr, src, tracker)
 
             else:
                 raise Exception("unknown cmd: " + cmd)
@@ -365,7 +365,7 @@ class Cls_Chatroom():
         self.validate_active_user(src)
 
         msg = self.make_msg_c_broadcast(msg, usr, tracker)
-        self.broadcase_to_all(msg, src)
+        self.broadcast_to_all(msg, src)
         #for target_src in self.T_users_active:
         #    if target_src != src:  # do not send to self.
         #        self.send_msg(self.get_client(target_src), msg)
@@ -562,7 +562,7 @@ class Cls_Chatroom():
             else:
                 # clear previous session.
                 prev_usr = self.T_users_active[src].name
-                self.exit_cleanup(prev_usr, src)
+                self.logout_cleanup(prev_usr, src)
 
         if (type == 'reg'): # register user
             if usr not in self.T_users or self.T_users[usr] != pwd:
@@ -634,22 +634,22 @@ class Cls_Chatroom():
         self.send_c_response("ok", "register", response_msg, usr, client, tracker)
 
 
-    def api_exit(self, usr, src, tracker):
+    def api_logout(self, usr, src, tracker):
         """
-        For a proper exit, remove user from chat room if any, 
+        For a proper logout, remove user from chat room if any, 
         and clear its entry in storage.
         """
         self.validate_active_user(src)
 
         # send response message to sender.
-        response_msg = "user '" + usr + "' exits"
+        response_msg = "user '" + usr + "' logout"
         client = self.get_client(src)
-        self.send_c_response("ok", "exit", response_msg, usr, client, tracker)
+        self.send_c_response("ok", "logout", response_msg, usr, client, tracker)
 
-        self.exit_cleanup(usr, src)
+        self.logout_cleanup(usr, src)
 
 
-    def exit_cleanup(self, usr, src):
+    def logout_cleanup(self, usr, src):
         room_name = self.T_users_active[src].room
         if room_name != "":
             self.T_rooms[room_name].removeUser(src)

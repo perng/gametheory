@@ -59,6 +59,20 @@ out: {"status": "ok", "last_cmd": "admin_show_table", "cmd": "c_response", "trac
 {"cmd":"admin_show_table", "table":"T_rooms"}
 out: {"status": "ok", "last_cmd": "admin_show_table", "cmd": "c_response", "tracker": "0", "msg": "{\"content\": [], \"table\": \"T_rooms\"}"}
 
+# blank
+# Test whisper. should fail since cannot whisper to oneself.
+{"cmd":"whisper", "target_user":"anonymous1", "msg":"I'm whispering ..."}
+out: {"status": "error", "last_cmd": "whisper", "cmd": "c_response", "tracker": "0", "msg": "a user cannot whisper to self"} 
+
+# blank
+# Test whisper. should fail since cannot whisper to non-existing user.
+{"cmd":"whisper", "target_user":"user2", "msg":"I'm whispering ..."}
+out: {"status": "error", "last_cmd": "whisper", "cmd": "c_response", "tracker": "0", "msg": "Invalid user name 'user2'"}
+
+# blank
+# Test broadcast
+{"cmd":"broadcast", "msg":"this is a broadcast ..."}
+out: {"status": "ok", "last_cmd": "broadcast", "cmd": "c_response", "tracker": "0", "msg": "message is broadcasted"}
 
 # blank
 # Test create_room
@@ -96,8 +110,8 @@ out: {"status": "ok", "last_cmd": "speak", "cmd": "c_response", "tracker": "0", 
 out: {"status": "ok", "last_cmd": "leave_room", "cmd": "c_response", "tracker": "0", "msg": "user 'anonymous1' left room 'room1'"}
 
 # blank
-# Test exit
-{"cmd":"exit"}
-out: {"status": "ok", "last_cmd": "exit", "cmd": "c_response", "tracker": "0", "msg": "user 'anonymous1' exits"}
+# Test logout 
+{"cmd":"logout"}
+out: {"status": "ok", "last_cmd": "logout", "cmd": "c_response", "tracker": "0", "msg": "user 'anonymous1' logout"}
 
 
