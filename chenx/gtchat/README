@@ -27,7 +27,8 @@ Communication is done in Json.
 No persistence is used at this time, user data is cached in memory.
 
 commands: 
-register, login, update_pwd, create_room, invite, join_room, leave_room, speak, whisper, broadcast, 
+register, login, update_pwd, create_room, invite, 
+join_room, leave_room, speak, whisper, broadcast, 
 admin_show_table
 
 -- register
@@ -135,7 +136,20 @@ user exit from room.
 # server will send this update to all clients (optional, can be expensive)
 
 
-Examples:
+-- Optional server API field: tracker --
+
+In all the server API calls defined above, they can also include an optional "tracker" field,
+which can be any string, usually can be a label or a sequence number.
+
+This is used by the client to recognize server's reply message to his request. The client can
+include a "tracker" field in his request, the same tracker will be included in the reply
+message from the server.
+
+If the client does not include a "tracker" field, server will take it as "0" and always
+send "0" as the value of tracker in response messages.
+
+
+-- Examples --
 
 >>> General test.
 
@@ -316,6 +330,12 @@ These types are defined: c_response
 # the server, after receives such a request, send a c_invited message to the invited user.
 # the client expects to receive:
 {"cmd":"c_invited", "msg":msg, "room_name":room_name, "usr":usr, "tracker":tracker}
+
+
+-- the optional field "tracker" --
+
+A client can include an optional "tracker" field in his requests to the server (see server API),
+the server will include the same value as "tracker" when sending back response to the client.
 
 
 == Code ==
