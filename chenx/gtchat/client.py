@@ -60,6 +60,11 @@ class Echo(basic.LineReceiver):
     def lineReceived(self, line):
         #self.sendLine('Echo: ' + line)
         self.transport.write('>>> ')
+        if line == "exit":
+            print "EXIT"  # flush buffer
+            sys.stdout.flush()
+            reactor.stop()  # exit program
+            return
         if line != "":
             self.sendMsg(line)
 
@@ -80,12 +85,12 @@ class BroadcastClientProtocol(WebSocketClientProtocol):
         #reactor.callLater(5, self.sendHello)
 
     def onOpen(self):
-        self.sendHello()
+        #self.sendHello()
         stdio.StandardIO(Echo(self.sendMsg))  # register stdio. X.C. 
 
     def onMessage(self, payload, isBinary):
         if not isBinary:
-            sys.stdout.write('\r') # carriage return, to overwrite previous ">>> ".
+            #sys.stdout.write('\r') # carriage return, to overwrite previous ">>> ".
             print("Text message received: {}".format(payload.decode('utf8')))
             print(">>> "),  # print without new line.
             sys.stdout.flush()
