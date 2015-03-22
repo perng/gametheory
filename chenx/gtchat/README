@@ -399,14 +399,17 @@ To start client.html in a browser:
 open client.html in a browser.
 
 
-== TO DO List ==
+== TO DO ==
 
 - testing framework:
   - provide suites of test cases (in progress)
   - multiple clients test
 - separate chatroom.py from server.py as a single file (can leave to later)
-- function to get active users list, and query a sepecific user.
-- client.html
+- api call to get active users list, 
+- api call to query status of a sepecific user.
+- api call to get active room list, 
+- api call to query status of a sepecific room.
+- client.html (in progress)
 - client.py (optional)
 
 
@@ -418,6 +421,7 @@ open client.html in a browser.
 * change server api_exit to api_logout, to correspond to api_login.
 * change test.py, to allow different levels of verbose: all/none/fail
 * added test cases to test1.in, and fixed bugs found by test1.in
+* started working on html client. Almost done with register/login/logout.
 
 -- 3/20/2015 --
 * fixed identity spoofing problem (done)
