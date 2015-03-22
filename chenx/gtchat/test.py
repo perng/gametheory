@@ -34,6 +34,12 @@ from fcntl import fcntl, F_GETFL, F_SETFL
 from os import O_NONBLOCK, read
 
 
+# verbose levels
+VERBOSE_None = 0
+VERBOSE_All  = 15
+VERBOSE_Fail = 1  # show details of failed test cases only
+
+
 class Test():
 
     def __init__(self, test_file, verbose):
@@ -43,6 +49,7 @@ class Test():
         self.test_cases_out = []  # output of test case.
         self.test_no = 0
         self.test_file_line = 0
+        self.test_file_last_input_line = 0  # used in print_stdout_fail().
         self.test_case_count = 0
         self.verbose = verbose
 
@@ -78,8 +85,16 @@ class Test():
 
 
     def print_stdout(self, msg):
-        if self.verbose:
+        if self.verbose == VERBOSE_None:
+            return
+        if self.verbose == VERBOSE_All:
             print msg
+
+
+    def print_stdout_fail(self, output, expect):
+        print "input: " + self.test_cases[self.test_file_last_input_line] 
+        print output
+        print expect
 
 
     def send_command(self, writer):
@@ -99,6 +114,7 @@ class Test():
 
             writer(cmd + '\n')
             self.test_no += 1
+            self.test_file_last_input_line = self.test_file_line
 
             # let the shell output the result
             sleep(1)
@@ -141,7 +157,11 @@ class Test():
                         pass_count += 1
                     else:
                         print "... fail"
-                        self.print_stdout(". expected: " + expected_out) 
+                        self.print_stdout("expected: " + expected_out) 
+                        if self.verbose == VERBOSE_Fail:
+                            self.print_stdout_fail( \
+                                "output: " + msg, \
+                                "expected: " + expected_out)
 
             except OSError:
                 # the os throws an exception if there is no data
@@ -166,11 +186,20 @@ if __name__ == '__main__':
 
     if argc < 2:
         #print("Need the WebSocket server address, i.e. ws://localhost:9000")
-        print "usage: test.py [test_filename]"
+        print "usage: test.py {test_filename} [-v|-f]"
+        print "-v: show all details, -f show failed test cases only"
         sys.exit(1)
 
     test_filename = sys.argv[1]
-    verbose = True if argc >= 3 and sys.argv[2] == "-v" else False
+
+    # get verbose level
+    # default: do not show any details of test cases.
+    verbose = VERBOSE_None  
+    if argc >= 3:
+        if sys.argv[2] == "-v":
+           verbose = VERBOSE_All  # show details of all test cases.
+        elif sys.argv[2] == "-f":
+           verbose = VERBOSE_Fail  # show details of failed test cases only.
 
     Test(test_filename, verbose).do_test()
 
