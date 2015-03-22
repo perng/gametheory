@@ -3,7 +3,7 @@
 
 By: X. Chen
 Created on: 3/18/2015
-Last modified: 3/20/2015
+Last modified: 3/21/2015
 
 
 == About ==
@@ -28,7 +28,7 @@ No persistence is used at this time, user data is cached in memory.
 
 commands: 
 register, login, update_pwd, create_room, invite, 
-join_room, leave_room, speak, whisper, broadcast, 
+join_room, leave_room, speak, whisper, broadcast, logout
 admin_show_table
 
 -- register
@@ -124,9 +124,9 @@ message.
 # server expects to receive:
 {"cmd":"admin_show_table", "table":"table_name"}
 
--- exit
+-- logout
 # server expects to receive:
-{"cmd":"exit"}
+{"cmd":"logout"}
 
 # For a proper exit, the user should be removed from chat room if any, 
 # and also clear its entry in storage.
@@ -402,14 +402,22 @@ open client.html in a browser.
 == TO DO List ==
 
 - testing framework:
-  - provide suites of test cases,
+  - provide suites of test cases (in progress)
   - multiple clients test
-- separate chatroom.py from server.py as a single file
+- separate chatroom.py from server.py as a single file (can leave to later)
+- function to get active users list, and query a sepecific user.
 - client.html
 - client.py (optional)
 
 
 == Change Log ==
+
+-- 3/21/2015 --
+
+* added c_event client api call. 
+* change server api_exit to api_logout, to correspond to api_login.
+* change test.py, to allow different levels of verbose: all/none/fail
+* added test cases to test1.in, and fixed bugs found by test1.in
 
 -- 3/20/2015 --
 * fixed identity spoofing problem (done)
