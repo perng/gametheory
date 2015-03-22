@@ -34,6 +34,7 @@ class MyClientProtocol(WebSocketClientProtocol):
     def sendMsg(self, msg, tracker):
         msg['_tracker'] = tracker
         msg = json.dumps(msg)
+
         self.sendMessage(msg.encode('utf8'), False)
 
     def test(self, response):
@@ -135,19 +136,25 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Client emaulation with unit tests.')
     parser.add_argument('--username', dest='username', help='user name', )
     parser.add_argument('--uuid', dest='uuid', help='uuid')
+    parser.add_argument('--remote', dest='remote', help='Server is remote')
 
     log.startLogging(sys.stdout)
+    args = parser.parse_args()
 
-    if len(sys.argv) >= 2 and sys.argv[1] == 'remote':
-        print 'connect to gametheory.olidu.com:9000'
-        factory = WebSocketClientFactory('ws://gametheory.olidu.com:9000', debug=False)
+    if args.remote:
+        print 'use remote server'
+        factory = WebSocketClientFactory('ws://gametheory.olidu.com:80', debug=True)
     else:
-        factory = WebSocketClientFactory('ws://localhost:9000', debug=False)
+        print 'use local server'
+        factory = WebSocketClientFactory('ws://localhost:9000', debug=True)
     factory.protocol = MyClientProtocol
 
-    factory.args = parser.parse_args()
+    factory.args = args
 
     print factory.args.username, factory.args.uuid
 
-    reactor.connectTCP('127.0.0.1', 9000, factory)
+    if args.remote:
+        reactor.connectTCP('gametheory.olidu.com', 80, factory)
+    else:
+        reactor.connectTCP('127.0.0.1', 9000, factory)
     reactor.run()

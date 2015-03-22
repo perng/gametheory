@@ -64,6 +64,7 @@ def methods():
     ans = []
     for modu in [game, player]:
         ans += modu.__dict__.items()
+    print 'methods', [a[0] for a in ans]
     return dict(ans)
 
 if __name__ == '__main__':

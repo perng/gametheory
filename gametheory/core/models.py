@@ -57,8 +57,8 @@ class Player(models.Model):
     state = models.CharField(max_length=30, default='')
     city =  models.CharField(max_length=30, default='')
     zipcode =  models.CharField(max_length=10, default='')
-    long = models.FloatField(default='')
-    lat = models.FloatField(default='')
+    long = models.FloatField(default=-1)
+    lat = models.FloatField(default=-1)
     friends = models.ManyToManyField('Player')
     def info(self):
         return {'player_id': self.id, 'player_name': self.player_name,
