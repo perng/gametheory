@@ -331,6 +331,14 @@ These types are defined: c_response
 # the client expects to receive:
 {"cmd":"c_invited", "msg":msg, "room_name":room_name, "usr":usr, "tracker":tracker}
 
+-- c_event
+# For message to be sent certain group of users that user usr has done something defined by type:
+# 1) login - send to all users (optional, this can be expensive)
+# 2) logout - send to all users (optional, this can be expensive), or another user in private chatting with usr.
+# 3) join_room - send to all users in the room
+# 4) leave_room - send to all users in the room
+# the client expects to receive:
+{"cmd":"c_event", "type":type, "user":usr, "tracker":tracker}
 
 -- the optional field "tracker" --
 
