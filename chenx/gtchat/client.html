@@ -5,34 +5,52 @@
       <script type="text/javascript">
          var socket = null;
          var isopen = false;
+         var current_cmd = '';  // keep track of current status.
+         var current_tid = '';  // keep track of current tracker id.
          function doDisconnect(startup) {
              if (socket != null) socket.close();
              socket = null;
              isopen = false;
-             if (! startup) appendChatroom("<font color='green'>Disconnected!</font>");
+             //if (! startup) appendChatroom("<font color='green'>Disconnected!</font>");
+             if (! startup) dispConnectionStatus("<font color='green'>Disconnected!</font>")
              toggleButton(true);
+         }
+         function dispConnectionStatus(msg) {
+             document.getElementById('connection_status').innerHTML = msg;
+         }
+         function btnConnect_onclick(b) {
+             if (b.value == 'Connect') {
+                 b.disabled = true;
+                 doConnect();
+             } else {
+                 doDisconnect(false);
+             }
          }
          function doConnect() {
          //window.onload = function() {
             document.getElementById('btnConnect').disabled = true;
-            appendChatroom("<font color='orange'>connecting ...</font>");
+            //appendChatroom("<font color='orange'>connecting ...</font>");
+            dispConnectionStatus("<font color='orange'>Connecting ...</font>")
             var ws = "ws://" + document.getElementById('ws').value;
             socket = new WebSocket(ws); 
             socket.binaryType = "arraybuffer";
             socket.onopen = function() {
                //console.log("Connected!");
                isopen = true;
-               appendChatroom("<font color='green'>Connected!</font>");
+               //appendChatroom("<font color='green'>Connected!</font>");
+               dispConnectionStatus("<font color='green'>Connected!</font>");
                toggleButton(false);
             }
             socket.onerror = function() {
-                appendChatroom("<font color='red'>Connection not opened.</font>");
+                //appendChatroom("<font color='red'>Connection not opened.</font>");
+                dispConnectionStatus("<font color='red'>Connection not opened.</font>")
                 document.getElementById('btnConnect').disabled = false;
             }
             socket.onmessage = function(e) {
                if (typeof e.data == "string") {
                   //console.log("Text message received: " + e.data);
                   appendChatroom("Text message received: " + e.data);
+                  process_message(e.data);
                } else {
                   var arr = new Uint8Array(e.data);
                   //console.log("Binary message received: " + hex);
@@ -41,7 +59,8 @@
             }
             socket.onclose = function(e) {
                //console.log("Connection closed.");
-               appendChatroot("<font color='green'>Connection closed.</font>");
+               //appendChatroot("<font color='green'>Connection closed.</font>");
+               dispConnectionStatus("<font color='green'>Connection closed.</font>")
                socket = null;
                isopen = false;
             }
@@ -54,11 +73,14 @@
               return hex;
          }
          function toggleButton(v) {
-            document.getElementById('btnConnect').disabled = ! v;
-            document.getElementById('btnDisconnect').disabled = v;
+            document.getElementById('btnConnect').disabled = false;
+            document.getElementById('btnConnect').value = v ? 'Connect' : 'Disconnect';
             document.getElementById('btnSendTxt').disabled = v;
-            document.getElementById('btnSendBin').disabled = v;
+            document.getElementById('txtMsg').disabled = v;
+            document.getElementById('txtMsg').focus();
+            //document.getElementById('btnSendBin').disabled = v;
             document.getElementById('ws').disabled = ! v;
+            document.getElementById('span_action').style.display = v ? 'none' : 'block';
          }
          function sendText() {
             if (isopen) {
@@ -137,8 +159,149 @@
                   var range = document.createRange();
                   range.selectNode(document.getElementById(containerid));
                   window.getSelection().addRange(range);
-               }
-           }
+              }
+         }
+
+         function showFormReg() {
+             document.getElementById('form_reg').style.display='block';
+             document.getElementById('form_login').style.display='none';
+             document.getElementById('reg_name').focus();
+         }
+         function cancelFormReg() {
+             document.getElementById('form_reg').style.display='none';
+             document.getElementById('form_login').style.display='block';
+             document.getElementById('login_name').focus();
+         }
+         function doRegister() {
+             var usr = document.getElementById('reg_name').value;
+             var pwd = document.getElementById('reg_pwd').value;
+             var current_tid = make_tracker();
+             var msg = '{"cmd":"register","usr":"' + usr + '","pwd":"' + pwd + '","tracker":"' + current_tid + '"}';
+             //alert(msg);
+             current_cmd = 'register';
+             socket.send(msg);
+         }
+         function doLogin() {
+             var usr = document.getElementById('login_name').value;
+             var pwd = document.getElementById('login_pwd').value;
+             var current_tid = make_tracker();
+             var msg = '{"cmd":"login","type":"reg","usr":"' + usr + '","pwd":"' + 
+                        pwd + '","tracker":"' + current_tid + '"}';
+             //alert(msg);
+             current_cmd = 'login';
+             socket.send(msg);
+         }
+
+         function process_message(msg) {
+             //alert(msg);
+             var jo = JSON.parse(msg);
+             var cmd = jo.cmd;
+             //alert(jo + ',' + cmd);
+             if (cmd == 'c_response') handle_c_response(jo);
+             else if (cmd == 'c_speak') handle_c_speak(jo);
+             else if (cmd == 'c_whisper') handle_c_whisper(jo);
+             else if (cmd == 'c_broadcast') handle_c_broadcast(jo);
+             else if (cmd == 'c_invited') handle_c_invited(jo);
+             else if (cmd == 'c_event') handle_c_event(jo);
+         }
+
+         function handle_c_response(jo) {
+             var status = jo.status;
+             var last_cmd = jo.last_cmd;
+             var msg = jo.msg;
+             var tracker = jo.tracker;
+             dump(':response: ' + status + ', ' + last_cmd + ', ' + msg + ',' + tracker);
+             if (last_cmd == 'register') { handle_cr_register(jo); }
+             else if (last_cmd == 'login') { handle_cr_login(jo); }
+             else if (last_cmd == 'update_pwd') { handle_cr_update_pwd(jo); }
+             else if (last_cmd == 'create_room') { handle_cr_create_room(jo); }
+             else if (last_cmd == 'invite') { handle_cr_invite(jo); }
+             else if (last_cmd == 'join_room') { handle_cr_join_room(jo); }
+             else if (last_cmd == 'leave_room') { handle_cr_leave_room(jo); }
+             else if (last_cmd == 'speak') { handle_cr_speak(jo); }
+             else if (last_cmd == 'whisper') { handle_cr_whisper(jo); }
+             else if (last_cmd == 'broadcast') { handle_cr_broadcast(jo); }
+             else if (last_cmd == 'admin_show_table') { handle_cr_admin_show_table(jo); }
+             else if (last_cmd == 'logout') { handle_cr_logout(jo); }
+         }
+         function handle_c_speak(jo) {
+             var msg = jo.msg;
+             var usr = jo.usr;
+             var room_name = jo.room_name;
+             var tracker = jo.tracker;
+             dump(':speak: ' + msg + ',' + room_name + ',' + tracker);
+         }
+         function handle_c_whisper(jo) {
+             var msg = jo.msg;
+             var usr = jo.usr;
+             var tracker = jo.tracker;
+             dump(':whisper: ' + msg + ',' + usr + ',' + tracker);
+         }
+         function handle_c_broadcast(jo) {
+             var msg = jo.msg;
+             var usr = jo.usr;
+             var tracker = jo.tracker;
+             dump(':boradcast: ' + msg + ',' + usr + ',' + tracker);
+         }
+         function handle_c_invited(jo) {
+             var msg = jo.msg;
+             var usr = jo.usr;
+             var room_name = jo.room_name;
+             var tracker = jo.tracker;
+             dump(':invited: ' + msg + ',' + usr + ',' + room_name + ',' + tracker);
+         }
+         function handle_c_event(jo) {
+             var type = jo.type;
+             var usr = jo.usr;
+             var tracker = jo.tracker;
+             dump(':event: ' + type + ',' + usr + ',' + tracker);
+         }
+         function dump(msg) {
+             appendChatroom(msg);
+         }
+
+         function make_tracker() {
+             // create a random number as tracker.
+             return Math.floor((Math.random() * 1000000) + 1);
+         }
+
+         /* handle response messages. */
+         function handle_cr_register(jo) {
+
+         }
+         function handle_cr_login(jo) {
+
+         }
+         function handle_cr_update_pwd(jo) {
+
+         }
+         function handle_cr_create_room(jo) {
+
+         }
+         function handle_cr_invite(jo) {
+
+         }
+         function handle_cr_join_room(jo) {
+
+         }
+         function handle_cr_leave_room(jo) {
+
+         }
+         function handle_cr_speak(jo) {
+
+         }
+         function handle_cr_whisper(jo) {
+
+         }
+         function handle_cr_broadcast(jo) {
+
+         }
+         function handle_cr_admin_show_table(jo) {
+
+         }
+         function handle_cr_logout(jo) {
+
+         }
       </script>
 
       <style type="text/css">
@@ -151,21 +314,59 @@
         position: relative;
         bottom: 0;
       }
+fieldset { 
+    display: block;
+    margin-left: 2px;
+    margin-right: 2px;
+    padding-top: 0.35em;
+    padding-bottom: 0.625em;
+    padding-left: 0.75em;
+    padding-right: 0.75em;
+    border: 2px groove (internal value);
+    //background-color: green;
+    width: 400px;
+    height: auto;
+}
       </style>
    </head>
    <body onload="doDisconnect(true);">
       <h1>Websocket Chatroom</h1>
 
-      Server: ws://<input type="text" id="ws" value="192.168.198.131:9000"/>
-      <button id='btnConnect' onclick='doConnect();'>Connect</button>
-      <button id='btnDisconnect' disabled onclick='doDisconnect(false);'>Disconnect</button>
-      <button onclick='clearChatroom();'>Clear Chat History</button>
-      <button onclick="selectText('chatroom');">Select/Copy Chat History</button>
+      Server: ws://<input type="text" id="ws" value="127.0.0.1:9000"/>
+      <input type='button' id='btnConnect' onclick='btnConnect_onclick(this);' value='Connect'></input>
+      <span id='connection_status'></span>
+      <!--
+      <span id='span_action' style='display:none;'>
+      <input type='radio' id='register' name='r_action'>Register 
+      <input type='radio' id='login' name='r_action'>Login
+      </span>
+      -->
       <br/><br/>
+
+      <span id='span_action' style='display:none;'>
+      <span id='form_reg' style='display:none;'>
+      name: <input type='txt' id='reg_name'/>
+      password: <input type='password' id='reg_pwd'/>
+      <input type='button' value='Register' onclick='doRegister();'></input>
+      &nbsp;&nbsp;<a href='#' onclick="cancelFormReg();">Cancel</a>
+      <div id='msg_reg'></div>
+      <br/><br/>
+      </span>
+
+      <span id='form_login' style='display:inline-block;'>
+      name: <input type='txt' id='login_name'/>
+      password: <input type='password' id='login_pwd'/>
+      <input type='button' value='Login' onclick='doLogin();'></input>
+      &nbsp;&nbsp;<a href='#' onclick="showFormReg();">Register</a>
+      <br/><br/>
+      </span>
+      </span>
 
       <input type="text" id="txtMsg" onkeypress="checkEnter(event);" size="50"/>
       <button id='btnSendTxt' onclick='sendText();'>Send Text Message</button>
-      <button id='btnSendBin' onclick='sendBinary();'>Send Binary Message</button>
+      <button style='display:none;' id='btnSendBin' onclick='sendBinary();'>Send Binary Message</button>
+      <button onclick='clearChatroom();'>Clear Chat History</button>
+      <button onclick="selectText('chatroom');">Select/Copy Chat History</button>
 
       <br/><br/>
 
