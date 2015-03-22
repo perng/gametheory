@@ -14,9 +14,11 @@
              //if (! startup) appendChatroom("<font color='green'>Disconnected!</font>");
              if (! startup) dispConnectionStatus("<font color='green'>Disconnected!</font>")
              toggleButton(true);
+             updateInfo('');
          }
          function dispConnectionStatus(msg) {
              document.getElementById('connection_status').innerHTML = msg;
+             //updateInfo(msg);
          }
          function btnConnect_onclick(b) {
              if (b.value == 'Connect') {
@@ -39,12 +41,14 @@
                isopen = true;
                //appendChatroom("<font color='green'>Connected!</font>");
                dispConnectionStatus("<font color='green'>Connected!</font>");
+               updateInfo('');
                toggleButton(false);
             }
             socket.onerror = function() {
                 //appendChatroom("<font color='red'>Connection not opened.</font>");
                 dispConnectionStatus("<font color='red'>Connection not opened.</font>")
                 document.getElementById('btnConnect').disabled = false;
+                updateInfo("<font color='red'>Cannot open connection.</font>");
             }
             socket.onmessage = function(e) {
                if (typeof e.data == "string") {
@@ -60,7 +64,7 @@
             socket.onclose = function(e) {
                //console.log("Connection closed.");
                //appendChatroot("<font color='green'>Connection closed.</font>");
-               dispConnectionStatus("<font color='green'>Connection closed.</font>")
+               dispConnectionStatus("<font color='green'>Connection is closed.</font>")
                socket = null;
                isopen = false;
             }
@@ -161,6 +165,10 @@
                   window.getSelection().addRange(range);
               }
          }
+         function updateInfo(msg) {
+             document.getElementById('div_info').innerHTML = msg;
+             //document.getElementById('connection_status').innerHTML = msg;
+         }
 
          function showFormReg() {
              document.getElementById('form_reg').style.display='block';
@@ -173,9 +181,14 @@
              document.getElementById('login_name').focus();
          }
          function doRegister() {
-             var usr = document.getElementById('reg_name').value;
-             var pwd = document.getElementById('reg_pwd').value;
-             var current_tid = make_tracker();
+             var usr = document.getElementById('reg_name').value.trim();
+             var pwd = document.getElementById('reg_pwd').value.trim();
+             if (usr == '' || pwd == '') {
+                 updateInfo('<font color="red">Register failed: name and password cannot be empty.</font>');
+                 document.getElementById('reg_name').focus();
+                 return;
+             }
+             current_tid = make_tracker();
              var msg = '{"cmd":"register","usr":"' + usr + '","pwd":"' + pwd + '","tracker":"' + current_tid + '"}';
              //alert(msg);
              current_cmd = 'register';
@@ -184,11 +197,16 @@
          function doLogin() {
              var usr = document.getElementById('login_name').value;
              var pwd = document.getElementById('login_pwd').value;
-             var current_tid = make_tracker();
+             current_tid = make_tracker();
              var msg = '{"cmd":"login","type":"reg","usr":"' + usr + '","pwd":"' + 
                         pwd + '","tracker":"' + current_tid + '"}';
              //alert(msg);
              current_cmd = 'login';
+             socket.send(msg);
+         }
+         function doLogout() {
+             if (! confirm('Are you sure to log out?')) return;
+             var msg = '{"cmd":"logout"}';
              socket.send(msg);
          }
 
@@ -211,18 +229,18 @@
              var msg = jo.msg;
              var tracker = jo.tracker;
              dump(':response: ' + status + ', ' + last_cmd + ', ' + msg + ',' + tracker);
-             if (last_cmd == 'register') { handle_cr_register(jo); }
-             else if (last_cmd == 'login') { handle_cr_login(jo); }
-             else if (last_cmd == 'update_pwd') { handle_cr_update_pwd(jo); }
-             else if (last_cmd == 'create_room') { handle_cr_create_room(jo); }
-             else if (last_cmd == 'invite') { handle_cr_invite(jo); }
-             else if (last_cmd == 'join_room') { handle_cr_join_room(jo); }
-             else if (last_cmd == 'leave_room') { handle_cr_leave_room(jo); }
-             else if (last_cmd == 'speak') { handle_cr_speak(jo); }
-             else if (last_cmd == 'whisper') { handle_cr_whisper(jo); }
-             else if (last_cmd == 'broadcast') { handle_cr_broadcast(jo); }
-             else if (last_cmd == 'admin_show_table') { handle_cr_admin_show_table(jo); }
-             else if (last_cmd == 'logout') { handle_cr_logout(jo); }
+             if (last_cmd == 'register')         { handle_cr_register(status, msg, tracker); }
+             else if (last_cmd == 'login')       { handle_cr_login(status, msg, tracker); }
+             else if (last_cmd == 'update_pwd')  { handle_cr_update_pwd(status, msg, tracker); }
+             else if (last_cmd == 'create_room') { handle_cr_create_room(status, msg, tracker); }
+             else if (last_cmd == 'invite')      { handle_cr_invite(status, msg, tracker); }
+             else if (last_cmd == 'join_room')   { handle_cr_join_room(status, msg, tracker); }
+             else if (last_cmd == 'leave_room')  { handle_cr_leave_room(status, msg, tracker); }
+             else if (last_cmd == 'speak')       { handle_cr_speak(status, msg, tracker); }
+             else if (last_cmd == 'whisper')     { handle_cr_whisper(status, msg, tracker); }
+             else if (last_cmd == 'broadcast')   { handle_cr_broadcast(status, msg, tracker); }
+             else if (last_cmd == 'admin_show_table') { handle_cr_admin_show_table(status, msg, tracker); }
+             else if (last_cmd == 'logout')      { handle_cr_logout(status, msg, tracker); }
          }
          function handle_c_speak(jo) {
              var msg = jo.msg;
@@ -266,41 +284,73 @@
          }
 
          /* handle response messages. */
-         function handle_cr_register(jo) {
+         function handle_cr_register(status, msg, tracker) {
+             if (current_cmd != "register" || current_tid != tracker) {
+                 dump('false register response. abort');
+                 dump('cur_cmd = ' + current_cmd + ', cur_tid = ' + current_tid);
+                 return;
+             }
+             if (status == 'ok') {
+                 //document.getElementById('span_action').style.display = 'none';
+                 document.getElementById('reg_pwd').value = ''; // clear password.
+                 updateInfo("<font color='green'>You are registered. Now you can log in.");
+                 cancelFormReg();
+             } else {
+                 updateInfo('<font color="red">Register failed: ' + msg + '.</font>');
+                 document.getElementById('reg_name').focus();
+             }
+         }
+         function handle_cr_login(status, msg, tracker) {
+             //alert('get in. status = ' + status);
+             if (current_cmd != "login" || current_tid != tracker) {
+                 dump('false login response. abort.');
+                 //dump('cur_cmd = ' + current_cmd + ', cur_tid = ' + current_tid);
+                 return;
+             }
+             if (status == 'ok') {
+                 document.getElementById('span_action').style.display = 'none';
+                 document.getElementById('login_pwd').value = ''; // clear password.
+                 updateInfo("<font color='green'>You are logged in. <a href='#' onclick='doLogout();'>Log out</a></font>");
+             } else {
+                 updateInfo('<font color="red">Invalid login name or password.</font>');
+                 document.getElementById('login_name').focus();
+             }
+         }
+         function handle_cr_update_pwd(status, msg, tracker) {
 
          }
-         function handle_cr_login(jo) {
+         function handle_cr_create_room(status, msg, tracker) {
 
          }
-         function handle_cr_update_pwd(jo) {
+         function handle_cr_invite(status, msg, tracker) {
 
          }
-         function handle_cr_create_room(jo) {
+         function handle_cr_join_room(status, msg, tracker) {
 
          }
-         function handle_cr_invite(jo) {
+         function handle_cr_leave_room(status, msg, tracker) {
 
          }
-         function handle_cr_join_room(jo) {
+         function handle_cr_speak(status, msg, tracker) {
 
          }
-         function handle_cr_leave_room(jo) {
+         function handle_cr_whisper(status, msg, tracker) {
 
          }
-         function handle_cr_speak(jo) {
+         function handle_cr_broadcast(status, msg, tracker) {
 
          }
-         function handle_cr_whisper(jo) {
+         function handle_cr_admin_show_table(status, msg, tracker) {
 
          }
-         function handle_cr_broadcast(jo) {
-
-         }
-         function handle_cr_admin_show_table(jo) {
-
-         }
-         function handle_cr_logout(jo) {
-
+         function handle_cr_logout(status, msg, tracker) {
+             if (status == 'ok') {
+                 updateInfo('<font color="orange">You are logged out.</font>');
+                 document.getElementById('span_action').style.display = 'block';
+             }
+             else {
+                 updateInfo(msg);
+             }
          }
       </script>
 
@@ -314,19 +364,6 @@
         position: relative;
         bottom: 0;
       }
-fieldset { 
-    display: block;
-    margin-left: 2px;
-    margin-right: 2px;
-    padding-top: 0.35em;
-    padding-bottom: 0.625em;
-    padding-left: 0.75em;
-    padding-right: 0.75em;
-    border: 2px groove (internal value);
-    //background-color: green;
-    width: 400px;
-    height: auto;
-}
       </style>
    </head>
    <body onload="doDisconnect(true);">
@@ -334,13 +371,7 @@ fieldset {
 
       Server: ws://<input type="text" id="ws" value="127.0.0.1:9000"/>
       <input type='button' id='btnConnect' onclick='btnConnect_onclick(this);' value='Connect'></input>
-      <span id='connection_status'></span>
-      <!--
-      <span id='span_action' style='display:none;'>
-      <input type='radio' id='register' name='r_action'>Register 
-      <input type='radio' id='login' name='r_action'>Login
-      </span>
-      -->
+      <span id='connection_status'></span>&nbsp;&nbsp;<span id="div_info"></span>
       <br/><br/>
 
       <span id='span_action' style='display:none;'>
@@ -349,7 +380,6 @@ fieldset {
       password: <input type='password' id='reg_pwd'/>
       <input type='button' value='Register' onclick='doRegister();'></input>
       &nbsp;&nbsp;<a href='#' onclick="cancelFormReg();">Cancel</a>
-      <div id='msg_reg'></div>
       <br/><br/>
       </span>
 
@@ -361,6 +391,7 @@ fieldset {
       <br/><br/>
       </span>
       </span>
+      <!--div id='div_info'></div-->
 
       <input type="text" id="txtMsg" onkeypress="checkEnter(event);" size="50"/>
       <button id='btnSendTxt' onclick='sendText();'>Send Text Message</button>
