@@ -29,11 +29,22 @@ class GameTable:
                 self.id = i
                 break
         #self.allow_kibitzing = game_room.gamespec.allow_kibitz
+    def num_players(self):
+        return len(self.players)
 
     def waiting(self):
         return self.status == WAITING
     def full(self):
         return len(self.players)>= self.game_room.gamespec.num_players_max
+    def empty(self):
+        return len(self.players) == 0
+
+    def leaders(self):
+        num = min(2, self.num_players())
+        return self.players.keys()[:num]
+
+    def broadcast(self, sender_id, msg):
+        BroadCast(sender_id, [p.socket for p in self.players.values()], msg)
 
     def sit(self, player):
         '''
@@ -52,28 +63,28 @@ class GameTable:
         else:
             self.players[player.id] = player
             result = JOIN_SUCCEED
-            msg = {'msg_type':'player_joined', 'player_id': player.id }
-            BroadCast([p.socket for p in self.players.values()], msg)
+            msg = {'sys_cmd':'player_joined', 'player_id': player.id }
+            BroadCast(player.id, [p.socket for p in self.players.values()], msg)
         self.lock.release()
 
         # Game start if enough players, TODO: time-based game-start
         if self.num_players()>= self.game_room.gamespec.num_players_min:
             game = self.game_room.gamespec
-            msg = {'table_id': self.id, 'msg_type': 'game_start',
+            msg = {'table_id': self.id, 'sys_cmd': 'game_start',
                    'players': [p.id for p in self.players.values()]}
             self.status = PLAYING
-            BroadCast([p.socket for p in self.players.values()], msg)
+            BroadCast(player.id, [p.socket for p in self.players.values()], msg)
         return result
 
     def leave(self, player):
         if player.id not in self.players:
             return NOT_IN_TABLE
-        self.lock.acquire(True)
         del self.players[player.id]
-        self.lock.release()
-        msg = {'msg_type':'player_left', 'player_id': player.id }
-        for player in self.players.values():
-            SendMessage(player.socket, msg)
+        msg = {'sys_cmd':'player_left', 'player_id': player.id }
+        BroadCast(player.id, [p.socket for p in self.players.values()], msg)
+        if self.num_players() < self.game_room.gamespec.num_players_min:
+            self.status = WAITING
+
         return LEAVE_SUCCEED
 
     def stand(self, player):
@@ -91,24 +102,53 @@ class RunTimeDataStore:
     '''
     def __init__(self, factory):
         self.factory = factory
-        self.gamerooms = {}
-        self.gametables = {}  # room --> {table.id: table}
+        self.gamerooms = {} #room.id --> room
+        self.gameroom_tables = {}  # room.id --> table.id --> table
+        self.gametables = {}  # table.id --> table
         gamerooms = GameRoom.objects.all()
         for gameroom in gamerooms:
             self.gamerooms[gameroom.id] = gameroom
-            self.gametables[gameroom.id] = {}
+            self.gameroom_tables[gameroom.id] = {}
+
+    def add_table(self, gameroom_id):
+        gameroom = self.gamerooms[int(gameroom_id)]
+        table = GameTable(self, gameroom)
+        self.gameroom_tables[gameroom.id][table.id] = table
+        self.gametables[table.id] = table
+        return table
+
+    def get_tables(self, gameroom_id):
+        found_the_first = False
+        gameroom_id = int(gameroom_id)
+        keys = self.gameroom_tables[gameroom_id]
+        keys.sort()
+        to_be_deleted = []
+        for table_id in keys:
+            table = self.gamerooms[gameroom_id][table_id]
+            if table.empty():
+                if found_the_first:
+                    to_be_deleted.append(table_id)
+                else:
+                    found_the_first = True
+        for table_id in to_be_deleted:
+            del self.gameroom_tables[gameroom_id][table_id]
+            del self.gametables[table_id]
+        if len(self.gameroom_tables[gameroom_id]) == 0:
+            self.add_table(gameroom_id)
+        return self.gameroom_tables[gameroom_id]
+
+
 
     def sit_to_play_auto_match(self, player, gameroom):
         # find or create a table
-        gametables = self.gametables[gameroom.id]
+        gametables = self.gameroom_tables[gameroom.id]
         for table in gametables.values():
             print 'table', table.id, ' waiting:', table.waiting(), ' full:', table.full()
             if table.waiting() and not table.full():
                 table.sit(player)
                 return table
         else:
-            table = GameTable(self, gameroom)
-            gametables[table.id] = table
+            table = self.add_table(gameroom.id)
             table.sit(player)
             print 'created new table', table.id
         # either way, table

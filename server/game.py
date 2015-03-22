@@ -73,19 +73,27 @@ def sit_for_auto_match_game(socket, params):
 
 @login_required
 @required_params('table_id')
-def stand(socket, params):
+def leave_table(socket, params):
     try:
-        room = GameRoom.objects.get(id=int(params['room_id']))
-    except:
-        return JsonResponse(socket, params, {}, ERROR, "game room doesn't exist")
+        table = socket.factory.datastore.gametables[int(params['table_id'])]
+        assert socket.player.id in table.players
+        table.leave(socket.player)
+        return JsonResponse(socket, params, {}, OK, '')
+    except Exception as inst:
+        print inst
+        return JsonResponse(socket, params, {}, ERROR, "table doesn't exist.")
 
 
 @login_required
-@required_params('message')
-def message(socket, params):
-    result = {'message': params['message']}
-    JsonResponse(socket.opponent, params, result, OK, '')
-    JsonResponse(socket, params, {}, OK, '')
+@required_params('message', 'table_id')
+def broadcast_in_table(socket, params):
+    try:
+        table = socket.factory.datastore.gametables[int(params['table_id'])]
+        table.broadcast(socket.player.id, {'message': params['message'], 'sys_cmd': 'peer_message'})
+        return JsonResponse(socket, params, {}, OK, '')
+    except Exception as inst:
+        print inst
+        return JsonResponse(socket, params, {}, ERROR, "table doesn't exist.")
 
 @login_required
 @required_params('outcome')
@@ -103,3 +111,17 @@ def record_game(socket, params):
     player_ids = [int(p['player_id']) for p in outcome]
     for pid in player_ids:
         game.players.add(Player.objects.get(id=pid))
+
+@login_required
+@required_params('table_id')
+def get_leaders(socket, params):
+    print 'existing tables:', socket.factory.datastore.gametables
+    try:
+        table = socket.factory.datastore.gametables[int(params['table_id'])]
+
+        leaders = socket.factory.datastore.gametables[int(params['table_id'])].leaders()
+        return JsonResponse(socket, params, {'leaders':leaders}, OK, '')
+    except:
+        return JsonResponse(socket, params, {}, ERROR, "table doesn't exist or no player")
+
+

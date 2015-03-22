@@ -13,9 +13,11 @@ def JsonResponse(socket, params, result, status=OK, msg=''):
         result['_tracker'] = params['_tracker']
     socket.sendMessage(json.dumps(result).encode('utf8'), False)
 
+
 def SendMessage(socket, msg):
     socket.sendMessage(json.dumps(msg).encode('utf8'), False)
 
-def BroadCast(sockets, msg):
+def BroadCast(sender_id, sockets, msg):
+    msg['sender_id'] = sender_id
     for socket in sockets:
         socket.sendMessage(json.dumps(msg).encode('utf8'), False)
