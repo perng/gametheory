@@ -720,7 +720,9 @@ class Cls_Chatroom():
         """
         This is invoked when a connection in broken from client side.
         """
-        self.validate_active_user(src)
+        if src not in self.T_users_active:
+            return
+
         usr = self.T_users_active[src].name
         if DEBUG:
             print "unregister: " + usr + ", " + src
