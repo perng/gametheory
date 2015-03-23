@@ -28,7 +28,7 @@ No persistence is used at this time, user data is cached in memory.
 
 API commands: 
 register, login, update_pwd, 
-api_get_room_list, api_get_user_list, 
+api_get_room_list, api_get_user_list, api_get_room_user_list
 create_room, invite, join_room, leave_room, 
 speak, whisper, broadcast, logout
 admin_show_table
