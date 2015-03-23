@@ -70,6 +70,11 @@ ok/fail
 # server expects to receive:
 {"cmd":"get_user_list"}
 
+-- api_get_room_user_list
+# get list of users in a room.
+# server expects to receive:
+{"cmd":"get_room_user_list", "room_name":"room1"}
+
 -- create_room
 # server expects to receive:
 {"cmd":"create_room", "room_name":"room1"}
