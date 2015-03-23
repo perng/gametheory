@@ -13,17 +13,17 @@
          var current_tid = '';  // keep track of current tracker id.
          var current_room = ''; // keep track of current room.
          var DEBUG = true;
+         //DEBUG = false;
          function doDisconnect(startup) {
+             if (! startup && ! confirm('Are you sure to disconnect?')) return;
+
              if (socket != null) socket.close();
              socket = null;
              isopen = false;
              //if (! startup) appendConsole("<font color='green'>Disconnected!</font>");
              if (! startup) dispConnectionStatus("<font color='green'>Disconnected!</font>")
              toggleButton(true);
-             document.getElementById('form_room').style.display = 'none';
-             document.getElementById('selectRoomList').disabled = false;
-             disableChatroom(true);
-             updateInfo('');
+             cleanup_logout();
          }
          function dispConnectionStatus(msg) {
              document.getElementById('connection_status').innerHTML = msg;
@@ -209,7 +209,7 @@
          }
          function showLogoutMsg() {
              var me = $('#login_name').val();
-             updateInfo(me + " is logged in. <a href='#' onclick='doLogout();'>Log out</a>");
+             updateInfo('User "' + me + '" is logged in. <a href="#" onclick="doLogout();">Log out</a>');
          }
 
          function showFormReg() {
@@ -319,7 +319,7 @@
              else if (last_cmd == 'admin_show_table') { handle_cr_admin_show_table(status, msg, tracker); }
              else if (last_cmd == 'logout')      { handle_cr_logout(status, msg, tracker); }
 
-             if (status == 'ok') { showLogoutMsg(); } // recover from error msg if any.
+             if (status == 'ok' && last_cmd != 'logout') { showLogoutMsg(); } // recover from error msg if any.
          }
          function handle_c_speak(jo) {
              var msg = jo.msg;
@@ -456,8 +456,16 @@
          function handle_cr_get_room_list(status, msg, tracker) {
              appendConsole('now populate room list: ' + msg);
              if (status == 'ok') {
+                 var o = $('#selectRoomList');
+
+                 // clear all entries and insert first option.
+                 o.children().remove();
+                 o.append($('<option>', {
+                         value: '',
+                         text: '-- select room --'
+                 }));
+
                  if (msg != '') {
-                     var o = $('#selectRoomList');
                      var rooms = msg.split(',');
                      rooms.forEach(function(room_name) {
                          o.append($('<option>', {
@@ -592,11 +600,26 @@
              if (status == 'ok') {
                  updateInfo('You are logged out.', 'info');
                  document.getElementById('span_action').style.display = 'block';
-                 document.getElementById('form_room').style.display = 'none';
+
+                 cleanup_logout();
              }
              else {
                  updateInfo(msg);
              }
+         }
+         function cleanup_logout() {
+             document.getElementById('form_room').style.display = 'none';
+
+             // clean up the select room list.
+             $('#selectRoomList').children().remove();
+             $('#selectRoomList').removeAttr('disabled');
+             $('#btnJoinRoom').val('Join a room');
+             $('#spanCreateRoom').show();
+             current_room = '';
+             disableChatroom(true);
+
+             $('#div_room').html('Room: ');
+             updateInfo('');
          }
 
          function client_get_room_list() {
@@ -609,6 +632,20 @@
              var msg = '{"cmd":"get_user_list", "tracker":"' + tracker + '"}';
              socket.send(msg);
          }
+
+         $(document).ready(function() {
+             $('#txtNewRoom').keyup(function (event) {
+                 if(event.which === 13){
+                     doCreateRoom();
+                 }
+             });
+
+             getInputFocus();
+
+             if (DEBUG) {
+                 $('#debug_console').show();
+             }
+         });
       </script>
 
       <style type="text/css">
@@ -717,11 +754,10 @@
       </div>
       <br/>
  
-      Debug console:<br/>
-      <div id="console"></div>
+      <div id="debug_console" style="display:none;">
+          Debug console:<br/>
+          <div id="console"></div>
+      </div>
 
-      <script type="text/javascript">
-      getInputFocus();
-      </script>
    </body>
 </html>

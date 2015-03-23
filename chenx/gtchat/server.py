@@ -708,14 +708,19 @@ class Cls_Chatroom():
             if self.T_rooms[room_name].isEmpty():
                 del self.T_rooms[room_name]
 
+                # send this notification to all users (except sender) so they can update room list.
+                msg = self.make_msg_c_event("room_gone", usr + ":" + room_name, '0')
+                self.broadcast_to_all(msg, src)
+
         del self.T_users_active[src]
         del self.T_users_src[usr]
 
-   
+
     def unregister(self, src):
         """
         This is invoked when a connection in broken from client side.
         """
+        self.validate_active_user(src)
         usr = self.T_users_active[src].name
         if DEBUG:
             print "unregister: " + usr + ", " + src
