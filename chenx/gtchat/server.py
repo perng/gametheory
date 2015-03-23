@@ -66,9 +66,21 @@ class Cls_Chatroom():
         self.T_users_src = {}     # entry = name:src. E.g. usr1:tcp4:127.0.0.1:57778
         self.T_users_active = {}  # entry = src:Cls_ActiveUser_object
         self.T_rooms = {}         # entry = name:user_list
+       
+        self.loadDB()
 
         if DEBUG:
             print ">>> new Cls_Chatroom instance created"
+
+
+    def loadDB(self):
+        """
+        Load default values from database. E.g., users, rooms.
+        This is also good for testing purpose.
+        """
+        self.T_users['admin'] = 'password'
+        self.T_users['a'] = '11111111'
+        self.T_users['b'] = '11111111'
 
 
     def handle(self, msg, client):
@@ -104,6 +116,12 @@ class Cls_Chatroom():
                 new_pwd = self.get_param('new_pwd')
                 new_pwd2 = self.get_param('new_pwd2')
                 self.api_update_pwd(usr, old_pwd, new_pwd, new_pwd2, src, tracker)
+
+            elif cmd == "get_room_list":
+                self.api_get_room_list(usr, src, tracker)
+
+            elif cmd == "get_user_list":
+                self.api_get_user_list(usr, src, tracker)
 
             elif cmd == "create_room":
                 room_name = self.get_param('room_name')
@@ -390,6 +408,26 @@ class Cls_Chatroom():
                 self.send_msg(self.get_client(target_src), msg)
     
 
+    def api_get_room_list(self, usr, src, tracker):
+        """
+        Return room list. Happens when a user logs in and then want to see what rooms can join.
+        """
+        self.validate_active_user(src)
+        response_msg = ",".join(self.T_rooms.keys())
+        client = self.get_client(src)
+        self.send_c_response("ok", "get_room_list", response_msg, usr, client, tracker)
+
+
+    def api_get_user_list(self, usr, src, tracker):
+        """
+        Return active user list. 
+        """
+        self.validate_active_user(src)
+        response_msg = ",".join(self.T_users_src.keys())
+        client = self.get_client(src)
+        self.send_c_response("ok", "get_user_list", response_msg, usr, client, tracker)
+
+
     def api_create_room(self, room_name, usr, src, tracker):
         """
         When a room is created, the user automatically enters this room.
@@ -411,9 +449,14 @@ class Cls_Chatroom():
             self.dump_db("T_rooms", self.T_rooms)
 
         # send response message to sender.
-        response_msg = "user '" + usr + "' has created room '" + room_name + "'"
+        #response_msg = "user '" + usr + "' has created room '" + room_name + "'"
+        response_msg = usr + ":" + room_name
         client = self.get_client(src)
         self.send_c_response("ok", "create_room", response_msg, usr, client, tracker)
+
+        # send this notification to all users (except sender) so they can update room list.
+        msg = self.make_msg_c_event("room_created", usr + ":" + room_name, tracker)
+        self.broadcast_to_all(msg, src)
 
 
     def api_invite(self, invitee, room_name, usr, src, tracker):
@@ -480,12 +523,12 @@ class Cls_Chatroom():
             self.dump_db("T_rooms", self.T_rooms)
 
         # send response message to sender.
-        response_msg = "user '" + usr + "' entered room '" + room_name + "'"
+        response_msg = usr + ":" + room_name  # "user '" + usr + "' entered room '" + room_name + "'"
         client = self.get_client(src)
         self.send_c_response("ok", "join_room", response_msg, usr, client, tracker)
 
         # send event message to users in this room.
-        msg = self.make_msg_c_event(msg, "join_room", usr, tracker)
+        msg = self.make_msg_c_event("join_room", usr, tracker)
         self.broadcast_to_room(room_name, msg, src)
 
 
@@ -504,9 +547,11 @@ class Cls_Chatroom():
     def make_msg_c_event(self, type, usr, tracker):
         """
         make message to send to target_user that usr has done something defined by type:
-        1) login, 2) logout, 3) join_room, 4) leave_room.
+        1) login, 2) logout,         - sent to all (optional, can be expensive. TO DO).
+        3) join_room, 4) leave_room  - sent to people in a room.
+        5) room_created, 6) room_gone    - sent to all (optional, can be expensive).
         """
-        data = {"cmd":"c_event", "type":type, "user":usr, "tracker":tracker}
+        data = {"cmd":"c_event", "type":type, "usr":usr, "tracker":tracker}
         return json.JSONEncoder().encode(data)
 
 
@@ -520,23 +565,30 @@ class Cls_Chatroom():
         self.T_rooms[room_name].removeUser(src)
         self.T_users_active[src].setRoom('')
 
+        room_is_gone = False
         if self.T_rooms[room_name].isEmpty():
             del self.T_rooms[room_name]
+            room_is_gone = True
+
+            # send this notification to all users (except sender) so they can update room list.
+            msg = self.make_msg_c_event("room_gone", usr + ":" + room_name, tracker)
+            self.broadcast_to_all(msg, src)
 
         if DEBUG:
             self.dump_db("T_rooms", self.T_rooms)
 
         # send response message to sender.
-        response_msg = "user '" + usr + "' left room '" + room_name + "'"
+        response_msg = usr + ":" + room_name  # "user '" + usr + "' left room '" + room_name + "'"
+        response_msg += ":0" if room_is_gone else ":1"  # tell usr if this room is gone.
         client = self.get_client(src)
         self.send_c_response("ok", "leave_room", response_msg, usr, client, tracker)
 
         # if room became empty and was removed, just return.
-        if not room_name in self.T_rooms:  
+        if room_is_gone:
             return  
 
         # otherwise room still exists, send event message to users in this room.
-        msg = self.make_msg_c_event(msg, "leave_room", usr, tracker)
+        msg = self.make_msg_c_event("leave_room", usr, tracker)
         self.broadcast_to_room(room_name, msg, src)
 
 
@@ -659,6 +711,16 @@ class Cls_Chatroom():
         del self.T_users_active[src]
         del self.T_users_src[usr]
 
+   
+    def unregister(self, src):
+        """
+        This is invoked when a connection in broken from client side.
+        """
+        usr = self.T_users_active[src].name
+        if DEBUG:
+            print "unregister: " + usr + ", " + src
+        self.logout_cleanup(usr, src);
+
 
     def dump_db(self, tbl_name, tbl):
         print("==table: " + tbl_name + "==")
@@ -714,7 +776,7 @@ class Cls_Room():
         return self.user_list.keys()
 
     def isEmpty(self):
-        if DEBUG:
+        if DEBUG and not self.user_list:
             print "room " + self.room_name + " is empty now"
         return not self.user_list
 
@@ -773,6 +835,7 @@ class BroadcastServerFactory(WebSocketServerFactory):
         if client in self.clients:
             print("unregistered client {}".format(client.peer))
             self.clients.remove(client)
+            self.game_handler.unregister(client.peer)
 
     def broadcast(self, msg, sender):
         print("broadcasting message '{}' ..".format(msg) + " - sender: " + sender)
