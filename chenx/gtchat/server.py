@@ -123,6 +123,10 @@ class Cls_Chatroom():
             elif cmd == "get_user_list":
                 self.api_get_user_list(usr, src, tracker)
 
+            elif cmd == "get_room_user_list":
+                room_name = self.get_param('room_name')
+                self.api_get_room_user_list(room_name, usr, src, tracker)
+
             elif cmd == "create_room":
                 room_name = self.get_param('room_name')
                 self.api_create_room(room_name, usr, src, tracker)
@@ -426,6 +430,18 @@ class Cls_Chatroom():
         response_msg = ",".join(self.T_users_src.keys())
         client = self.get_client(src)
         self.send_c_response("ok", "get_user_list", response_msg, usr, client, tracker)
+
+
+    def api_get_room_user_list(self, room_name, usr, src, tracker):
+        """
+        Return user list in a room.
+        """
+        self.validate_active_user(src)
+        self.validate_active_room(room_name)
+
+        response_msg = ",".join( self.T_rooms[room_name].getUserNameList() )
+        client = self.get_client(src)
+        self.send_c_response("ok", "get_room_user_list", response_msg, usr, client, tracker)
 
 
     def api_create_room(self, room_name, usr, src, tracker):
