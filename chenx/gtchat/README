@@ -3,7 +3,7 @@
 
 By: X. Chen
 Created on: 3/18/2015
-Last modified: 3/21/2015
+Last modified: 3/22/2015
 
 
 == About ==
@@ -380,7 +380,12 @@ Modified client.html to add the textbox for user input, and modified output form
 Testing can be done with test.py, which creates process(es) of client.py, and sends requests to server.
 It compares returned output and expected output to make testing judgement. 
 
-usage: test.py [test_filename]
+usage: test.py {test_filename} [-v|-f]
+
+test_filename is mandatory.
+option switches are: 
+ -v: verbose, print all test cases.
+ -f: verbose subcategory, print failed test cases only.
 
 This script reads from given test file.
 The test file contains a series of test cases.
