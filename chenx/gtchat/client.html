@@ -593,6 +593,7 @@
                  return;
              }
 
+             msg = msg.split(',').sort().join(', ');
              appendChatroomInfo("Room users: " + msg);
          }
          function handle_cr_create_room(status, msg, tracker) {
