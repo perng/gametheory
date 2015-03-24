@@ -12,6 +12,7 @@
          var current_cmd = '';  // keep track of current status.
          var current_tid = '';  // keep track of current tracker id.
          var current_room = ''; // keep track of current room.
+         var request_src = ''; // used for command line requests @rooms, @users.
          var DEBUG = true;
          //DEBUG = false;
          function doDisconnect(startup) {
@@ -39,6 +40,8 @@
          }
          function doConnect() {
          //window.onload = function() {
+            cleanup_logout(); // clean up before start.
+
             document.getElementById('btnConnect').disabled = true;
             //appendConsole("<font color='orange'>connecting ...</font>");
             dispConnectionStatus("<font color='orange'>Connecting ...</font>")
@@ -107,13 +110,40 @@
                    msg = o.value;
                    o.value = '';
                }
-               current_cmd = "speak";
+
                current_tid = make_tracker();
-               data = '{"cmd":"speak", "room_name":"' + current_room + '", "msg":"' + msg + 
-                      '", "tracker":"' + current_tid + '"}';
-               socket.send(data);
-               //console.log("Text message sent: " + msg);
-               appendChatroom('<font color="green">>> ' + msg + '</font>');
+
+               if (msg == '@who') {
+                   current_cmd = "get_room_user_list";
+                   data = '{"cmd":"get_room_user_list", "room_name":"' + current_room + '", "tracker":"' + current_tid + '"}';
+                   socket.send(data);
+                   appendChatroomInfo(msg + ":");
+               } 
+               else if (msg == '@rooms') {
+                   request_src = 'console';
+                   current_cmd = "get_room_list";
+                   data = '{"cmd":"get_room_list", "tracker":"' + current_tid + '"}';
+                   socket.send(data);
+                   appendChatroomInfo(msg + ":");
+               }
+               else if (msg == '@users') {
+                   request_src = "console"
+                   current_cmd = "get_user_list";
+                   data = '{"cmd":"get_user_list", "tracker":"' + current_tid + '"}';
+                   socket.send(data);
+                   appendChatroomInfo(msg + ":");
+               }
+               else if (msg == '@help') {
+                   appendChatroomInfo(msg + ": @who (list room users), @rooms (list rooms), @users (list logged in users)");
+               }
+               else {
+                   current_cmd = "speak";
+                   data = '{"cmd":"speak", "room_name":"' + current_room + '", "msg":"' + msg + 
+                          '", "tracker":"' + current_tid + '"}';
+                   socket.send(data);
+                   //console.log("Text message sent: " + msg);
+                   appendChatroom('<font color="green">>> ' + msg + '</font>');
+               }
             } else {
                //console.log("Connection not opened.")
                appendChatroom("<font color='red'>Connection not opened.</font>");
@@ -158,6 +188,9 @@
              if (c) { c.innerHTML += msg + '<br/>'; }
              updateScroll(c);
              getInputFocus();
+         }
+         function appendChatroomInfo(msg) {
+             appendChatroom('<font color="orange">' + msg + '</font>');
          }
          function checkEnter(e) {
              // look for window.event in case event isn't passed in
@@ -309,6 +342,7 @@
              else if (last_cmd == 'update_pwd')  { handle_cr_update_pwd(status, msg, tracker); }
              else if (last_cmd == 'get_room_list')  { handle_cr_get_room_list(status, msg, tracker); }
              else if (last_cmd == 'get_user_list')  { handle_cr_get_user_list(status, msg, tracker); }
+             else if (last_cmd == 'get_room_user_list')  { handle_cr_get_room_user_list(status, msg, tracker); }
              else if (last_cmd == 'create_room') { handle_cr_create_room(status, msg, tracker); }
              else if (last_cmd == 'invite')      { handle_cr_invite(status, msg, tracker); }
              else if (last_cmd == 'join_room')   { handle_cr_join_room(status, msg, tracker); }
@@ -359,13 +393,13 @@
              if (type == 'join_room') {
                  if (current_room != '') {
                      msg = 'User "' + usr + '" entered room.';
-                     appendChatroom('<font color="orange">' + msg + '</font>');
+                     appendChatroomInfo(msg);
                  }
              }
              else if (type == 'leave_room') {
                  if (current_room != '') {
                      msg = 'User "' + usr + '" left room.';
-                     appendChatroom('<font color="orange">' + msg + '</font>');
+                     appendChatroomInfo(msg);
                  }
              }
              else if (type == 'room_created') {
@@ -453,7 +487,22 @@
          function handle_cr_update_pwd(status, msg, tracker) {
 
          }
+
+         function handle_cr_get_room_list_console(status, msg, tracker) {
+             if (status != 'ok') {
+                 updateInfo(msg, 'error');
+                 return;
+             }
+
+             appendChatroomInfo("Rooms: " + msg);
+         }
          function handle_cr_get_room_list(status, msg, tracker) {
+             if (request_src == 'console') {
+                 handle_cr_get_room_list_console(status, msg, tracker);
+                 request_src = '';
+                 return;
+             }
+
              appendConsole('now populate room list: ' + msg);
              if (status == 'ok') {
                  var o = $('#selectRoomList');
@@ -481,8 +530,31 @@
              }
              document.getElementById('form_room').style.display = 'block';
          }
-         function handle_cr_get_user_list(status, msg, tracker) {
 
+         function handle_cr_get_user_list_console(status, msg, tracker) {
+             if (status != 'ok') {
+                 updateInfo(msg, 'error');
+                 return;
+             }
+
+             appendChatroomInfo("All users: " + msg);
+         }
+         function handle_cr_get_user_list(status, msg, tracker) {
+             if (request_src == 'console') {
+                 handle_cr_get_user_list_console(status, msg, tracker);
+                 request_src = '';
+                 return;
+             }
+
+         }
+
+         function handle_cr_get_room_user_list(status, msg, tracker) {
+             if (status != 'ok') {
+                 updateInfo(msg, 'error');
+                 return;
+             }
+
+             appendChatroomInfo("Room users: " + msg);
          }
          function handle_cr_create_room(status, msg, tracker) {
              if (status != 'ok') {
@@ -506,7 +578,7 @@
              disableChatroom(false);
             
              $('#div_room').html('Room: ' + room_name);
-             appendChatroom('<font color="orange">You created and entered room ' + room_name + '. Now chat here.</font>');
+             appendChatroomInfo('You created and entered room ' + room_name + '. Now chat here. For help, type @help.');
              appendConsole('You created and joined room: ' + room_name);
          }
          function handle_cr_invite(status, msg, tracker) {
@@ -537,7 +609,7 @@
              disableChatroom(false);
 
              $('#div_room').html('Room: ' + room_name);
-             appendChatroom('<font color="orange">You entered room ' + room_name + '. Now chat here.</font>');
+             appendChatroomInfo('You entered room ' + room_name + '. Now chat here. For help, type @help.');
              appendConsole('You joined room: ' + room_name);
          }
          function handle_cr_leave_room(status, msg, tracker) {
@@ -554,7 +626,7 @@
              }
 
              $('#div_room').html('Room: ');
-             appendChatroom('<font color="orange">You left room ' + current_room + '.');
+             appendChatroomInfo('You left room ' + current_room + '.');
 
              var fields = msg.split(':');
              var room_is_gone = (fields.length >= 3 && fields[2] == '0');
@@ -634,10 +706,14 @@
          }
 
          $(document).ready(function() {
-             $('#txtNewRoom').keyup(function (event) {
-                 if(event.which === 13){
+             $('#txtNewRoom').keyup(function (e) {
+                 if(e.which === 13) {
                      doCreateRoom();
                  }
+             });
+
+             $('#btnClearConsole').click(function() {
+                 $('#console').html('');
              });
 
              getInputFocus();
@@ -755,7 +831,7 @@
       <br/>
  
       <div id="debug_console" style="display:none;">
-          Debug console:<br/>
+          Debug console: <a href='#' id='btnClearConsole'>Clear console</a><br/>
           <div id="console"></div>
       </div>
 
