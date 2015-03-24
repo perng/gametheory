@@ -11,6 +11,7 @@
          var isopen = false;
          var current_cmd = '';  // keep track of current status.
          var current_tid = '';  // keep track of current tracker id.
+         var current_user = ''; // keep track of current logged in user.
          var current_room = ''; // keep track of current room.
          var request_src = ''; // used for command line requests @rooms, @users.
          var DEBUG = true;
@@ -240,9 +241,9 @@
              document.getElementById('div_info').innerHTML = msg;
              //document.getElementById('connection_status').innerHTML = msg;
          }
-         function showLogoutMsg() {
-             var me = $('#login_name').val();
-             updateInfo('User "' + me + '" is logged in. <a href="#" onclick="doLogout();">Log out</a>');
+         function ucFirst(s) {
+             if (s.length == 0) return '';
+             return s.substr(0,1).toUpperCase() + s.substr(1);
          }
 
          function showFormReg() {
@@ -336,7 +337,10 @@
              var last_cmd = jo.last_cmd;
              var msg = jo.msg;
              var tracker = jo.tracker;
-             dump(':response: ' + status + ', ' + last_cmd + ', ' + msg + ',' + tracker);
+             //dump(':response: ' + status + ', ' + last_cmd + ', ' + msg + ',' + tracker);
+
+             if (status == 'ok') { updateInfo(''); }
+
              if (last_cmd == 'register')         { handle_cr_register(status, msg, tracker); }
              else if (last_cmd == 'login')       { handle_cr_login(status, msg, tracker); }
              else if (last_cmd == 'update_pwd')  { handle_cr_update_pwd(status, msg, tracker); }
@@ -352,15 +356,13 @@
              else if (last_cmd == 'broadcast')   { handle_cr_broadcast(status, msg, tracker); }
              else if (last_cmd == 'admin_show_table') { handle_cr_admin_show_table(status, msg, tracker); }
              else if (last_cmd == 'logout')      { handle_cr_logout(status, msg, tracker); }
-
-             if (status == 'ok' && last_cmd != 'logout') { showLogoutMsg(); } // recover from error msg if any.
          }
          function handle_c_speak(jo) {
              var msg = jo.msg;
              var usr = jo.usr;
              var room_name = jo.room_name;
              var tracker = jo.tracker;
-             dump(':speak: ' + msg + ',' + room_name + ',' + tracker);
+             //dump(':speak: ' + msg + ',' + room_name + ',' + tracker);
              appendChatroom('>> ' + usr + ': ' + msg);
          }
          function handle_c_whisper(jo) {
@@ -386,10 +388,8 @@
              var type = jo.type;
              var usr = jo.usr;
              var tracker = jo.tracker;
-             dump(':event: ' + type + ',' + usr + ',' + tracker);
+             //dump(':event: ' + type + ',' + usr + ',' + tracker);
              
-             //if (current_room == '') return;
-
              if (type == 'join_room') {
                  if (current_room != '') {
                      msg = 'User "' + usr + '" entered room.';
@@ -413,7 +413,6 @@
                  else if (DEBUG) {
                      dump('Event room_created wrong parameter (no room): ' + usr);
                  }
-
              }
              else if (type == 'room_gone') {
                  var v = usr.split(':');
@@ -427,6 +426,16 @@
                      dump('Event room_created wrong parameter (no room): ' + usr);
                  }
              }
+             else if (type == 'login') {
+                 $('#span_msg').html('User ' + ucFirst(usr) + ' logs in.');
+                 $('#span_msg').show().delay(5000).fadeOut();
+             }
+             else if (type == 'logout') {
+                 var action = (tracker == '' ? ' is disconnected.' : 'logs out.');
+                 $('#span_msg').html('User ' + ucFirst(usr) + action);
+                 $('#span_msg').show().delay(5000).fadeOut();
+             }
+
          }
 
          function addRoom(room_name) {
@@ -476,9 +485,14 @@
                  document.getElementById('span_action').style.display = 'none';
                  document.getElementById('login_pwd').value = ''; // clear password.
                  //updateInfo("You are logged in. <a href='#' onclick='doLogout();'>Log out</a>");
-                 showLogoutMsg();
+
+                 current_user = ucFirst( $('#login_name').val() );
+                 var msg = ' [<a href="#" onclick="doLogout();">Logout</a>] ';
+                 $('#div_logout').html(msg);
+
+                 $('#div_user').html('User: ' + current_user);
+
                  client_get_room_list();
-                 //client_get_user_list();
              } else {
                  updateInfo('Invalid login name or password.', 'error');
                  document.getElementById('login_name').focus();
@@ -494,6 +508,7 @@
                  return;
              }
 
+             msg = msg.split(',').sort().join(', ');
              appendChatroomInfo("Rooms: " + msg);
          }
          function handle_cr_get_room_list(status, msg, tracker) {
@@ -503,7 +518,7 @@
                  return;
              }
 
-             appendConsole('now populate room list: ' + msg);
+             //appendConsole('now populate room list: ' + msg);
              if (status == 'ok') {
                  var o = $('#selectRoomList');
 
@@ -536,7 +551,8 @@
                  updateInfo(msg, 'error');
                  return;
              }
-
+            
+             msg = msg.split(',').sort().join(', ');
              appendChatroomInfo("Users: " + msg);
          }
          function handle_cr_get_user_list(status, msg, tracker) {
@@ -635,7 +651,7 @@
              }
 
              $('#selectRoomList').removeAttr('disabled');
-             $('#btnJoinRoom').val('Join a room');
+             $('#btnJoinRoom').val('Join Room');
              $('#spanCreateRoom').show();
              current_room = '';
              disableChatroom(true);
@@ -670,6 +686,7 @@
          }
          function handle_cr_logout(status, msg, tracker) {
              if (status == 'ok') {
+                 $('#div_logout').html('');
                  updateInfo('You are logged out.', 'info');
                  document.getElementById('span_action').style.display = 'block';
 
@@ -685,11 +702,14 @@
              // clean up the select room list.
              $('#selectRoomList').children().remove();
              $('#selectRoomList').removeAttr('disabled');
-             $('#btnJoinRoom').val('Join a room');
+             $('#btnJoinRoom').val('Join Room');
              $('#spanCreateRoom').show();
+             current_user = '';
              current_room = '';
              disableChatroom(true);
 
+             $('#div_logout').html('');
+             $('#div_user').html('User: ');
              $('#div_room').html('Room: ');
              updateInfo('');
          }
@@ -726,7 +746,7 @@
 
       <style type="text/css">
       #chatroom {
-        height: 200px;
+        height: 300px;
         width: 720px;
         background-color: #eeeeff;
         overflow:auto;
@@ -751,23 +771,36 @@
         background-color:#eeeeee; 
         border: solid 1px #dddddd;
       }
+      #div_user {
+        position: absolute;
+        overflow:hidden;
+        white-space: nowrap;
+        float:left; line-height:25px;
+        padding-left: 5px;
+        padding-right:5px;
+        height:23px;
+        width:110px;
+        color:#666;
+        border: solid 1px #cccccc;
+      }
       #div_room {
         position: absolute; 
+        left: 120px;
         overflow:hidden; 
         white-space: nowrap; 
         float:left; line-height:25px; 
         padding-left: 5px;
         padding-right:5px; 
         height:23px; 
-        width:160px; 
+        width:140px; 
         color:#666; 
         border: solid 1px #cccccc;
       }
       #div_msg {
         position: absolute; 
         padding-left:5px; 
-        left:170px; 
-        width:541px; 
+        left:270px; 
+        width:441px; 
         height:23px; 
         border: solid 1px #cccccc;
         color: orange;
@@ -779,7 +812,9 @@
 
       Server: ws://<input type="text" id="ws" value="127.0.0.1:9000"/>
       <input type='button' id='btnConnect' onclick='btnConnect_onclick(this);' value='Connect'></input>
-      <span id='connection_status'></span>&nbsp;&nbsp;<span id="div_info"></span>
+      <span id='connection_status'></span>&nbsp;&nbsp;
+      <span id='div_logout'></span>
+      <span id="div_info"></span>
       <br/><br/>
 
       <span id='span_action' style='display:none;'>
@@ -801,28 +836,29 @@
       </span>
 
       <div id='form_room' style='display:none;'>
-      <input id="btnJoinRoom" type="button" value="Join a room" onclick='doJoinRoom();'/>
+      <input id="btnJoinRoom" type="button" value="Join Room" onclick='doJoinRoom();'/>
       <select id="selectRoomList"><option value="">-- select room --</option></select>
 
       <span id='spanCreateRoom'>
       or
-      <input id="btnCreateRoom" type="button" value="Create a room" onclick='doCreateRoom();'/>
-      new room: <input type="text" id="txtNewRoom"/>
+      <!--input id="btnCreateRoom" type="button" value="Create Room" onclick='doCreateRoom();'/-->
+      Create Room: <input type="text" id="txtNewRoom"/>
       </span>
       <br/><br/>
       </div>
 
       <input type="text" id="txtMsg" onkeypress="checkEnter(event);" size="50"/>
-      <button id='btnSendTxt' onclick='sendText();'>Send Text Message</button>
+      <button style='display:none;' id='btnSendTxt' onclick='sendText();'>Send Text Message</button>
       <button style='display:none;' id='btnSendBin' onclick='sendBinary();'>Send Binary Message</button>
-      <button onclick='clearChatroom();'>Clear Chat History</button>
-      <button onclick="selectText('chatroom');">Select/Copy Chat History</button>
+      <button onclick='clearChatroom();' title='Clear chat history'>Clear History</button>
+      <button onclick="selectText('chatroom');" title='Select history for copy'>Select History</button>
 
       <br/><br/>
 
       <div id="chatroom"></div>
 
       <div id="div_status">
+          <div id='div_user'>User: </div>
           <div id='div_room'>Room: </div>
           <div id='div_msg'>
               <span id='span_msg' style='color: orange;'></span>

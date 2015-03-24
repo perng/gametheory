@@ -388,9 +388,6 @@ class Cls_Chatroom():
 
         msg = self.make_msg_c_broadcast(msg, usr, tracker)
         self.broadcast_to_all(msg, src)
-        #for target_src in self.T_users_active:
-        #    if target_src != src:  # do not send to self.
-        #        self.send_msg(self.get_client(target_src), msg)
 
         # send response message to sender.
         response_msg = "message is broadcasted"
@@ -630,7 +627,7 @@ class Cls_Chatroom():
             else:
                 # clear previous session.
                 prev_usr = self.T_users_active[src].name
-                self.logout_cleanup(prev_usr, src)
+                self.logout_cleanup(prev_usr, src, tracker)
 
         if (type == 'reg'): # register user
             if usr not in self.T_users or self.T_users[usr] != pwd:
@@ -652,6 +649,10 @@ class Cls_Chatroom():
         response_msg = "user '" + usr + "' is logged in"
         client = self.get_client(src)
         self.send_c_response("ok", "login", response_msg, usr, client, tracker)
+
+        # send this notification to all users (except sender).
+        msg = self.make_msg_c_event("login", usr, tracker)
+        self.broadcast_to_all(msg, src)
 
  
     def api_update_pwd(self, usr, old_pwd, new_pwd, new_pwd2, src, tracker):
@@ -714,10 +715,10 @@ class Cls_Chatroom():
         client = self.get_client(src)
         self.send_c_response("ok", "logout", response_msg, usr, client, tracker)
 
-        self.logout_cleanup(usr, src)
+        self.logout_cleanup(usr, src, tracker)
 
 
-    def logout_cleanup(self, usr, src):
+    def logout_cleanup(self, usr, src, tracker):
         room_name = self.T_users_active[src].room
         if room_name != "":
             self.T_rooms[room_name].removeUser(src)
@@ -731,6 +732,10 @@ class Cls_Chatroom():
         del self.T_users_active[src]
         del self.T_users_src[usr]
 
+        # send this notification to all users (except sender).
+        msg = self.make_msg_c_event("logout", usr, tracker)
+        self.broadcast_to_all(msg, src)
+
 
     def unregister(self, src):
         """
@@ -742,7 +747,7 @@ class Cls_Chatroom():
         usr = self.T_users_active[src].name
         if DEBUG:
             print "unregister: " + usr + ", " + src
-        self.logout_cleanup(usr, src);
+        self.logout_cleanup(usr, src, '');
 
 
     def dump_db(self, tbl_name, tbl):
