@@ -3,7 +3,7 @@
 
 By: X. Chen
 Created on: 3/18/2015
-Last modified: 3/22/2015
+Last modified: 3/23/2015
 
 
 == About ==
@@ -51,6 +51,7 @@ For unregistered temporary user:
 
 # server will send to this client:
 ok(session_id, user list, room list)/fail
+# server also will send this event notification to all active users.
 
 -- update_pwd
 # only a logged in user can change his/her password.
@@ -150,7 +151,7 @@ message.
 
 # server will send this update to clients in the room
 user exit from room.
-# server will send this update to all clients (optional, can be expensive)
+# server will send this update to all clients.
 
 
 -- Optional server API field: tracker --
@@ -205,7 +206,6 @@ send "0" as the value of tracker in response messages.
 
 # only client 3 should receive this, since he is the one being invited.
 {"cmd":"invite", "room_name":"nerdhaus", "invitee":"user3"}
-
 
 >>> test invite
 
@@ -352,11 +352,10 @@ These types are defined: c_response
 # For message to be sent certain group of users that user usr has done something defined by type:
 # 1) join_room - send to all users in the room
 # 2) leave_room - send to all users in the room
-# 3) room_created - sent to all users, so they can update their room list.
-# 4) room_gone - sent to all users, so they can update their room list.
-# 5) login - send to all users (optional, since this is expensive. don't do this now)
-# 6) logout - send to all users (optional, since this is expensive. don't do this now)
-#             but can consider send this event to another user in active private chat with usr.
+# 3) room_created - sent to all users
+# 4) room_gone - sent to all users
+# 5) login - send to all users 
+# 6) logout - send to all users
 # the client expects to receive:
 {"cmd":"c_event", "type":type, "user":usr, "tracker":tracker}
 
@@ -439,6 +438,16 @@ open client.html in a browser.
 
 
 == Change Log ==
+
+-- 3/23/2015 --
+
+* UI functions:
+  - display room users (done in console)
+  - display all users (done in console)
+  - display all rooms (done in console)
+  - when a user logs in/out, show msg in status bar. (done)
+* added event login/logout to push to users; 
+* improved client.html: updated UI, and miscellaneous.
 
 -- 3/22/2015 --
 
