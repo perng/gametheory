@@ -14,8 +14,22 @@
          var current_user = ''; // keep track of current logged in user.
          var current_room = ''; // keep track of current room.
          var request_src = ''; // used for command line requests @rooms, @users.
+
+         // If this is not empty, the server address textbox and connect button will
+         // be hidden, and when the page is loaded it will automatically connect to 
+         // server given by the value of AUTO_CONNECT.
+         var AUTO_CONNECT = ''; 
+         //AUTO_CONNECT = 'ws://127.0.0.1:9000';
+
+         // If DEBUG is true, the debug console will be shown.
          var DEBUG = true;
          //DEBUG = false;
+
+         function send_data(data) {
+             appendConsole('==> Send: ' + data);
+             socket.send(data);
+         }
+
          function doDisconnect(startup) {
              if (! startup && ! confirm('Are you sure to disconnect?')) return;
 
@@ -47,13 +61,21 @@
             //appendConsole("<font color='orange'>connecting ...</font>");
             dispConnectionStatus("<font color='orange'>Connecting ...</font>")
             var ws = "ws://" + document.getElementById('ws').value;
+            if (AUTO_CONNECT != '') ws = AUTO_CONNECT;
+
             socket = new WebSocket(ws); 
             socket.binaryType = "arraybuffer";
             socket.onopen = function() {
                //console.log("Connected!");
                isopen = true;
-               //appendConsole("<font color='green'>Connected!</font>");
-               dispConnectionStatus("<font color='green'>Connected!</font>");
+
+               if (AUTO_CONNECT != '') {
+                   dispConnectionStatus("Welcome to chatroom.");
+               } else {
+                   //dispConnectionStatus("<font color='green'>Connected!</font>");
+                   dispConnectionStatus('');
+               }
+
                updateInfo('');
                toggleButton(false);
             }
@@ -117,21 +139,21 @@
                if (msg == '@who') {
                    current_cmd = "get_room_user_list";
                    data = '{"cmd":"get_room_user_list", "room_name":"' + current_room + '", "tracker":"' + current_tid + '"}';
-                   socket.send(data);
+                   send_data(data);
                    appendChatroomInfo(msg + ":");
                } 
                else if (msg == '@rooms') {
                    request_src = 'console';
                    current_cmd = "get_room_list";
                    data = '{"cmd":"get_room_list", "tracker":"' + current_tid + '"}';
-                   socket.send(data);
+                   send_data(data);
                    appendChatroomInfo(msg + ":");
                }
                else if (msg == '@users') {
                    request_src = "console"
                    current_cmd = "get_user_list";
                    data = '{"cmd":"get_user_list", "tracker":"' + current_tid + '"}';
-                   socket.send(data);
+                   send_data(data);
                    appendChatroomInfo(msg + ":");
                }
                else if (msg == '@help') {
@@ -141,7 +163,7 @@
                    current_cmd = "speak";
                    data = '{"cmd":"speak", "room_name":"' + current_room + '", "msg":"' + msg + 
                           '", "tracker":"' + current_tid + '"}';
-                   socket.send(data);
+                   send_data(data);
                    //console.log("Text message sent: " + msg);
                    appendChatroom('<font color="green">>> ' + msg + '</font>');
                }
@@ -169,7 +191,7 @@
                    }
                }
 
-               socket.send(buf);
+               send_data(buf);
                //console.log("Binary message sent.");
                appendConsole("Binary message sent: " + decodeBinaryMsg(arr));
                o.value = '';
@@ -255,6 +277,7 @@
              document.getElementById('form_reg').style.display='none';
              document.getElementById('form_login').style.display='block';
              document.getElementById('login_name').focus();
+             $('#div_info').html('');
          }
          function doRegister() {
              var usr = document.getElementById('reg_name').value.trim();
@@ -268,7 +291,7 @@
              var msg = '{"cmd":"register","usr":"' + usr + '","pwd":"' + pwd + '","tracker":"' + current_tid + '"}';
              //alert(msg);
              current_cmd = 'register';
-             socket.send(msg);
+             send_data(msg);
          }
          function doLogin() {
              var usr = document.getElementById('login_name').value;
@@ -278,12 +301,12 @@
                         pwd + '","tracker":"' + current_tid + '"}';
              //alert(msg);
              current_cmd = 'login';
-             socket.send(msg);
+             send_data(msg);
          }
          function doLogout() {
              if (! confirm('Are you sure to log out?')) return;
              var msg = '{"cmd":"logout"}';
-             socket.send(msg);
+             send_data(msg);
          }
          function doCreateRoom() {
              var r = $('#txtNewRoom'); 
@@ -294,7 +317,7 @@
                  return;
              }
              var msg = '{"cmd":"create_room","room_name":"' + room_name + '"}';
-             socket.send(msg);
+             send_data(msg);
          }
          function doJoinRoom() {
              var v = $('#btnJoinRoom').val();
@@ -304,7 +327,7 @@
                  if (current_room == '') return;
                  var msg = '{"cmd":"leave_room", "room_name":"' + current_room + 
                            '", "tracker":"' + current_tid + '"}';
-                 socket.send(msg);
+                 send_data(msg);
              }
              else {
                  current_cmd = "join_room";
@@ -315,7 +338,7 @@
                  }
                  var msg = '{"cmd":"join_room", "room_name":"' + room_name + 
                            '", "tracker":"' + current_tid + '"}';
-                 socket.send(msg);
+                 send_data(msg);
              }
          }
 
@@ -717,12 +740,12 @@
          function client_get_room_list() {
              var tracker = make_tracker();
              var msg = '{"cmd":"get_room_list", "tracker":"' + tracker + '"}';
-             socket.send(msg);
+             send_data(msg);
          }
          function client_get_user_list() {
              var tracker = make_tracker();
              var msg = '{"cmd":"get_user_list", "tracker":"' + tracker + '"}';
-             socket.send(msg);
+             send_data(msg);
          }
 
          $(document).ready(function() {
@@ -740,6 +763,12 @@
 
              if (DEBUG) {
                  $('#debug_console').show();
+             }
+
+             doDisconnect(true); // initialize to clean state.
+             if (AUTO_CONNECT != '') {
+                 $('#div_server').hide();
+                 doConnect();
              }
          });
       </script>
@@ -807,11 +836,14 @@
       }
       </style>
    </head>
-   <body onload="doDisconnect(true);">
+   <body>
       <h1>Websocket Chatroom</h1>
 
+      <span id='div_server'>
       Server: ws://<input type="text" id="ws" value="127.0.0.1:9000"/>
       <input type='button' id='btnConnect' onclick='btnConnect_onclick(this);' value='Connect'></input>
+      </span>
+
       <span id='connection_status'></span>&nbsp;&nbsp;
       <span id='div_logout'></span>
       <span id="div_info"></span>
