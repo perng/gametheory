@@ -15,13 +15,8 @@
          var current_room = ''; // keep track of current room.
          var request_src = ''; // used for command line requests @rooms, @users.
 
-         // This is used when join a room from a previous room.
-         // In that case, must first leave the first room, and then when
-         // server ok response comes back, enter new room specified here.
-         var room_to_join = '';
-
-         // If this is not empty, the server address textbox and connect button will
-         // be hidden, and when the page is loaded it will automatically connect to 
+         // If this is not empty, the server textbox and connect button will
+         // be hidden, and when the page is loaded it'll automatically connect to 
          // server given by the value of AUTO_CONNECT.
          var AUTO_CONNECT = ''; 
          //AUTO_CONNECT = 'ws://127.0.0.1:9000';
@@ -156,25 +151,36 @@
                    //appendChatroomInfo(msg + ":");
                }
                else if (msg == '@help') {
-                   appendChatroomInfo(msg + ": @who (list room users), @rooms (list rooms), @users (list logged in users)");
+                   appendChatroomInfo(msg + 
+": @rooms (list rooms), @who (list room users), @users (list logged in users), @create {room} (create and join a room), @join {room} (join a room), @leave (leave a room), @where (show current name)");
                }
                else if (msg == '@leave') {
                    doLeaveRoom();
                }
+               else if (msg == '@create') {
+                   appendChatroomInfo('@create: please provide a room name');
+               }
                else if (msg.startsWith('@create ')) {
                    request_src = "console";
                    var room_name = msg.substr(8); // after '@create '
+                   if (room_name == '') {
+                       appendChatroomInfo('@create: please provide a room name');
+                   }
                    appendConsole('Now create room: ' + room_name);
-                   //if (current_room != '') {
-                   //    doLeaveRoom(); // Leave first if now is in a room.
-                   //}
                    doCreateRoom(room_name);
+               }
+               else if (msg == '@join') {
+                   appendChatroomInfo('@create: please provide a room name');
                }
                else if (msg.startsWith('@join ')) {
                    var room_name = msg.substr(6); // after '@join '
+                   if (room_name == '') {
+                       appendChatroomInfo('@create: please provide a room name');
+                   }
                    appendConsole('Now join room: ' + room_name);
                    doJoinRoom(room_name);
                }
+               // All commands below need a non-empty current_room.
                else if (current_room == '') {
                    //appendChatroomInfo('>> ' + msg);
                    appendChatroomInfo('You are not in a room, text is not sent: ' + msg);
@@ -187,8 +193,19 @@
                    send_data(data);
                    //appendChatroomInfo(msg + ":");
                }
-               else if (msg == '@room') {
-                   appendChatroomInfo('@room: you are in room: ' + current_room);
+               else if (msg == '@where') {
+                   appendChatroomInfo('@where: you are in room: ' + current_room);
+               }
+               else if (msg == '@invite') {
+                   appendChatroomInfo('@create: please provide a user name');
+               }
+               else if (msg.startsWith('@invite ')) {
+                   var user_name = $.trim( msg.substr(8) ); // after '@invite '
+                   if (user_name == '') {
+                       appendChatroomInfo('@create: please provide a user name');
+                   }
+                   appendConsole('Now invite: ' + user_name);
+                   doInvite(user_name);
                }
                else {
                    current_cmd = "speak";
@@ -359,11 +376,6 @@
              send_data(msg);
          }
          function doJoinRoom(room) {
-             //if ($('#btnJoinRoom').val() == 'Leave room') {
-             //    doLeaveRoom();
-             //    return;
-             //}
-
              var room_name = $.trim(room);
              if (room_name == '') {
                  updateInfo('Please select a room to join', 'error');
@@ -374,6 +386,42 @@
              var msg = '{"cmd":"join_room", "room_name":"' + room_name + 
                        '", "tracker":"' + current_tid + '"}';
              send_data(msg);
+         }
+         function doInvite(user) {
+             var user_name = $.trim(user);
+
+             current_tid = make_tracker();
+             current_cmd = "invite";
+             var msg = '{"cmd":"invite", "room_name":"' + current_room +
+                       '", "invitee":"' + user_name +
+                       '", "tracker":"' + current_tid + '"}';
+             send_data(msg);
+         }
+         function doInviteReply(e, v) {
+             // continue only when Enter is pressed.
+             e = e || window.event;
+             if (e.keyCode != 13) { return; }
+
+             v = v.toLowerCase();
+
+             var reply = '';
+             if (v == 'yes' || v == 'y') { reply = 'Y'; }
+             else if (v == 'no' || v == 'n') { reply = 'N'; }
+             else if (v == 'later' || v == 'l') { reply = 'L'; }
+
+             if (reply != '') {
+                 current_tid = make_tracker();
+                 var inviter = $('#inviter').val();
+                 var inviter_room = $('#inviter_room').val();
+                 var msg = '{"cmd":"invite_reply", "inviter":"' + inviter +
+                   '", "room_name":"' + inviter_room + 
+                   '", "reply":"' + reply + '", "tracker":"' + current_tid + '"}';
+                 send_data(msg);
+
+                 $('#span_invite').hide();
+                 $('#txtMsg').removeAttr('disabled');
+                 $('#txtMsg').focus();
+             }
          }
 
          function process_message(msg) {
@@ -386,6 +434,7 @@
              else if (cmd == 'c_whisper') handle_c_whisper(jo);
              else if (cmd == 'c_broadcast') handle_c_broadcast(jo);
              else if (cmd == 'c_invited') handle_c_invited(jo);
+             else if (cmd == 'c_invite_reply') handle_c_invite_reply(jo);
              else if (cmd == 'c_event') handle_c_event(jo);
          }
 
@@ -406,6 +455,7 @@
              else if (last_cmd == 'get_room_user_list')  { handle_cr_get_room_user_list(status, msg, tracker); }
              else if (last_cmd == 'create_room') { handle_cr_create_room(status, msg, tracker); }
              else if (last_cmd == 'invite')      { handle_cr_invite(status, msg, tracker); }
+             else if (last_cmd == 'invite_reply')      { handle_cr_invite_reply(status, msg, tracker); }
              else if (last_cmd == 'join_room')   { handle_cr_join_room(status, msg, tracker); }
              else if (last_cmd == 'leave_room')  { handle_cr_leave_room(status, msg, tracker); }
              else if (last_cmd == 'speak')       { handle_cr_speak(status, msg, tracker); }
@@ -440,6 +490,36 @@
              var room_name = jo.room_name;
              var tracker = jo.tracker;
              dump(':invited: ' + msg + ',' + usr + ',' + room_name + ',' + tracker);
+
+             // disable message box, enable after reply to invitatio request.
+             $('#txtMsg').attr('disabled', 'disabled');
+
+             $('#inviter').val(usr);
+             $('#inviter_room').val(room_name);
+             $('#invite_msg').html(usr + ' invited you to join room ' +
+                                   room_name + ' (yes/no/later)?');
+             $('#span_invite').show();
+             $('#txtInviteReply').focus();
+         }
+         function handle_c_invite_reply(jo) {
+             var msg = jo.msg;
+             var usr = jo.usr;
+             var tracker = jo.tracker;
+             dump(':invited: ' + msg + ',' + usr + ',' + tracker);
+
+             if (msg == 'Y') {
+                 appendChatroomInfo(usr + ' accepted your invitation.');
+             } 
+             else if (msg == 'N') {
+                 appendChatroomInfo(usr + ' rejected your invitation.');
+             } 
+             else if (msg == 'L') {
+                 appendChatroomInfo(usr + ' will accept your invitation later.');
+             }
+             else {
+                 appendChatroomInfo('Unknown invitation reply code: ' + 
+                                    msg + ' from ' + usr);
+             }
          }
          function handle_c_event(jo) {
              var type = jo.type;
@@ -555,6 +635,8 @@
                  // use command interface too, instead of must use 
                  // GUI for create/join room.
                  disableChatroom(false); 
+                 appendChatroomInfo('You are logged in.');
+                 appendChatroomInfo('Type @rooms for room list, @create {room} to create room, @join {room} to join a room, @help for more help.');
              } else {
                  updateInfo('Invalid login name or password.', 'error');
                  document.getElementById('login_name').focus();
@@ -633,12 +715,13 @@
              }
 
              msg = msg.split(',').sort().join(', ');
-             appendChatroomInfo("@who: current room users: " + msg);
+             appendChatroomInfo("@who: current room peers: " + msg);
          }
          function handle_cr_create_room(status, msg, tracker) {
              request_src = '';
              if (status != 'ok') {
                  updateInfo(msg, 'error');
+                 appendChatroomInfo(msg);
                  return;
              }
 
@@ -666,8 +749,57 @@
              appendConsole('You created and joined room: ' + room_name);
          }
          function handle_cr_invite(status, msg, tracker) {
+             if (status != 'ok') {
+                 appendChatroomInfo(msg);
+                 return;
+             }
+             var v = msg.split(':');
+             if (v.length < 2) {
+                 updateInfo('invalid invite msg: ' + msg, 'error');
+                 appendChatroom('Error happened when invite user to join.');
+                 return;
+             }
 
+             var invitee = v[0];
+             appendChatroomInfo('You invited ' + invitee + ' to join.');
          }
+         function handle_cr_invite_reply(status, msg, tracker) {
+             if (status != 'ok') {
+                 appendChatroomInfo(msg);
+                 return;
+             }
+             var v = msg.split(':');
+             if (v.length < 3) {
+                 updateInfo('invalid invite msg: ' + msg, 'error');
+                 //appendChatroom('invalid invite reply message.');
+                 return;
+             }
+
+             var inviter = v[0];
+             var room = v[1];
+             var reply = v[2];
+
+             if (reply == 'Y') {
+                 msg = 'You accepted invitation of ' + 
+                       inviter +' to join room ' + room + '.';
+             }
+             else if (reply == 'N') {
+                 msg = 'You rejected invitation of ' + 
+                       inviter +' to join room ' + room + '.';
+             }
+             else if (reply == 'L') {
+                 msg = 'You will accept invitation of ' + 
+                       inviter +' to join room ' + room + ' later.';
+             } else {
+                 msg = 'invalid invite reply message.';
+             }
+             appendChatroomInfo(msg);
+
+             if (reply == 'Y') {
+                 doJoinRoom(room);
+             }
+         }
+
          function handle_cr_join_room(status, msg, tracker) {
              if (status != 'ok') {
                  //updateInfo(msg, 'error');
@@ -699,30 +831,21 @@
              //disableChatroom(false);
 
              $('#div_room').html('Room: ' + room_name);
-             appendChatroomInfo('You entered room ' + room_name + '. Now chat here. For help, type @help.');
+             appendChatroomInfo('You entered room ' + room_name + 
+                                '. Now chat here. For help, type @help.');
              appendConsole('You joined room: ' + room_name);
          }
          function handle_cr_leave_room(status, msg, tracker) {
              if (status != 'ok') {
                  updateInfo(msg, 'error');
-                 if (room_to_join != '') {
-                     appendChatroomInfo('cannot leave room ' + current_room + 
-                                        ' to join room ' + room_to_join);
-                     room_to_join = '';
-                 }
                  return;
              }
              if (tracker != current_tid) {
-                 if (DEUBG) {
+                 if (DEBUG) {
                      msg = 'leave room message with wrong tracker.';
                      updateInfo(msg, 'error');
                  }
                  updateInfo(msg, 'error');
-                 if (room_to_join != '') {
-                     appendChatroomInfo('cannot leave room ' + current_room + 
-                                        ' to join room ' + room_to_join);
-                     room_to_join = '';
-                 }
                  return;
              }
 
@@ -740,11 +863,6 @@
              $('#spanCreateRoom').show();
              current_room = '';
              //disableChatroom(true);
-
-             if (room_to_join != '') {
-                 doJoinRoom(room_to_join);
-                 room_to_join = '';
-             }
          }
          function handle_cr_speak(status, msg, tracker) {
              if (status != 'ok') {
@@ -756,10 +874,10 @@
              if (tracker != current_tid) {
                  if (DEUBG) {
                      msg = 'speak message with wrong tracker.';
-                     //appendChatroom('<font color="red">Received message with wrong tracker ' 
+                     //appendChatroom('<font color="red">Wrong tracker ' 
                      //               + tracker + ': ' + msg + '</font>');
                      // Note this is possible when the user speaks too fast that
-                     // he sends another msg before response of the first msg comes back.
+                     // he sends a msg before response of the first msg comes back.
                      return;
                  }
                  return;
@@ -909,6 +1027,14 @@
         border: solid 1px #cccccc;
         color: orange;
       }
+      #span_invite {
+          background-color: #ccffcc;
+          border: solid 1px #99cc99;
+          position: absolute;
+          top: 130px;
+          left: 150px;
+          padding: 5px;
+      }
       </style>
    </head>
    <body>
@@ -962,7 +1088,14 @@
 
       <br/><br/>
 
-      <div id="chatroom"></div>
+      <div id="chatroom">
+          <span id='span_invite' style='display:none;'>
+          <span id='invite_msg'></span>
+          <input type='text' id='txtInviteReply' onkeypress="doInviteReply(event, this.value);" style="width: 100px;"/>
+          <span id='inviter' style='display:none;'></span>
+          <span id='inviter_room' style='display:none;'></span>
+          </span>
+      </div>
 
       <div id="div_status">
           <div id='div_user'>User: </div>
