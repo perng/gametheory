@@ -136,6 +136,12 @@ class Cls_Chatroom():
                 room_name = self.get_param('room_name')
                 self.api_invite(invitee, room_name, usr, src, tracker)
 
+            elif cmd == "invite_reply":
+                inviter = self.get_param('inviter')
+                room_name = self.get_param('room_name')
+                reply = self.get_param('reply')
+                self.api_invite_reply(inviter, room_name, reply, usr, src, tracker)
+
             elif cmd == "join_room":
                 room_name = self.get_param('room_name')
                 self.api_join_room(room_name, usr, src, tracker)
@@ -491,8 +497,7 @@ class Cls_Chatroom():
 
         # If invitee is already in room, shouln't receive another invitation.
         if self.T_rooms[room_name].containsUsername(invitee):
-            raise Exception("invitee '" + invitee + \
-                  "' is already in room '" + room_name + "'")
+            raise Exception(invitee + " is already in room " + room_name)
 
         """
         Now, send room invitation message to the invitee.
@@ -502,7 +507,8 @@ class Cls_Chatroom():
         self.send_msg(self.get_client(target_src), msg)
 
         # send response message to sender.
-        response_msg = "user '" + invitee + "' is invited to room '" + room_name + "'"
+        response_msg = invitee + ":" + room_name  
+        # "user '" + invitee + "' is invited to room '" + room_name + "'"
         client = self.get_client(src)
         self.send_c_response("ok", "invite", response_msg, usr, client, tracker)
 
@@ -514,6 +520,42 @@ class Cls_Chatroom():
         msg = usr + " invited you to room " + room_name
         data = {"cmd":"c_invited", 
                 "msg":msg, "room_name":room_name, "usr":usr, "tracker":tracker}
+        return json.JSONEncoder().encode(data)
+
+
+    def api_invite_reply(self, inviter, room_name, reply, usr, src, tracker):
+        """
+        Invitee can reply: Yes/No/Later.
+        Only inviter receives this.
+        """
+        self.validate_active_user(src)
+        self.validate_active_room(room_name)
+        self.validate_active_user_name(inviter)
+
+        valid_reply = ["Y", "N", "L"]
+        if not reply in valid_reply:
+            raise Exception('Unknown reply code: ' + reply)
+
+        """
+        Now, send reply message to the inviter.
+        """
+        msg = self.make_msg_c_invite_reply(reply, usr, tracker)
+        #target_src = self.T_users_src[inviter]  # get latest src of inviter
+        target_src = self.T_rooms[room_name].getUserSrc(inviter)
+        self.send_msg(self.get_client(target_src), msg)
+
+        # send response message to sender. optional for invitee.
+        response_msg = inviter + ":" + room_name + ":" + reply
+        # "replied to inviter '" + inviter + "' in room '" + room_name + "'"
+        client = self.get_client(src)
+        self.send_c_response("ok", "invite_reply", response_msg, usr, client, tracker)
+
+    """
+    'c_invited' is a client side API call.
+    """
+    def make_msg_c_invite_reply(self, reply, usr, tracker):
+        data = {"cmd":"c_invite_reply",
+                "msg":reply, "usr":usr, "tracker":tracker}
         return json.JSONEncoder().encode(data)
 
 
@@ -783,6 +825,7 @@ class Cls_Room():
     def __init__(self, room_name):
         self.room_name = room_name
         self.user_list = {}  # entry: src:usr
+        self.user_src = {}   # entry: usr:src. Used by invite_reply only.
 
     def __str__(self):
         return "[room - name: " + self.room_name \
@@ -793,6 +836,7 @@ class Cls_Room():
 
     def addUser(self, src, usr):
         self.user_list[src] = usr
+        self.user_src[usr]  = src  # Used by invite_reply only.
 
     def removeUser(self, src):
         if src in self.user_list:
@@ -809,6 +853,11 @@ class Cls_Room():
 
     def getUserSrcList(self):
         return self.user_list.keys()
+
+    def getUserSrc(self, usr):    # Used by invite_reply only.
+        if usr not in self.user_src:
+            return ''
+        return self.user_src[usr]
 
     def isEmpty(self):
         if DEBUG and not self.user_list:
