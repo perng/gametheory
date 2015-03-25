@@ -452,6 +452,13 @@ class Cls_Chatroom():
         if room_name in self.T_rooms:
             raise Exception("Room '" + room_name + "' already exists")
 
+        # If user was in another room, he needs to quit there first.
+        # Ideally a user will call api_leave_room first before calling
+        # api_create_room, but it may not be done properly by client.
+        prev_room = self.T_users_active[src].room
+        if prev_room != "":
+            self.api_leave_room(prev_room, usr, src, tracker)
+
         room = Cls_Room(room_name)  # create a Room object.
         room.addUser(src, usr);         # add first user.
         self.T_users_active[src].setRoom(room_name)
@@ -524,10 +531,10 @@ class Cls_Chatroom():
 
         # If user was in another room, he needs to quit there first.
         # Ideally a user will call api_leave_room first before calling
-        # api_join_room, but sometimes it may not be done properly by client.
+        # api_join_room, but it may not be done properly by client.
         prev_room = self.T_users_active[src].room
         if prev_room != "":
-            self.api_leave_room(prev_room, usr, src)
+            self.api_leave_room(prev_room, usr, src, tracker)
 
         self.T_users_active[src].setRoom(room_name)
         self.T_rooms[room_name].addUser(src, usr)
