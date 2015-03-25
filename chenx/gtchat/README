@@ -29,7 +29,7 @@ No persistence is used at this time, user data is cached in memory.
 API commands: 
 register, login, update_pwd, 
 get_room_list, get_user_list, get_room_user_list
-create_room, invite, join_room, leave_room, 
+create_room, invite, invite_reply, join_room, leave_room, 
 speak, whisper, broadcast, logout
 admin_show_table
 
@@ -93,6 +93,16 @@ new room created.
 # server will send to invitee:
 {"cmd":"c_invited", "msg":msg, "room_name":room_name, "usr":usr}
 # c_invited is a client side API call, that client should handle for properly display.
+
+-- invite_reply
+# server expects to receive:
+{"cmd":"invite_reply", "inviter":"user", "room_name":"room1", "reply":reply}
+# reply code can one of Y (yes), N (no) , L (later).
+
+# server will send to inviter:
+{"cmd":"c_invite_reply", "msg":reply, "usr":usr}
+# c_invited_reply is a client side API call, that client should handle for properly display.
+# for chatroom, c_invited_reply also will redirect user to the invited room, if reply is yes.
 
 -- join_room
 # server expects to receive:
@@ -427,7 +437,9 @@ open client.html in a browser.
 - testing framework:
   - provide suites of test cases (in progress)
   - multiple clients test
-- separate chatroom.py from server.py as a single file (can leave to later)
+- api call update_pwd
+- api call whisper
+- api call broadcast
 - api call to get active users list (done)
 - api call to query status of a sepecific user.
 - api call to get active room list (done)
@@ -438,6 +450,12 @@ open client.html in a browser.
 
 
 == Change Log ==
+
+-- 3/24/2015 --
+
+* Finished create/leave/join in command line
+* Finished invite/invite_reply
+* UI update.
 
 -- 3/23/2015 --
 
