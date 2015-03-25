@@ -12,5 +12,4 @@ Will add remote human/humna play.
   - specify black/white
 - moves
 - end game
-- 
 - For now, just support 1 game per player
