@@ -15,6 +15,11 @@
          var current_room = ''; // keep track of current room.
          var request_src = ''; // used for command line requests @rooms, @users.
 
+         // This is used when join a room from a previous room.
+         // In that case, must first leave the first room, and then when
+         // server ok response comes back, enter new room specified here.
+         var room_to_join = '';
+
          // If this is not empty, the server address textbox and connect button will
          // be hidden, and when the page is loaded it will automatically connect to 
          // server given by the value of AUTO_CONNECT.
@@ -136,28 +141,54 @@
 
                current_tid = make_tracker();
 
-               if (msg == '@who') {
-                   current_cmd = "get_room_user_list";
-                   data = '{"cmd":"get_room_user_list", "room_name":"' + current_room + '", "tracker":"' + current_tid + '"}';
-                   send_data(data);
-                   appendChatroomInfo(msg + ":");
-               } 
-               else if (msg == '@rooms') {
+               if (msg == '@rooms') {
                    request_src = 'console';
                    current_cmd = "get_room_list";
                    data = '{"cmd":"get_room_list", "tracker":"' + current_tid + '"}';
                    send_data(data);
-                   appendChatroomInfo(msg + ":");
+                   //appendChatroomInfo(msg + ":");
                }
                else if (msg == '@users') {
                    request_src = "console"
                    current_cmd = "get_user_list";
                    data = '{"cmd":"get_user_list", "tracker":"' + current_tid + '"}';
                    send_data(data);
-                   appendChatroomInfo(msg + ":");
+                   //appendChatroomInfo(msg + ":");
                }
                else if (msg == '@help') {
                    appendChatroomInfo(msg + ": @who (list room users), @rooms (list rooms), @users (list logged in users)");
+               }
+               else if (msg == '@leave') {
+                   doLeaveRoom();
+               }
+               else if (msg.startsWith('@create ')) {
+                   request_src = "console";
+                   var room_name = msg.substr(8); // after '@create '
+                   appendConsole('Now create room: ' + room_name);
+                   //if (current_room != '') {
+                   //    doLeaveRoom(); // Leave first if now is in a room.
+                   //}
+                   doCreateRoom(room_name);
+               }
+               else if (msg.startsWith('@join ')) {
+                   var room_name = msg.substr(6); // after '@join '
+                   appendConsole('Now join room: ' + room_name);
+                   doJoinRoom(room_name);
+               }
+               else if (current_room == '') {
+                   //appendChatroomInfo('>> ' + msg);
+                   appendChatroomInfo('You are not in a room, text is not sent: ' + msg);
+                   appendChatroomInfo('Type @rooms for room list, @create {room} to create room, @join {room} to join a room, @help for more help.');
+                   appendConsole('Type message before join a room:' + msg);
+               }
+               else if (msg == '@who') {
+                   current_cmd = "get_room_user_list";
+                   data = '{"cmd":"get_room_user_list", "room_name":"' + current_room + '", "tracker":"' + current_tid + '"}';
+                   send_data(data);
+                   //appendChatroomInfo(msg + ":");
+               }
+               else if (msg == '@room') {
+                   appendChatroomInfo('@room: you are in room: ' + current_room);
                }
                else {
                    current_cmd = "speak";
@@ -308,38 +339,41 @@
              var msg = '{"cmd":"logout"}';
              send_data(msg);
          }
-         function doCreateRoom() {
-             var r = $('#txtNewRoom'); 
-             var room_name = $.trim(r.val());
+         function doCreateRoom(room) {
+             var room_name = $.trim(room);
              if (room_name == '') {
                  updateInfo("Please enter a room name.", 'error');
-                 r.focus();
+                 if (request_src != 'concole') $('#txtNewRoom').focus();
                  return;
              }
              var msg = '{"cmd":"create_room","room_name":"' + room_name + '"}';
              send_data(msg);
          }
-         function doJoinRoom() {
-             var v = $('#btnJoinRoom').val();
+         function doLeaveRoom() {
+             if (current_room == '') return;
+
              current_tid = make_tracker();
-             if (v == 'Exit room') {
-                 current_cmd = "leave_room";
-                 if (current_room == '') return;
-                 var msg = '{"cmd":"leave_room", "room_name":"' + current_room + 
-                           '", "tracker":"' + current_tid + '"}';
-                 send_data(msg);
+             current_cmd = "leave_room";
+             var msg = '{"cmd":"leave_room", "room_name":"' + current_room +
+                       '", "tracker":"' + current_tid + '"}';
+             send_data(msg);
+         }
+         function doJoinRoom(room) {
+             //if ($('#btnJoinRoom').val() == 'Leave room') {
+             //    doLeaveRoom();
+             //    return;
+             //}
+
+             var room_name = $.trim(room);
+             if (room_name == '') {
+                 updateInfo('Please select a room to join', 'error');
+                 return;
              }
-             else {
-                 current_cmd = "join_room";
-                 var room_name = $('#selectRoomList').val();
-                 if (room_name == '') {
-                     updateInfo('Please select a room to join', 'error');
-                     return;
-                 }
-                 var msg = '{"cmd":"join_room", "room_name":"' + room_name + 
-                           '", "tracker":"' + current_tid + '"}';
-                 send_data(msg);
-             }
+             current_tid = make_tracker();
+             current_cmd = "join_room";
+             var msg = '{"cmd":"join_room", "room_name":"' + room_name + 
+                       '", "tracker":"' + current_tid + '"}';
+             send_data(msg);
          }
 
          function process_message(msg) {
@@ -516,6 +550,11 @@
                  $('#div_user').html('User: ' + current_user);
 
                  client_get_room_list();
+
+                 // enable chatroom once logged in, so user can
+                 // use command interface too, instead of must use 
+                 // GUI for create/join room.
+                 disableChatroom(false); 
              } else {
                  updateInfo('Invalid login name or password.', 'error');
                  document.getElementById('login_name').focus();
@@ -532,7 +571,7 @@
              }
 
              msg = msg.split(',').sort().join(', ');
-             appendChatroomInfo("Rooms: " + msg);
+             appendChatroomInfo("@rooms: " + msg);
          }
          function handle_cr_get_room_list(status, msg, tracker) {
              if (request_src == 'console') {
@@ -576,7 +615,7 @@
              }
             
              msg = msg.split(',').sort().join(', ');
-             appendChatroomInfo("Users: " + msg);
+             appendChatroomInfo("@users: " + msg);
          }
          function handle_cr_get_user_list(status, msg, tracker) {
              if (request_src == 'console') {
@@ -594,9 +633,10 @@
              }
 
              msg = msg.split(',').sort().join(', ');
-             appendChatroomInfo("Room users: " + msg);
+             appendChatroomInfo("@who: current room users: " + msg);
          }
          function handle_cr_create_room(status, msg, tracker) {
+             request_src = '';
              if (status != 'ok') {
                  updateInfo(msg, 'error');
                  return;
@@ -612,10 +652,14 @@
              }));
              $('#selectRoomList').val(room_name); // set as current option.
              $('#selectRoomList').attr('disabled', 'disabled');
-             $('#btnJoinRoom').val('Exit room');
+             $('#btnJoinRoom').val('Leave room');
              $('#spanCreateRoom').hide();
+
+             if (current_room != '') {
+                 appendChatroomInfo('You left room ' + current_room);
+             }
              current_room = room_name;
-             disableChatroom(false);
+             //disableChatroom(false);
             
              $('#div_room').html('Room: ' + room_name);
              appendChatroomInfo('You created and entered room ' + room_name + '. Now chat here. For help, type @help.');
@@ -626,27 +670,33 @@
          }
          function handle_cr_join_room(status, msg, tracker) {
              if (status != 'ok') {
-                 updateInfo(msg, 'error');
+                 //updateInfo(msg, 'error');
+                 appendChatroomInfo(msg);
                  return;
              }
              if (tracker != current_tid) {
                  if (DEUBG) {
                      msg = 'join room message with wrong tracker.';
                      updateInfo(msg, 'error');
+                     appendChatroomInfo('Error: ' + msg);
                  }
                  return;
              }
 
-             //var fields = msg.split(':');
-             // could compare fields[1] with room_name below, should match.
+             var v = msg.split(':');
+             if (v.length < 2 || v[1] == '') {
+                 updateInfo("join_room: invalid room name.");
+                 return;
+             }
+             var room_name = v[1];
 
-             room_name = $('#selectRoomList').val();
-             //$('#selectRoomList').val(room_name); // set as current option.
+             //room_name = $('#selectRoomList').val();
+             $('#selectRoomList').val(room_name); // set as current option.
              $('#selectRoomList').attr('disabled', 'disabled');
-             $('#btnJoinRoom').val('Exit room');
+             $('#btnJoinRoom').val('Leave room');
              $('#spanCreateRoom').hide();
              current_room = room_name;
-             disableChatroom(false);
+             //disableChatroom(false);
 
              $('#div_room').html('Room: ' + room_name);
              appendChatroomInfo('You entered room ' + room_name + '. Now chat here. For help, type @help.');
@@ -655,12 +705,23 @@
          function handle_cr_leave_room(status, msg, tracker) {
              if (status != 'ok') {
                  updateInfo(msg, 'error');
+                 if (room_to_join != '') {
+                     appendChatroomInfo('cannot leave room ' + current_room + 
+                                        ' to join room ' + room_to_join);
+                     room_to_join = '';
+                 }
                  return;
              }
              if (tracker != current_tid) {
                  if (DEUBG) {
                      msg = 'leave room message with wrong tracker.';
                      updateInfo(msg, 'error');
+                 }
+                 updateInfo(msg, 'error');
+                 if (room_to_join != '') {
+                     appendChatroomInfo('cannot leave room ' + current_room + 
+                                        ' to join room ' + room_to_join);
+                     room_to_join = '';
                  }
                  return;
              }
@@ -678,7 +739,12 @@
              $('#btnJoinRoom').val('Join Room');
              $('#spanCreateRoom').show();
              current_room = '';
-             disableChatroom(true);
+             //disableChatroom(true);
+
+             if (room_to_join != '') {
+                 doJoinRoom(room_to_join);
+                 room_to_join = '';
+             }
          }
          function handle_cr_speak(status, msg, tracker) {
              if (status != 'ok') {
@@ -752,12 +818,20 @@
          $(document).ready(function() {
              $('#txtNewRoom').keyup(function (e) {
                  if(e.which === 13) {
-                     doCreateRoom();
+                     doCreateRoom( $(this).val() );
                  }
              });
 
              $('#btnClearConsole').click(function() {
                  $('#console').html('');
+             });
+
+             $('#btnJoinRoom').click(function() {
+                 if ($(this).value == 'Leave room') {
+                     doLeaveRoom();
+                 } else {
+                     doJoinRoom( $('#selectRoomList').val() );
+                 }
              });
 
              getInputFocus();
@@ -869,7 +943,7 @@
       </span>
 
       <div id='form_room' style='display:none;'>
-      <input id="btnJoinRoom" type="button" value="Join Room" onclick='doJoinRoom();'/>
+      <input id="btnJoinRoom" type="button" value="Join Room" onclicki="doJoinRoom( $('#selectRoomList').val() );"/>
       <select id="selectRoomList"><option value="">-- select room --</option></select>
 
       <span id='spanCreateRoom'>
