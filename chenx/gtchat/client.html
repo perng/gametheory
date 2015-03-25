@@ -184,7 +184,7 @@
                else if (current_room == '') {
                    //appendChatroomInfo('>> ' + msg);
                    appendChatroomInfo('You are not in a room, text is not sent: ' + msg);
-                   appendChatroomInfo('Type @rooms for room list, @create {room} to create room, @join {room} to join a room, @help for more help.');
+                   appendChatroomInfo('Type @rooms for room list, @create {room} to create room, @join {room} to join a room, @help for more.');
                    appendConsole('Type message before join a room:' + msg);
                }
                else if (msg == '@who') {
@@ -636,7 +636,7 @@
                  // GUI for create/join room.
                  disableChatroom(false); 
                  appendChatroomInfo('You are logged in.');
-                 appendChatroomInfo('Type @rooms for room list, @create {room} to create room, @join {room} to join a room, @help for more help.');
+                 appendChatroomInfo('Type @rooms for room list, @create {room} to create room, @join {room} to join a room, @help for more.');
              } else {
                  updateInfo('Invalid login name or password.', 'error');
                  document.getElementById('login_name').focus();
@@ -745,7 +745,7 @@
              //disableChatroom(false);
             
              $('#div_room').html('Room: ' + room_name);
-             appendChatroomInfo('You created and entered room ' + room_name + '. Now chat here. For help, type @help.');
+             appendChatroomInfo('You created and entered room ' + room_name + '.');
              appendConsole('You created and joined room: ' + room_name);
          }
          function handle_cr_invite(status, msg, tracker) {
@@ -831,8 +831,7 @@
              //disableChatroom(false);
 
              $('#div_room').html('Room: ' + room_name);
-             appendChatroomInfo('You entered room ' + room_name + 
-                                '. Now chat here. For help, type @help.');
+             appendChatroomInfo('You entered room ' + room_name + '.');
              appendConsole('You joined room: ' + room_name);
          }
          function handle_cr_leave_room(status, msg, tracker) {
