@@ -52,4 +52,4 @@ As of 3/25/2015, a few quick comments on the API are:
 * Made it work: login/choose room/start game/inter-play
 
 -- 3/24/2015
-Creation
+* Creation
