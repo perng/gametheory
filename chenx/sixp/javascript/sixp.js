@@ -687,7 +687,9 @@ if (typeof (Chess6p) == "undefined") {
             return;
         }
 
-        //if (this.remoteGameStarted()) { send_msg_move(curIndex, dstIndex); }
+        if (this.isCurrentMoveSide() && this.remoteGameStarted()) { 
+            send_msg_move(curIndex, dstIndex); 
+        }
                
         this.recordMoveHistory(this.currentMoveSide, curIndex, dstIndex);
 

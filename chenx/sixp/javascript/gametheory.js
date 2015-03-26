@@ -232,7 +232,6 @@ function handle_sys_cmd(jo) {
 
         if (sender_id == current_player_id) return;
         c.remoteMove(msg);
-        c.currentMoveSide = - c.currentMoveSide;
     }
 }
 
