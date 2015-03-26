@@ -5,7 +5,7 @@ By: X. Chen
 Created on: 3/24/2015  
 Last modified: 3/25/2015
 
-Will add remote human/humna play.
+To add remote human/human play feature.
 
 
 <h3>Workflow</h3>
