@@ -8,7 +8,7 @@ Last modified: 3/25/2015
 To add remote human/human play feature.
 
 
-<h3>Workflow</h3>
+<h2>Workflow</h2>
 
 - Register
 - Login
@@ -20,7 +20,7 @@ To add remote human/human play feature.
 - For now, just support 1 game per player
 
 
-<h3>Issues</h3>
+<h2>Issues</h2>
 
 As of 3/25/2015, a few quick comments on the API are:
 
@@ -37,7 +37,7 @@ As of 3/25/2015, a few quick comments on the API are:
   when I get in, but the other side is no longer on line.
 
 
-<h3>To Do</h3>
+<h2>To Do</h2>
 
 - Update stats at the end of game
 - During game, should the options/re-start buttons be disabled?
@@ -46,7 +46,7 @@ As of 3/25/2015, a few quick comments on the API are:
 - Invite mechanism
 
 
-<h3>Change Log</h3>
+<h2>Change Log</h2>
 
 -- 3/25/2015
 * Made it work: login/choose room/start game/inter-play
