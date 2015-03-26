@@ -32,6 +32,9 @@ As of 3/25/2015, a few quick comments on the API are:
 - no logout yet. so now I use refresh page to fake logout (which just breaks the connection).
   In the long run you want to keep the state when refreshing page.
 - There should be a invite mechanism
+- If the other side is disconnected (e.g., close browser), the server should remove the side's
+  information from connected users. Otherwise local side will continue to show game started
+  when I get in, but the other side is no longer on line.
 
 
 <h3>To Do</h3>
