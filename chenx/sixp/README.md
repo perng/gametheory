@@ -1,6 +1,10 @@
 
 <h1>Six Piece Chess</h1>
 
+By: X. Chen
+Created on: 3/24/2015
+Last modified: 3/25/2015
+
 Will add remote human/humna play.
 
 <h3>Workflow</h3>
