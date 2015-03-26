@@ -33,6 +33,7 @@ if (typeof (Chess6p) == "undefined") {
 
         this.selectedIndex = -1; // 0 - 15.
 
+        this.remotePlay;
         this.currentSelectedSide;
         this.currentMoveSide = 1; // The side to move in the next step. Black by default.
 
@@ -165,6 +166,14 @@ if (typeof (Chess6p) == "undefined") {
         this.autoSaveRecover = v;
     }
 
+    Chess6p.prototype.remoteGameStarted = function() {
+        // if this.remotePlay is off, this always return true.
+        if (! this.remotePlay) return true;
+
+        //appendConsole('remoteGameStart: ' + remote_game_started);
+        return remote_game_started;
+    }
+
     Chess6p.prototype.reset = function() {
         this.countW = 6;
         this.countB = 6;
@@ -212,6 +221,8 @@ if (typeof (Chess6p) == "undefined") {
         if (this.timeout4) { clearTimeout(this.timeout4); }
         if (this.timeout5) { clearTimeout(this.timeout5); }
         
+        this.remotePlay = document.getElementById("cbRemote").checked;
+
         this.inGameOverStatus = false;
         this.currentMoveSide = 1; // Black
         this.stepCount = 0;
@@ -373,7 +384,10 @@ if (typeof (Chess6p) == "undefined") {
             this.vMsg.innerHTML = "<span style='font-size: 20px; '>&#9675;</span>";
         }
 
-        if (this.autoMoveSide == this.currentMoveSide || this.autoMoveSide == 2) {
+        // need remoteGameStarted() here to prevent show the wait circle at start.
+        if ((this.autoMoveSide == this.currentMoveSide || this.autoMoveSide == 2)
+            && this.remoteGameStarted()
+        ) {
             this.vMsg.innerHTML += "&nbsp;<img src='image/wait.gif' style='vertical-align:middle; height:18px;' title='Please wait...'>"; 
         }
 
@@ -383,6 +397,8 @@ if (typeof (Chess6p) == "undefined") {
             this.endGame();
             return;
         }
+
+        if (this.remotePlay) { return; }
 
         // first step is always black.
         if (this.stepCount == 1 && this.currentMoveSide == -1) { return; }
@@ -452,9 +468,14 @@ if (typeof (Chess6p) == "undefined") {
     
     
     Chess6p.prototype.getCurrentButton = function(x, y) {
-        if (this.countW <= 1 || this.countB <= 1 ||
-            this.autoMoveSide == this.currentMoveSide ||
-            this.autoMoveSide == 2 || this.inGameOverStatus) { return; }
+        // need this to prevent selecting buttons in black play.
+        if (! this.remoteGameStarted()) return; 
+
+        if (this.countW <= 1 
+            || this.countB <= 1 
+            || this.autoMoveSide == this.currentMoveSide 
+            || this.autoMoveSide == 2 
+            || this.inGameOverStatus) { return; }
 
         x -= this.edgeX / 2;
         y -= this.edgeY / 2;
@@ -666,6 +687,8 @@ if (typeof (Chess6p) == "undefined") {
             return;
         }
 
+        //if (this.remoteGameStarted()) { send_msg_move(curIndex, dstIndex); }
+               
         this.recordMoveHistory(this.currentMoveSide, curIndex, dstIndex);
 
         if (this.DEBUG_UI) this.appendLog(' Drop to: Pos[' + dstIndex + ']');
@@ -953,6 +976,20 @@ if (typeof (Chess6p) == "undefined") {
         });
     }
 
+    Chess6p.prototype.remoteMove = function(data) {
+        var me = c; // c is global variable defined in index.html
+        var move = data.split("/");
+        if (move.length != 2) {
+            me.setDebug("error: invalid move data: " + data);
+            return;
+        }
+
+        me.selectedIndex = move[0]; // source position.
+        var P = me.Pos[move[1]]; // target position.
+
+        me.moveCircle(P[0] + me.edgeX / 2, P[1] + me.edgeY / 2);
+    }
+
     Chess6p.prototype.addDebug = function(msg) {
         var d = document.getElementById('debug');
         if (d == null) return;
@@ -1085,10 +1122,14 @@ if (typeof (Chess6p) == "undefined") {
 
         localStorage["sixp.config.l"] = document.getElementById('gameLevel').value;
         localStorage["sixp.config.a"] = document.getElementById('comSide').value;
+        localStorage["sixp.config.r"] = 
+            (document.getElementById('cbRemote').checked ? 1 : 0);
         localStorage["sixp.config.m"] = this.getPlayMusicId();
         localStorage["sixp.config.s"] = this.getPlaySoundId();
         localStorage["sixp.config.autoSaveRecover"] = 
             (document.getElementById('idAutoSaveRecover').checked ? 1 : 0);
+
+        showLoginForm( document.getElementById('cbRemote').checked );
     }
 
     Chess6p.prototype.recoverConfig = function() {
@@ -1098,10 +1139,14 @@ if (typeof (Chess6p) == "undefined") {
 
         this.setUIValue("comSide", localStorage["sixp.config.a"]);
         this.setUIValue("gameLevel", localStorage["sixp.config.l"]);
+        document.getElementById('cbRemote').checked = 
+            (localStorage["sixp.config.r"] == 1) ? true : false;
         this.setPlayMusicTitle(localStorage["sixp.config.m"]);
         this.setPlaySoundTitle(localStorage["sixp.config.s"]);
         document.getElementById('idAutoSaveRecover').checked = 
             (localStorage["sixp.config.autoSaveRecover"] == 1) ? true : false;
+
+        showLoginForm( document.getElementById('cbRemote').checked );
     }
 
     Chess6p.prototype.updateConfig = function() {
