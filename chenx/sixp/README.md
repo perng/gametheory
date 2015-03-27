@@ -39,6 +39,7 @@ As of 3/25/2015, a few quick comments on the API are:
 
 <h2>To Do</h2>
 
+- Register new player
 - Update stats at the end of game
 - During game, should the options/re-start buttons be disabled?
 - keep states of login/room information during inter-play in local storage.
