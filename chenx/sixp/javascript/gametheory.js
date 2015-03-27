@@ -207,6 +207,7 @@ function handle_sys_cmd(jo) {
         $('#span_table').html('Table ' + table_id);
         
         if (current_is_black) {
+            // black side table id is already displayed when processing WAITING message.
             // this is needed by 1st player to display the other player's icon.
             if (players.length != 2) {
                 showInfo('wrong number of players', 'error');
@@ -218,6 +219,9 @@ function handle_sys_cmd(jo) {
             else if (players[1] != current_player_id) you = players[1];
             $('#span_you').html(getMyColorPiece(false) + 'Player ' + you +
               ' <img src="image/head_yellow.png" style="vertical-align:middle;">');
+        }
+        else {
+        //    $('#span_table').html('Table ' + table_id); // white side.
         }
 
         showInfo('Game starts!');
@@ -286,6 +290,7 @@ function handle_message(data) {
             if (game_status == 'WAITING') {
                 current_is_black = true;
                 $('#span_me').html('<img src="image/head_yellow.png" style="vertical-align:middle;"> Player ' + current_player_id + getMyColorPiece(true));
+                //$('#span_table').html('Table ' + current_table_id); // is off position. need to set #span_table center.
                 showInfo('You joined the game. Waiting for the other player ..');
             }
             else if (game_status == 'PLAYING') {
@@ -297,7 +302,7 @@ function handle_message(data) {
                             current_players[0] : current_players[1];
                 $('#span_you').html(getMyColorPiece(true) + 'Player ' + 
                 first_player_id + 
-               '<img src="image/head_yellow.png" style="vertical-align:middle;">');
+               ' <img src="image/head_yellow.png" style="vertical-align:middle;">');
 
                showInfo('Game starts!');
                remote_game_started = true;
