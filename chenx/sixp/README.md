@@ -49,6 +49,12 @@ As of 3/25/2015, a few quick comments on the API are:
 
 <h2>Change Log</h2>
 
+-- 3/27/2015
+
+* Added 5 open issues to gamethoery API repos
+* Solved bgImg preload issue.
+* Minor adjustment to UI on width.
+
 -- 3/25/2015
 * Made it work: login/choose room/start game/inter-play
 
