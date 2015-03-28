@@ -196,7 +196,7 @@
 </div>
 
 <div id="div_remote" style="width:320px; text-align:left;">
-    <div id="div_players" style="width:320px; height:30px; line-height:30px; background-color: white; border-top: solid 1px #ccc; display:none; text-align:center;">
+    <div id="div_players" style="height:30px; line-height:30px; background-color: white; border-top: solid 1px #ccc; display:none; text-align:center;">
         <span id="span_me" style="padding-left: 5px; display:inline-block; float:left; text-align: left; font-size:10pt;"><img src="image/head_gray.png" style="vertical-align:middle;">&nbsp;</span>
         <span id="span_table" style="display:inline-block; color:#999; font-size:10pt;"></span>
         <span id="span_you" style="padding-right: 5px; display:inline-block; float:right; text-align: right; font-size:10pt;"><img src="image/head_gray.png" style="vertical-align:middle;">&nbsp;</span>
@@ -249,6 +249,8 @@ var langWords = Array("Start!", "White Win!", "Black Win!", "Game Over: ", " You
                       "Play Music", "Stop Music", "Play Sound", "Stop Sound");
 
 function init() {
+    setMobileUI();
+
     c = new Chess6p();
     toggleHelp(true); 
     //toggleOptionPanel();
@@ -258,6 +260,15 @@ function init() {
 
 function reset() {
     c.reset(); 
+}
+
+function setMobileUI() {
+    var D=navigator.userAgent.toLowerCase();
+    var x=(D.indexOf("android")!=-1)||(D.indexOf("iphone")!=-1);
+    if (x) {
+        $('#debug_console').hide(); 
+        $('#div_remote').width('300');
+    }
 }
 
 function toggleOptionPanel() {
