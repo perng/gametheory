@@ -12,8 +12,14 @@ var current_is_black = false; // whether is black side (play first).
 var current_players;
 var remote_game_started = false; // control whether be able to play with this.
 
+var bgImg;
+
 $(document).ready(function() {
-    init();
+    bgImg = new Image();
+    bgImg.src = "image/bg.jpg";  // Force preload image.
+    bgImg.onload = function() {  // do init() only when image is loaded.
+        init();
+    };
 
     $('#btnClearConsole').click(function() {
         $('#console').html('');

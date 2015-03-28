@@ -47,8 +47,6 @@ if (typeof (Chess6p) == "undefined") {
         this.stepCount = 0;
         this.bestScore;
 
-        //this.bgImg = new Image();
-        //this.bgImg.src = 'image/bg.jpg';
         this.endGameMsg = '';
         this.inGameOverStatus = false;
 
@@ -284,7 +282,10 @@ if (typeof (Chess6p) == "undefined") {
         // clear board.
         context.fillStyle = this.ColorBoard;
         context.fillRect(0, 0, w0, h0);
-        if (this.useBackgroundImage) { context.drawImage(this.bgImg, 0, 0, this.w0, this.h0); }
+
+        if (this.useBackgroundImage) { 
+            context.drawImage(this.bgImg, 0, 0, this.w0, this.h0); 
+        }
 
         // redraw board.
         this.drawLine(context, 0, 0, w, 0);
