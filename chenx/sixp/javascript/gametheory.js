@@ -12,6 +12,14 @@ var current_is_black = false; // whether is black side (play first).
 var current_players;
 var remote_game_started = false; // control whether be able to play with this.
 
+// a started game may be broken when one player leaves, e.g., disconnected.
+// if so, when the player comes back, resume from broken point, not start over.
+// remote_game_broken is false at beginning and when game ends,
+// when a game is started and a player leaves, it's true.
+var remote_game_broken = false; 
+var broken_autoMoveSide; // autoMoveSide when game is broken.
+                 
+
 var bgImg;
 
 $(document).ready(function() {
@@ -200,11 +208,26 @@ function handle_sys_cmd(jo) {
         var player_id = jo.player_id;
         var sender_id = jo.sender_id;
         if (player_id == current_player_id) {
-            //$('#span_me').html('<img src="image/head_yellow.png" style="vertical-align:middle;"> Player ' + current_player_id + getMyColorPiece());
+            //$('#span_me').html('<img src="image/head_yellow.png" style="vertical-align:middle;"> Player ' 
+            //+ current_player_id + getMyColorPiece());
         } else {
-            //$('#span_you').html('Player ' + player_id + ' <img src="image/head_yellow.png" style="vertical-align:middle;">' + getMyColorPiece());
+            //$('#span_you').html('Player ' + player_id 
+            //+ ' <img src="image/head_yellow.png" style="vertical-align:middle;">' + getMyColorPiece());
         }
     } 
+    else if (sys_cmd == 'player_left') {
+        var player_id = jo.player_id;
+        if (player_id != current_player_id) {
+            showInfo('Player ' + player_id + ' left table.');
+            $('#span_you').html('<img src="image/head_gray.png" style="vertical-align:middle;">&nbsp;');
+
+            if (remote_game_started) {
+                remote_game_broken = true;
+                broken_autoMoveSide = c.autoMoveSide;
+                //reset(); // don't reset. need to keep board status, until press restart button.
+            }
+        }
+    }
     else if (sys_cmd == 'game_start') {
         var sender_id = jo.sender_id;
         var table_id = jo.table_id;
@@ -230,10 +253,20 @@ function handle_sys_cmd(jo) {
         //    $('#span_table').html('Table ' + table_id); // white side.
         }
 
-        showInfo('Game starts!');
-        remote_game_started = true;
-        c.setAutoMoveSide(-1); // current side is black, set auto side to white.
-        reset();
+        if (remote_game_started && remote_game_broken) { // resume a broken game.
+            showInfo('Game resumes!');
+            if (sender_id != current_player_id) {
+                remote_game_broken = false;
+                c.autoMoveSide = broken_autoMoveSide;
+            }
+            // else, will receive PLAYING msg after this, let PLAYING message handle this.
+        } else { // new game start.
+            showInfo('Game starts!');
+            remote_game_started = true;
+            remote_game_broken = false;
+            c.setAutoMoveSide(-1); // current side is black, set auto side to white.
+            reset();
+        }
     }
     else if (sys_cmd == 'peer_message') {
         if (! remote_game_started) return;
@@ -297,7 +330,7 @@ function handle_message(data) {
                 current_is_black = true;
                 $('#span_me').html('<img src="image/head_yellow.png" style="vertical-align:middle;"> Player ' + current_player_id + getMyColorPiece(true));
                 //$('#span_table').html('Table ' + current_table_id); // is off position. need to set #span_table center.
-                showInfo('You joined the game. Waiting for the other player ..');
+                showInfo('You joined the game. Waiting for another player ..');
             }
             else if (game_status == 'PLAYING') {
                 current_is_black = false;
@@ -310,10 +343,17 @@ function handle_message(data) {
                 first_player_id + 
                ' <img src="image/head_yellow.png" style="vertical-align:middle;">');
 
-               showInfo('Game starts!');
-               remote_game_started = true;
-               c.setAutoMoveSide(1); // current side is white, set this to black.
-               reset(); // start game.
+               if (remote_game_started && remote_game_broken) { // resume broken game.
+                   showInfo('Game resume!');
+                   remote_game_broken = false;
+                   c.autoMoveSide = broken_autoMoveSide;
+               } else { // start a new game
+                   showInfo('Game starts!');
+                   remote_game_started = true;
+                   remote_game_broken = false;
+                   c.setAutoMoveSide(1); // current side is white, set this to black.
+                   reset(); // start game.
+               }
             }
         } else {
             handle_message_not_ok(status, msg, tracker);
@@ -321,13 +361,31 @@ function handle_message(data) {
     }
     else if (reply_cmd == 'leave_table') {
         if (status == 'ok') {
-            $('#btnJoin').val('Join');
-            $('#selectGameRoom').removeAttr('disabled');
+            leaveTableCleanup();
             showInfo('You left the game.');
         } else {
             handle_message_not_ok(status, msg, tracker);
         }
     }
+}
+
+function leaveTableCleanup() {
+    $('#btnJoin').val('Join');
+    $('#selectGameRoom').removeAttr('disabled');
+
+    $('#span_me').html('<img src="image/head_gray.png" style="vertical-align:middle;">&nbsp;');
+    $('#span_you').html('<img src="image/head_gray.png" style="vertical-align:middle;">&nbsp;');
+    $('#span_table').html('');
+
+    if (remote_game_started) {
+        if (remote_game_broken) {
+            reset(); // game already broken on the other side. now can reset.
+        } else {
+            remote_game_broken = true;
+            broken_autoMoveSide = c.autoMoveSide;
+        }
+    }
+    //reset();  // don't reset. need to keep board status, until press restart button.
 }
 
 function populate_game_rooms(rooms) {

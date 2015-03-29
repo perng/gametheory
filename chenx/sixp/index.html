@@ -49,6 +49,46 @@
         position: relative;
         bottom: 0;
     }
+
+    #div_players {
+        height:30px;
+        line-height:30px;
+        background-color: white;
+        border-top: solid 1px #ccc;
+        display:none;
+        text-align:center;
+    }
+    #span_me {
+        padding-left: 5px; 
+        /*background-color:green;*/
+        width:120px; 
+        overflow:hidden; 
+        white-space:nowrap; 
+        display:inline-block; 
+        float:left; 
+        text-align: left; 
+        font-size:10pt;
+    }
+    #span_table {
+        position:relative;
+        left:0px;
+        /*background-color:red;*/
+        width:20%;
+        display:inline-block;
+        color:#999;
+        font-size:10pt;
+    }
+    #span_you {
+        padding-right: 5px;
+        display:inline-block;
+        width:120px;
+        /*background-color:green;*/
+        overflow:hidden;
+        white-space:nowrap;
+        float:right;
+        text-align: right;
+        font-size:10pt;
+    }
     </STYLE>
 </head>
 <body leftmargin="0" rightmargin="0" topmargin="10" bottommargin="0" style="background-image:url(image/green.jpg);">
@@ -76,7 +116,7 @@
     <![endif]-->
 
     <tr style="height: 30px; vertical-align: middle;">
-    <td align="left">Next Move: <div id="gameMsg" style="display: inline;"/></td>
+    <td align="left">Next Move: <div id="gameMsg" style="display: inline;"></div></td>
     <td align="right" width="25"><input id="btnOption" value="Options" title="Set Options" onclick="Javascript:toggleOptionPanel();" type="image" src="image/options.jpg" style="height:25px;"/></td>
     <td align="right" width="25"><input id="btnQ" value="Help" title="Get Help" onclick="Javascript:help();" type="image" src="image/help.jpg" style="height:25px;"/></td>
     <td align="right" width="25"><input id="btnReset" value="Reset" title="Reset Game" onclick="Javascript:reset();" type="image" src="image/start.jpg" style="height:23px;width:24px;"/></td>
@@ -196,10 +236,10 @@
 </div>
 
 <div id="div_remote" style="width:320px; text-align:left;">
-    <div id="div_players" style="height:30px; line-height:30px; background-color: white; border-top: solid 1px #ccc; display:none; text-align:center;">
-        <span id="span_me" style="padding-left: 5px; display:inline-block; float:left; text-align: left; font-size:10pt;"><img src="image/head_gray.png" style="vertical-align:middle;">&nbsp;</span>
-        <span id="span_table" style="display:inline-block; color:#999; font-size:10pt;"></span>
-        <span id="span_you" style="padding-right: 5px; display:inline-block; float:right; text-align: right; font-size:10pt;"><img src="image/head_gray.png" style="vertical-align:middle;">&nbsp;</span>
+    <div id="div_players">
+        <span id="span_me"><img src="image/head_gray.png" style="vertical-align:middle;">&nbsp;</span>
+        <span id="span_table"></span>
+        <span id="span_you"><img src="image/head_gray.png" style="vertical-align:middle;">&nbsp;</span>
     </div>
 <br/>
 
@@ -208,14 +248,14 @@
 
       <span style="width:70px; display:inline-block;">Player ID: </span>
       <input type='text' id='login_id' style="width:158px;"/>
-      <input type='button' id='btnLogin' value='Login' style="width:60px;"></input>
+      <input type='button' id='btnLogin' value='Login' style="width:60px;"/>
 
       <span id="span_game_room" style="display:none;">
       <span style="width:70px; display:inline-block;">&nbsp;</span>
       <select id="selectGameRoom" style="width:165px;">
       <option value="">-- select Game Room --</option>
       </select>
-      <input type="button" id="btnJoin" value="Join" style="width:60px;"></input>
+      <input type="button" id="btnJoin" value="Join" style="width:60px;"/>
       </span>
 
       <br/><span id="span_info"></span><br/>
@@ -259,6 +299,8 @@ function init() {
 }
 
 function reset() {
+    remote_game_started = true;
+    remote_game_broken = false;
     c.reset(); 
 }
 

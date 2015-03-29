@@ -169,7 +169,7 @@ if (typeof (Chess6p) == "undefined") {
         if (! this.remotePlay) return true;
 
         //appendConsole('remoteGameStart: ' + remote_game_started);
-        return remote_game_started;
+        return remote_game_started && ! remote_game_broken;
     }
 
     Chess6p.prototype.reset = function() {
@@ -317,6 +317,7 @@ if (typeof (Chess6p) == "undefined") {
     // Game ends, no more move.
     Chess6p.prototype.endGame = function() {
         this.inGameOverStatus = true;
+        if (this.remotePlay) { remote_game_started = false; } // game ends, so no longer started.
         var msg = (this.currentMoveSide == 1) ? langWords[1] : langWords[2]; // "White Win!" : "Black Win!";
 
         this.vMsg.innerHTML = msg;
@@ -387,7 +388,8 @@ if (typeof (Chess6p) == "undefined") {
 
         // need remoteGameStarted() here to prevent show the wait circle at start.
         if ((this.autoMoveSide == this.currentMoveSide || this.autoMoveSide == 2)
-            && this.remoteGameStarted()
+            && this.remoteGameStarted() 
+            /* || (this.remotePlay && this.remoteGameStarted()) */
         ) {
             this.vMsg.innerHTML += "&nbsp;<img src='image/wait.gif' style='vertical-align:middle; height:18px;' title='Please wait...'>"; 
         }
