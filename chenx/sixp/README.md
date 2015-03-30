@@ -39,9 +39,9 @@ As of 3/25/2015, a few quick comments on the API are:
 
 <h2>To Do</h2>
 
-- Register new player
+- Register new player (done)
+- During game, should the options/re-start buttons be disabled? (done, by sending msg to peer for consent)
 - Update stats at the end of game
-- During game, should the options/re-start buttons be disabled?
 - keep states of login/room information during inter-play in local storage.
 - keep states when page refreshes.
 - Invite mechanism
