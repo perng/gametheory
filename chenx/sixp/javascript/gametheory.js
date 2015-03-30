@@ -472,6 +472,7 @@ function handle_message(data) {
     else if (reply_cmd == "register") {
         var my_player_id = jo.player_id;
         if (status == 'ok') {
+            showInfo('Register succeeded. Your player id is ' + my_player_id + '.');
             alert('Register succeeded. Your player id is ' + my_player_id +
                   '.\nPlease keep your player id for login.');
 
@@ -479,7 +480,6 @@ function handle_message(data) {
             $('#reg_pwd').val('');
             $('#form_reg').hide();
             $('#link_reg').show();
-            showInfo('Register succeeded. Your player id is ' + my_player_id + '.');
         } else {
             handle_message_not_ok(status, msg, tracker);
         }
