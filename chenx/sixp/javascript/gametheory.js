@@ -309,7 +309,7 @@ function handle_sys_cmd(jo) {
         if (sender_id == current_player_id) return;
 
         if (msg == C_RESET_GAME) {
-            if ( confirm('Your peer wants a new game. OK?') ) {
+            if ( confirm('Your peer wants to start a new game. OK?') ) {
                 send_msg_reply_reset('Y');
                 showInfo('Game starts!');
                 remote_game_started = true;
@@ -327,8 +327,7 @@ function handle_sys_cmd(jo) {
                 remote_game_started = true;
                 c.reset();
             } else {
-                alert('Your peer does not want to restart a new game.\n' +
-                      'To reset board, please leave this room.');
+                alert('Your peer does not want to start a new game.');
             }
         }
         else { // move peer's piece on my board.

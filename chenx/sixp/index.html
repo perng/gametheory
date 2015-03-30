@@ -301,6 +301,12 @@ function init() {
 
 function restart() {
     if (isRemotePlay() && both_sides_connected) {
+        if (c.stepCount == 1) {
+            alert('Already at the start of new game.');
+            return;
+        }
+        // Note: if don't communicate to peer when restart,
+        // then use this, instead of send_msg_reset() and return.
         //showInfo('Game starts!');
         //remote_game_started = true;
 
