@@ -49,6 +49,23 @@ As of 3/25/2015, a few quick comments on the API are:
 
 <h2>Change Log</h2>
 
+-- 3/29/2015
+
+- when click on "Leave", give a warning the game will be abandoned.
+  - if leave, then the other side will be notified that game is abandoned.
+- updated UI, on the format of div_players that were done yesterday.
+- added a both_sides_connected variable, this is useful when restart game.
+- reset game
+  - for reset game when a game is not finished, could do this way:
+    send a msg to other side to get consent.
+  - for reset game when a game is ended, and both sides still connected,
+    also send a msg to other side to get consent, then restart game.
+    if other side does not agree, reset board must leave room first.
+  - actually, both are the same: to reset to a status that a new game can be started.
+     so these 2 can be comebined. (done)
+- added register function (done)
+  - need a register icon with transparent background.
+
 -- 3/27/2015
 
 * Added 5 open issues to gamethoery API repos
