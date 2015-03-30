@@ -35,6 +35,9 @@
     </script>
 
     <STYLE type="text/css">
+    body {
+        font-size:12px;
+    }
     input.class1 {
         height: 24px; width:100px; font-weight: bold; 
         text-align: center;
@@ -116,7 +119,7 @@
     <![endif]-->
 
     <tr style="height: 30px; vertical-align: middle;">
-    <td align="left">Next Move: <div id="gameMsg" style="display: inline;"></div></td>
+    <td align="left">&nbsp; Next Move: <div id="gameMsg" style="display: inline;"></div></td>
     <td align="right" width="25"><input id="btnOption" value="Options" title="Set Options" onclick="Javascript:toggleOptionPanel();" type="image" src="image/options.jpg" style="height:25px;"/></td>
     <td align="right" width="25"><input id="btnQ" value="Help" title="Get Help" onclick="Javascript:help();" type="image" src="image/help.jpg" style="height:25px;"/></td>
     <td align="right" width="25"><input id="btnReset" value="Reset" title="Restart Game" onclick="Javascript:restart();" type="image" src="image/start.jpg" style="height:23px;width:24px;"/></td>
@@ -245,6 +248,7 @@
     <br/>
 
       <center>
+
       <span id='form_login' style='display:none; text-align:center;'>
 
       <span style="width:70px; display:inline-block;">Player ID: </span>
@@ -260,6 +264,24 @@
       </span>
 
       <br/><span id="span_info"></span><br/>
+
+      <div id="div_register" style="text-align: center;">
+          <a href="#" onclick="showRegForm();" id="link_reg">Register</a>
+          <div id="form_reg" style="display:none; text-align:center; ibackground-color:green;">
+
+          <!-- "need "margin-left:auto; margin-right:auto;" to center table in div. -->
+          <table style="margin-left:auto; margin-right:auto;">
+          <tr><td>NAME: </td><td><input type='txt' id='reg_name'/></td></tr>
+          <tr><td>UUID: </td><td><input type='password' id='reg_pwd'/></td></tr>
+          <tr><td>&nbsp;</td><td align="left">
+          <input type='button' value='Register' onclick='doRegister();'/>
+          <input type="button" value="Cancel" onclick="hideRegForm();"/>
+          </td></tr>
+          <tr><td colspan="2">&nbsp;</td></tr>
+          </table>
+          </div>
+      </div>
+
       </center>
 
       <br/><br/>

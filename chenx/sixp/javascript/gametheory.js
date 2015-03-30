@@ -74,6 +74,40 @@ function setMobileUI() {
     $('#div_remote').width('300');
 }
 
+function showRegForm() {
+    $('#link_reg').hide();
+    $('#form_reg').show();
+}
+function hideRegForm() {
+    $('#link_reg').show();
+    $('#form_reg').hide();
+    showInfo('');
+}
+function doRegister() {
+    var usr = document.getElementById('reg_name').value.trim();
+    var pwd = document.getElementById('reg_pwd').value.trim();
+    if (usr == '' || pwd == '') {
+        showInfo('Register failed: name and uuid cannot be empty.', 'error');
+        if (usr == '') { document.getElementById('reg_name').focus(); }
+        else           { document.getElementById('reg_pwd').focus();  }
+        return;
+    }
+
+    appendConsole('register');
+    showInfo('Connecting to server ...');
+    current_cmd = "register";
+    doConnect();
+
+/*
+    current_tid = make_tracker();
+    var msg = '{"_tracker": ' + current_tid + ', "cmd": "register", "player_name": "' +
+              usr + '", "uuid": "' + pwd + '", "uuid_type": "WEB"} ';
+    //alert(msg);
+    current_cmd = 'register';
+    send_data(msg);
+*/
+}
+
 function doLogout() {
     $('#selectGameRoom').removeAttr('disabled');
     location.reload();
@@ -91,7 +125,7 @@ function doJoinRoom() {
 
 function doLeaveRoom() {
     if (remote_game_started) {
-        if (! confirm('Leave room will abandon unfinished game. Continue?')) {
+        if (! confirm('Leaving room will abandon unfinished game. Continue?')) {
             return;
         }
     }
@@ -121,7 +155,7 @@ function doLogin() {
     }
     appendConsole('login');
     showInfo('Connecting to server ...');
-    current_cmd = "connect";
+    current_cmd = "login";
     doConnect();
 }
 
@@ -133,6 +167,19 @@ function turnOnGameRoomUI(v) {
     }
 }
 
+
+function send_msg_register() {
+    var usr = document.getElementById('reg_name').value.trim();
+    var pwd = document.getElementById('reg_pwd').value.trim();
+
+    current_tid = make_tracker();
+    var msg = '{"_tracker": ' + current_tid + ', "cmd": "register", "player_name": "' +
+              usr + '", "uuid": "' + pwd + '", "uuid_type": "WEB"} ';
+    //alert(msg);
+
+    current_cmd = 'register';
+    send_data(msg);
+}
 function send_msg_login() {
     //var name = $.trim( $('#login_name').val() );
     //var pwd  = $.trim( $('#login_pwd').val() );
@@ -309,7 +356,7 @@ function handle_sys_cmd(jo) {
         if (sender_id == current_player_id) return;
 
         if (msg == C_RESET_GAME) {
-            if ( confirm('Your peer wants to start a new game. OK?') ) {
+            if ( confirm('Another player wants to start a new game. OK?') ) {
                 send_msg_reply_reset('Y');
                 showInfo('Game starts!');
                 remote_game_started = true;
@@ -327,7 +374,7 @@ function handle_sys_cmd(jo) {
                 remote_game_started = true;
                 c.reset();
             } else {
-                alert('Your peer does not want to start a new game.');
+                alert('Another player does not want to start a new game.');
             }
         }
         else { // move peer's piece on my board.
@@ -365,6 +412,8 @@ function handle_message(data) {
             $('#btnLogin').val('Logout');
             showInfo('Login succeeded.');        
             send_msg_get_game_rooms();
+
+            $('#div_register').hide();
         } 
         else {
             turnOnGameRoomUI(false);
@@ -416,6 +465,21 @@ function handle_message(data) {
         if (status == 'ok') {
             leaveTableCleanup();
             showInfo('You left the game.');
+        } else {
+            handle_message_not_ok(status, msg, tracker);
+        }
+    }
+    else if (reply_cmd == "register") {
+        var my_player_id = jo.player_id;
+        if (status == 'ok') {
+            alert('Register succeeded. Your player id is ' + my_player_id +
+                  '.\nPlease keep your player id for login.');
+
+            $('#reg_name').val('');
+            $('#reg_pwd').val('');
+            $('#form_reg').hide();
+            $('#link_reg').show();
+            showInfo('Register succeeded. Your player id is ' + my_player_id + '.');
         } else {
             handle_message_not_ok(status, msg, tracker);
         }
@@ -477,7 +541,14 @@ function doConnect() {
    socket.onopen = function() {
       isopen = true;
       appendConsole("<font color='green'>Connected!</font>");
-      send_msg_login();
+      if (current_cmd == "register") {
+          send_msg_register();
+      } else if (current_cmd == "login") {
+          send_msg_login();
+      }
+      else {
+          showInfo('connect error: unkonwn command "' + current_cmd + '"', 'error');
+      }
    }
    socket.onerror = function() {
        turnOnGameRoomUI(false);
