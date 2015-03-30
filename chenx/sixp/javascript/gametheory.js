@@ -1,4 +1,11 @@
 
+var DEBUG = true;
+var iconPlayerOn  = ' <img src="image/head_yellow.png" style="vertical-align:middle;">&nbsp;';
+var iconPlayerOff = ' <img src="image/head_gray.png" style="vertical-align:middle;">&nbsp;';
+var C_RESET_GAME = 'reset_game';
+var C_REPLY_RESET_GAME = 'reply_reset_game';
+var C_REPLY_RESET_GAME_LEN = C_REPLY_RESET_GAME.length;
+
 var socket = null;
 var isopen = false;
 var current_cmd = '';  // keep track of current status.
@@ -11,14 +18,7 @@ var current_table_id = '';
 var current_is_black = false; // whether is black side (play first).
 var current_players;
 var remote_game_started = false; // control whether be able to play with this.
-
-// a started game may be broken when one player leaves, e.g., disconnected.
-// if so, when the player comes back, resume from broken point, not start over.
-// remote_game_broken is false at beginning and when game ends,
-// when a game is started and a player leaves, it's true.
-var remote_game_broken = false; 
-var broken_autoMoveSide; // autoMoveSide when game is broken.
-                 
+var both_sides_connected = false; // true when both players are connected.
 
 var bgImg;
 
@@ -28,6 +28,9 @@ $(document).ready(function() {
     bgImg.onload = function() {  // do init() only when image is loaded.
         init();
     };
+
+    if (isMobile()) { DEBUG = false; }
+    if (DEBUG) { $('#debug_console').show(); }
 
     $('#btnClearConsole').click(function() {
         $('#console').html('');
@@ -54,6 +57,23 @@ $(document).ready(function() {
     });
 });
 
+function isRemotePlay() {
+    return document.getElementById("cbRemote").checked;
+}
+
+function isMobile() {
+    var D=navigator.userAgent.toLowerCase();
+    var x=(D.indexOf("android")!=-1)||(D.indexOf("iphone")!=-1);
+    return x;
+}
+
+function setMobileUI() {
+    if (! isMobile()) return;
+
+    $('#debug_console').hide();    
+    $('#div_remote').width('300');
+}
+
 function doLogout() {
     $('#selectGameRoom').removeAttr('disabled');
     location.reload();
@@ -70,6 +90,11 @@ function doJoinRoom() {
 }
 
 function doLeaveRoom() {
+    if (remote_game_started) {
+        if (! confirm('Leave room will abandon unfinished game. Continue?')) {
+            return;
+        }
+    }
     if (current_table_id == '') return;
     send_msg_leave(current_table_id);
 }
@@ -152,6 +177,23 @@ function send_msg_move(curIndex, dstIndex) {
         '", "cmd": "broadcast_in_table", "table_id": ' + current_table_id + '}';
     send_data(msg);
 }
+function send_msg_reset() {
+    var tracker = make_tracker();
+    current_cmd = "leave";
+    var move = C_RESET_GAME;
+    var msg = '{"_tracker": ' + tracker + ', "message": "' + move +
+        '", "cmd": "broadcast_in_table", "table_id": ' + current_table_id + '}';
+    send_data(msg);
+}
+function send_msg_reply_reset(reply) {
+    var tracker = make_tracker();
+    current_cmd = "leave";
+    var move = C_REPLY_RESET_GAME + ':' + reply;
+    var msg = '{"_tracker": ' + tracker + ', "message": "' + move +
+        '", "cmd": "broadcast_in_table", "table_id": ' + current_table_id + '}';
+    send_data(msg);
+}
+
 
 function make_tracker() {
     // create a random number as tracker.
@@ -159,6 +201,8 @@ function make_tracker() {
 }
 
 function showInfo(msg, type) {
+    if (! DEBUG) return;
+
     type = (typeof type === 'undefined') ? 'ok' : type;
     if (type == 'ok') {
         msg = '<font color="green">' + msg + '</font>';
@@ -207,25 +251,24 @@ function handle_sys_cmd(jo) {
     if (sys_cmd == 'player_joined') {
         var player_id = jo.player_id;
         var sender_id = jo.sender_id;
+        // This may be redundant. But useful when a player left and re-join.
         if (player_id == current_player_id) {
-            //$('#span_me').html('<img src="image/head_yellow.png" style="vertical-align:middle;"> Player ' 
-            //+ current_player_id + getMyColorPiece());
+            $('#span_me').html(iconPlayerOn + 'Player ' + current_player_id + getMyColorPiece());
         } else {
-            //$('#span_you').html('Player ' + player_id 
-            //+ ' <img src="image/head_yellow.png" style="vertical-align:middle;">' + getMyColorPiece());
+            $('#span_you').html('Player ' + player_id + iconPlayerOn + getMyColorPiece());
         }
     } 
     else if (sys_cmd == 'player_left') {
         var player_id = jo.player_id;
         if (player_id != current_player_id) {
-            showInfo('Player ' + player_id + ' left table.');
-            $('#span_you').html('<img src="image/head_gray.png" style="vertical-align:middle;">&nbsp;');
-
             if (remote_game_started) {
-                remote_game_broken = true;
-                broken_autoMoveSide = c.autoMoveSide;
-                //reset(); // don't reset. need to keep board status, until press restart button.
+                showInfo('Player ' + player_id + ' left. Game is aborted.');
+            } else { // remote_game_started is false when game ends.
+                showInfo('Player ' + player_id + ' left.');
             }
+            $('#span_you').html(iconPlayerOff);
+            remote_game_started = false;
+            both_sides_connected = false;
         }
     }
     else if (sys_cmd == 'game_start') {
@@ -246,35 +289,53 @@ function handle_sys_cmd(jo) {
             var you = '';
             if (players[0] != current_player_id) you = players[0];
             else if (players[1] != current_player_id) you = players[1];
-            $('#span_you').html(getMyColorPiece(false) + 'Player ' + you +
-              ' <img src="image/head_yellow.png" style="vertical-align:middle;">');
+            $('#span_you').html(getMyColorPiece(false) + 'Player ' + you + iconPlayerOn);
         }
         else {
         //    $('#span_table').html('Table ' + table_id); // white side.
         }
 
-        if (remote_game_started && remote_game_broken) { // resume a broken game.
-            showInfo('Game resumes!');
-            if (sender_id != current_player_id) {
-                remote_game_broken = false;
-                c.autoMoveSide = broken_autoMoveSide;
-            }
-            // else, will receive PLAYING msg after this, let PLAYING message handle this.
-        } else { // new game start.
-            showInfo('Game starts!');
-            remote_game_started = true;
-            remote_game_broken = false;
-            c.setAutoMoveSide(-1); // current side is black, set auto side to white.
-            reset();
-        }
+        showInfo('Game starts!');
+        both_sides_connected = true;
+        remote_game_started = true;
+        c.setAutoMoveSide(-1); // current side is black, set auto side to white.
+        reset();
     }
     else if (sys_cmd == 'peer_message') {
-        if (! remote_game_started) return;
+        //if (! remote_game_started) return;
         var msg = jo.message;
         var sender_id = jo.sender_id;
 
         if (sender_id == current_player_id) return;
-        c.remoteMove(msg);
+
+        if (msg == C_RESET_GAME) {
+            if ( confirm('Your peer wants a new game. OK?') ) {
+                send_msg_reply_reset('Y');
+                showInfo('Game starts!');
+                remote_game_started = true;
+                c.reset();
+            }
+            else {
+                send_msg_reply_reset('N');
+            }
+        }
+        else if (msg.startsWith(C_REPLY_RESET_GAME)) {
+            // +1 for ':'
+            var reply = msg.substr(C_REPLY_RESET_GAME_LEN+1, 1);
+            if (reply == 'Y') {
+                showInfo('Game starts!');
+                remote_game_started = true;
+                c.reset();
+            } else {
+                alert('Your peer does not want to restart a new game.\n' +
+                      'To reset board, please leave this room.');
+            }
+        }
+        else { // move peer's piece on my board.
+            if (remote_game_started) {
+                c.remoteMove(msg);
+            }
+        }
     }
 }
 
@@ -328,32 +389,25 @@ function handle_message(data) {
             var game_status = jo.game_status;
             if (game_status == 'WAITING') {
                 current_is_black = true;
-                $('#span_me').html('<img src="image/head_yellow.png" style="vertical-align:middle;"> Player ' + current_player_id + getMyColorPiece(true));
-                //$('#span_table').html('Table ' + current_table_id); // is off position. need to set #span_table center.
-                showInfo('You joined the game. Waiting for another player ..');
+                $('#span_me').html(iconPlayerOn + 'Player ' + current_player_id + getMyColorPiece(true));
+                //$('#span_table').html('Table ' + current_table_id); // off position. need to set center.
+                showInfo('You joined game. Waiting for another player..');
             }
             else if (game_status == 'PLAYING') {
                 current_is_black = false;
-                $('#span_me').html('<img src="image/head_yellow.png" style="vertical-align:middle;"> Player ' + current_player_id + getMyColorPiece(false));
+                $('#span_me').html(iconPlayerOn + 'Player ' + current_player_id + getMyColorPiece(false));
                 // show 1st player's icon.
                 var first_player_id = 
                             (current_player_id != current_players[0]) ?
                             current_players[0] : current_players[1];
                 $('#span_you').html(getMyColorPiece(true) + 'Player ' + 
-                first_player_id + 
-               ' <img src="image/head_yellow.png" style="vertical-align:middle;">');
+                first_player_id + iconPlayerOn);
 
-               if (remote_game_started && remote_game_broken) { // resume broken game.
-                   showInfo('Game resume!');
-                   remote_game_broken = false;
-                   c.autoMoveSide = broken_autoMoveSide;
-               } else { // start a new game
-                   showInfo('Game starts!');
-                   remote_game_started = true;
-                   remote_game_broken = false;
-                   c.setAutoMoveSide(1); // current side is white, set this to black.
-                   reset(); // start game.
-               }
+               showInfo('Game starts!');
+               both_sides_connected = true;
+               remote_game_started = true;
+               c.setAutoMoveSide(1); // current side is white, set this to black.
+               reset(); // start game.
             }
         } else {
             handle_message_not_ok(status, msg, tracker);
@@ -373,19 +427,14 @@ function leaveTableCleanup() {
     $('#btnJoin').val('Join');
     $('#selectGameRoom').removeAttr('disabled');
 
-    $('#span_me').html('<img src="image/head_gray.png" style="vertical-align:middle;">&nbsp;');
-    $('#span_you').html('<img src="image/head_gray.png" style="vertical-align:middle;">&nbsp;');
+    $('#span_me').html(iconPlayerOff);
+    $('#span_you').html(iconPlayerOff);
     $('#span_table').html('');
 
-    if (remote_game_started) {
-        if (remote_game_broken) {
-            reset(); // game already broken on the other side. now can reset.
-        } else {
-            remote_game_broken = true;
-            broken_autoMoveSide = c.autoMoveSide;
-        }
-    }
-    //reset();  // don't reset. need to keep board status, until press restart button.
+    remote_game_started = false;
+    both_sides_connected = false;
+
+    reset();  
 }
 
 function populate_game_rooms(rooms) {
@@ -422,9 +471,6 @@ function handle_message_not_ok(status, msg, tracker) {
 }
 
 function doConnect() {
-   //window.onload = function() {
-   //appendConsole("<font color='orange'>connecting ...</font>");
-   //var ws = "ws://" + document.getElementById('ws').value;
    var ws = "ws://gametheory.olidu.com:80";
 
    socket = new WebSocket(ws); 

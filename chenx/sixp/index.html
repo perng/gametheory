@@ -59,14 +59,14 @@
         text-align:center;
     }
     #span_me {
-        padding-left: 5px; 
+        padding-left: 5px;
         /*background-color:green;*/
-        width:120px; 
-        overflow:hidden; 
-        white-space:nowrap; 
-        display:inline-block; 
-        float:left; 
-        text-align: left; 
+        width:120px;
+        overflow:hidden;
+        white-space:nowrap;
+        display:inline-block;
+        float:left;
+        text-align: left;
         font-size:10pt;
     }
     #span_table {
@@ -119,7 +119,7 @@
     <td align="left">Next Move: <div id="gameMsg" style="display: inline;"></div></td>
     <td align="right" width="25"><input id="btnOption" value="Options" title="Set Options" onclick="Javascript:toggleOptionPanel();" type="image" src="image/options.jpg" style="height:25px;"/></td>
     <td align="right" width="25"><input id="btnQ" value="Help" title="Get Help" onclick="Javascript:help();" type="image" src="image/help.jpg" style="height:25px;"/></td>
-    <td align="right" width="25"><input id="btnReset" value="Reset" title="Reset Game" onclick="Javascript:reset();" type="image" src="image/start.jpg" style="height:23px;width:24px;"/></td>
+    <td align="right" width="25"><input id="btnReset" value="Reset" title="Restart Game" onclick="Javascript:restart();" type="image" src="image/start.jpg" style="height:23px;width:24px;"/></td>
     </tr>
     </tbody></table>
 
@@ -235,13 +235,14 @@
     <img alt="" src="image/bg.jpg" width="0" height="0"/>
 </div>
 
+<!-- UI panel for remote play. -->
 <div id="div_remote" style="width:320px; text-align:left;">
     <div id="div_players">
         <span id="span_me"><img src="image/head_gray.png" style="vertical-align:middle;">&nbsp;</span>
         <span id="span_table"></span>
         <span id="span_you"><img src="image/head_gray.png" style="vertical-align:middle;">&nbsp;</span>
     </div>
-<br/>
+    <br/>
 
       <center>
       <span id='form_login' style='display:none; text-align:center;'>
@@ -263,7 +264,7 @@
 
       <br/><br/>
 
-      <div id="debug_console" style="display:block;">
+      <div id="debug_console" style="display:none;">
           Debug console: <a href='#' id='btnClearConsole'>Clear console</a><br/>
           <div id="console"></div>
       </div>
@@ -298,19 +299,22 @@ function init() {
     playSound();
 }
 
-function reset() {
-    remote_game_started = true;
-    remote_game_broken = false;
-    c.reset(); 
+function restart() {
+    if (isRemotePlay() && both_sides_connected) {
+        //showInfo('Game starts!');
+        //remote_game_started = true;
+
+        // request to reset unfinished game, or start a new game after a game finishes.
+        // both are essentially the same: to start a new game. So can be combined.
+        send_msg_reset();
+        return;
+    }
+
+    reset();
 }
 
-function setMobileUI() {
-    var D=navigator.userAgent.toLowerCase();
-    var x=(D.indexOf("android")!=-1)||(D.indexOf("iphone")!=-1);
-    if (x) {
-        $('#debug_console').hide(); 
-        $('#div_remote').width('300');
-    }
+function reset() {
+    c.reset(); 
 }
 
 function toggleOptionPanel() {
