@@ -55,6 +55,16 @@ $(document).ready(function() {
             doLeaveRoom();
         }
     });
+
+    $('#cbToggleDebug').click(function() {
+        if ($(this).attr('checked')) { 
+            $('#btnClearConsole').show();
+            $('#console').show();
+        } else {
+            $('#btnClearConsole').hide();
+            $('#console').hide();
+        }
+    });
 });
 
 function isRemotePlay() {
