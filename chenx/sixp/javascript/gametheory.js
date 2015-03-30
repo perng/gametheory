@@ -94,18 +94,9 @@ function doRegister() {
     }
 
     appendConsole('register');
-    showInfo('Connecting to server ...');
+    showInfo('Register ...');
     current_cmd = "register";
     doConnect();
-
-/*
-    current_tid = make_tracker();
-    var msg = '{"_tracker": ' + current_tid + ', "cmd": "register", "player_name": "' +
-              usr + '", "uuid": "' + pwd + '", "uuid_type": "WEB"} ';
-    //alert(msg);
-    current_cmd = 'register';
-    send_data(msg);
-*/
 }
 
 function doLogout() {
