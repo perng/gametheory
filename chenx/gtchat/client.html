@@ -353,6 +353,15 @@
          }
          function doLogout() {
              if (! confirm('Are you sure to log out?')) return;
+
+             // should logout locally no matter what happen on server side.
+             // if disconnected before sending logout msg, will not get any
+             // response anyways. So do UI logout display here.
+             //$('#div_logout').html('');
+             //updateInfo('You are logging out.', 'info');
+             //document.getElementById('span_action').style.display = 'block';
+             //cleanup_logout();
+
              var msg = '{"cmd":"logout"}';
              send_data(msg);
          }
@@ -623,7 +632,7 @@
                  document.getElementById('login_pwd').value = ''; // clear password.
                  //updateInfo("You are logged in. <a href='#' onclick='doLogout();'>Log out</a>");
 
-                 current_user = ucFirst( $('#login_name').val() );
+                 current_user = $('#login_name').val();
                  var msg = ' [<a href="#" onclick="doLogout();">Logout</a>] ';
                  $('#div_logout').html(msg);
 
@@ -896,11 +905,11 @@
                  $('#div_logout').html('');
                  updateInfo('You are logged out.', 'info');
                  document.getElementById('span_action').style.display = 'block';
-
                  cleanup_logout();
              }
              else {
                  updateInfo(msg);
+                 cleanup_logout(); // should do cleanup no matter what.
              }
          }
          function cleanup_logout() {
@@ -944,7 +953,7 @@
              });
 
              $('#btnJoinRoom').click(function() {
-                 if ($(this).value == 'Leave room') {
+                 if ($(this).val() == 'Leave room') {
                      doLeaveRoom();
                  } else {
                      doJoinRoom( $('#selectRoomList').val() );
