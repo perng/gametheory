@@ -536,6 +536,7 @@ function handle_message_not_ok(status, msg, tracker) {
 
 function doConnect() {
    var ws = "ws://gametheory.olidu.com:80";
+   //ws = "ws://homecox.com:9001";
 
    socket = new WebSocket(ws); 
    socket.binaryType = "arraybuffer";
