@@ -100,11 +100,13 @@ if (typeof (Chess6p_Remote) === 'undefined') {
     Chess6p_Remote.prototype.showLoginForm = function(show) {
         if(show) {  
             $('#form_login').show();
+            $('#link_reg').show();
             $('#div_players').show();
             document.getElementById('gameLevel').disabled = true;
             document.getElementById('comSide').disabled = true;
         } else {
             $('#form_login').hide();
+            $('#link_reg').hide();
             $('#div_players').hide();
             document.getElementById('gameLevel').disabled = false;
             document.getElementById('comSide').disabled = false;
