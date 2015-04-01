@@ -13,11 +13,89 @@ cmd_response = [
     ({'cmd': 'register', 'uuid': 'bcde', 'uuid_type': 'fb', 'player_name': 'Charles Perng'}, STATUS_OK),
 ]
 
+global_tracker = 0
+
+class Action:
+    def __init__(self, cmd, settings={}, out_attrs=[], keep_attrs=[], delete_attrs=[],
+                 extract_attrs={}, conditions = {}):
+        '''
+        :param cmd: the command
+        :param settings: The key-values to be added to state
+        :param out_attrs: Attributes to be encoded to message ('cmd' and '_tracker' will be added)
+        :param keep_attrs: Attributes to be stored in state from the response
+        :param delete_attrs: Attributes to be deleted from the state
+        :param extract_attrs: Attributes that require extractor (a function) to extract and keep. The function is of
+          form func(state, message)
+        :return:
+        '''
+        global global_tracker
+        self.cmd = cmd
+        self.settings = settings
+        self.out_attrs = out_attrs + settings.keys()
+        self.keep_attrs = keep_attrs
+        self.delete_attrs = delete_attrs
+        self.extract_attrs = extract_attrs
+        self.conditions = conditions
+        if cmd:
+            self.conditions['cmd'] = cmd
+
+        self.next = None
+        global_tracker += 1
+        self.tracker = cmd + '_'+ str(global_tracker)
+    def emit(self, state):
+        state.update(self.settings)
+        msg = {'cmd': self.cmd, '_tracker': self.tracker}
+        for attr in self.out_attrs:
+            msg[attr] = state[attr]
+        print 'action', self.cmd, ' emit', msg
+        return msg
+    def receive(self, message, state):
+        if not self.conditions:
+            assert message['status'] == OK
+
+        for attr in self.keep_attrs:
+            state[attr] = message[attr]
+        for attr in self.delete_attrs:
+            del state[attr]
+
+        for attr in self.extract_attrs:
+            state[attr] = self.extract_attrs[attr](state, message)
+        if self.next:
+            return self.next.emit(state)
+        return None
+
+class Wait(Action):
+    def satisfy(self, message):
+        for k in self.conditions:
+            if k not in message or self.conditions[k] != message[k]:
+                return False
+        return True
+
+
+class Actions:
+    def __init__(self):
+        self.first = self.last = None
+        self.actions = {}
+        self.waits = []
+    def add(self, action, start_over = False):
+        self.actions[action.tracker] = action
+        if not self.first:
+            self.first = self.last = action
+        else:
+            if not start_over:
+                self.last.next = action
+            self.last = action
+    def add_wait(self, wait):
+        assert  len(wait.conditions)>0
+        self.waits.append(wait)
+    def get(self, tracker):
+        return self.actions[tracker]
 
 class MyClientProtocol(WebSocketClientProtocol):
     def onConnect(self, response):
         self.current_test = 0
         self.peer_msg_count = 0
+        self.datum = {}
         print('Server connected: {0}'.format(response.peer))
 
     def onOpen(self):
@@ -31,20 +109,36 @@ class MyClientProtocol(WebSocketClientProtocol):
     def onClose(self, wasClean, code, reason):
         print('WebSocket connection closed: {0}'.format(reason))
 
-    def sendMsg(self, msg, tracker):
-        msg['_tracker'] = tracker
+    def sendMsg(self, msg):
         msg = json.dumps(msg)
-
+        print 'to send:', msg
         self.sendMessage(msg.encode('utf8'), False)
 
     def test(self, response):
+        actions = self.factory.actions
         if not response:
-            return self.sendMsg({'cmd': 'noop'}, 0)
-        rjson = json.loads(response)
-        print 'get msg', rjson
+            return self.sendMsg(actions.first.emit(self.datum))
+        response = json.loads(response)
+        for wait in actions.waits:
+            if wait.satisfy(response):
+                print 'satisfy', wait.conditions
+                msg = wait.receive(response, self.datum)
+                if msg:
+                    return self.sendMsg(msg)
+                return None
 
-        if 'sys_cmd' in rjson:  # server initiated msg
-            sys_msg = rjson['sys_cmd']
+        if '_tracker' in response:
+            action = actions.get(response['_tracker'])
+            msg = action.receive(response, self.datum)
+            if msg:
+                self.sendMsg(msg)
+            else:
+                print 'ALL TESTS DONE!'
+
+    def xxx(self):
+        rjson = response = None
+        if 'cmd' in rjson:  # server initiated msg
+            sys_msg = rjson['cmd']
             if sys_msg == 'game_start':
                 self.opponents = [p for p in rjson['players'] if p!= self.player_id]
                 self.table_id = rjson['table_id']
@@ -130,9 +224,43 @@ class MyClientProtocol(WebSocketClientProtocol):
         self.sendClose()
 
 
+def setup_actions(factory):
+    actions = Actions()
+    actions.add(Action('noop'))
+    actions.add(Action('get_games', extract_attrs={'game_name': (lambda state, message: message['games'][0]['game_name'])}))
+    actions.add(Action('get_game_rooms',extract_attrs={'room_id':(lambda s,m:m['game_rooms'][0]['room_id'])},
+                       out_attrs=['game_name']))
+
+    # register_by_password
+    action = Action('login_by_password', settings={'password': 'bababa', 'player_name': "Thomas Jefferson" })
+    actions.add(action)
+
+    # register_by_uuid
+    uuid = factory.args.uuid if factory.args.uuid else 'bcde'
+    username = factory.args.username if factory.args.username else 'George Washington'
+    action = Action('login_by_uuid', settings={'uuid': uuid, 'uuid_type': 'FB', 'player_name': username })
+    actions.add(action)
+
+
+    actions.add(Action('get_my_stats', settings={'game_name':'Game Theory'}))
+    actions.add(Action('get_player_stats', settings={'player_id': 2, 'game_name':'Game Theory'}))
+    actions.add(Action('sit_for_auto_match_game', out_attrs=['room_id']))
+
+    wait_game_start1 = Wait('', {'game_status': 'PLAYING'}, keep_attrs=['table_id'])
+    wait_game_start2 = Wait('game_start', {}, keep_attrs=['table_id'])
+    actions.add_wait(wait_game_start1)
+    actions.add_wait(wait_game_start2)
+    get_leader = Action('get_leader', out_attrs=['table_id'])
+    wait_game_start1.next=get_leader
+    wait_game_start2.next=get_leader
+    actions.add(get_leader, start_over=True)
+    msg = 'This is a broadcast message'
+    actions.add(Action('broadcast_in_table', settings={'message':msg}, out_attrs=['table_id']))
+
+    return actions
+
 
 if __name__ == '__main__':
-
     parser = argparse.ArgumentParser(description='Client emaulation with unit tests.')
     parser.add_argument('--username', dest='username', help='user name', )
     parser.add_argument('--uuid', dest='uuid', help='uuid')
@@ -141,20 +269,18 @@ if __name__ == '__main__':
     log.startLogging(sys.stdout)
     args = parser.parse_args()
 
-    if args.remote:
-        print 'use remote server'
-        factory = WebSocketClientFactory('ws://gametheory.olidu.com:80', debug=True)
-    else:
-        print 'use local server'
-        factory = WebSocketClientFactory('ws://localhost:9000', debug=True)
+    host = 'gametheory.olidu.com' if args.remote else '127.0.0.1'  #'localhost'
+    port = 80 if args.remote else 9000
+    url = 'ws://{0}:{1}'.format(host, port)
+    print 'use url:', url
+    factory = WebSocketClientFactory(url, debug=True)
     factory.protocol = MyClientProtocol
-
     factory.args = args
 
     print factory.args.username, factory.args.uuid
 
-    if args.remote:
-        reactor.connectTCP('gametheory.olidu.com', 80, factory)
-    else:
-        reactor.connectTCP('127.0.0.1', 9000, factory)
+    factory.actions = setup_actions(factory)
+
+    reactor.connectTCP(host, port, factory)
+
     reactor.run()

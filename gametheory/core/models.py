@@ -46,6 +46,7 @@ admin.site.register(PlayerStats)
 class Player(models.Model):
     player_name = models.CharField(max_length=100)
     player_uuid = models.CharField(max_length=40)
+    password = models.CharField(max_length=40)
     uuid_type = models.CharField(max_length=40)
     join_time = models.DateTimeField(auto_now_add=True, null=True)
     last_play_time = models.DateTimeField(auto_now=True, null=True)

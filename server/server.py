@@ -33,25 +33,24 @@ class MyServerProtocol(WebSocketServerProtocol):
         #getattr(game, params['cmd'])(self, params)
         self.factory.methods[params['cmd']](self, params)
     def onClose(self, wasClean, code, reason):
+        self.logout()
+        print("WebSocket connection closed: {0}".format(reason))
+
+    def logout(self):
+        try:
+            for table in self.player.gametables.values:
+                table.leave(self.player)
+            self.player = None
+        except:
+            pass
         try:
             del self.factory.players[self.player.id]
         except:
             pass
-        print("WebSocket connection closed: {0}".format(reason))
 
-# def create_gamerooms(factory):
-#     factory.gamerooms = {}
-#     factory.locks = {}
-#     gamerooms = GameRoom.objects.all()
-#     for gameroom in gamerooms:
-#         if gameroom.gamespec.name not in factory.gamerooms:
-#             factory.gamerooms[gameroom.gamespec.name] = {}
-#             factory.locks[gameroom.gamespec.name] = {}
-#         factory.gamerooms[gameroom.gamespec.name][gameroom.name] = Queue()
-#         factory.locks[gameroom.gamespec.name][gameroom.name] = threading.Lock()
 
 def add_test_gamerooms():
-    for gname in ['Six Pieces', 'Tick-Tac-Tao', 'Game Theory']:
+    for gname in ['Six Pieces', 'Tick-Tac-Tao', 'Game Theory', 'ChatRoom']:
         game, created = GameSpec.objects.get_or_create(name=gname)
         game.save()
         gr, created = GameRoom.objects.get_or_create(gamespec = game, name = "Room 1", order = 0)

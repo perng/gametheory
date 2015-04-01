@@ -15,14 +15,33 @@ from utils import *
 def noop(socket, params):
     return JsonResponse(socket, params, {}, OK, 'No operation')
 
+def login_helper(socket, player):
+    '''  Internal helper function
+    :param socket:
+    :param player:
+    :return: player's detailed info
+    '''
+    socket.player = player
+    player.socket = socket
+    player.gametables = {}
+    return  player.info()
+
+
 @required_params('uuid', 'uuid_type', 'player_name')
-def register(socket, params):
-    player, created = Player.objects.get_or_create(player_uuid=params['uuid'], uuid_type=params['uuid_type'])
+def login_by_uuid(socket, params):
+    player, created = Player.objects.get_or_create(player_name=params['player_name'])
     if created:
         msg = "New user registered"
+        player.player_uuid = params['uuid']
+        player.uuid_type = params['uuid_type']
     else:
-        msg = "User renamed"
-    player.player_name = params['player_name']
+        if player.player_uuid == params['uuid'] and player.uuid_type == params['uuid_type']:
+            msg = "Already registered. No effect."
+        else:
+            msg = "player_name " + params['player_name'] + ' already exists. UUID mismatch.'
+            return JsonResponse(socket, params, {}, ERROR, msg)
+
+
     ip = socket.ip
     player.ip_address = ip
     # tokens = urllib2.urlopen(geoprefix + ip).readline().split(';')
@@ -34,28 +53,38 @@ def register(socket, params):
     #     player.long = float(tokens[8])
     #     player.lat = float(tokens[9])
     player.save()
-    socket.player = player
-    player.socket = socket
+
     result = player.info()
     return JsonResponse(socket, params, result, OK, msg)
 
-@required_params('player_id')
-def login(socket, params):
-    try:
-        socket.player = Player.objects.get(id=params['player_id'])
-        socket.player.socket = socket
-        #socket.factory.datastore.players[socket.player.id] = socket.player
-        return JsonResponse(socket, params, {}, OK, '')
-    except:
-        pass
-    return JsonResponse(socket, params, {}, ERROR, "Login failed, player_id invalid")
+@required_params('password', 'player_name')
+def login_by_password(socket, params):
+    player, created = Player.objects.get_or_create(player_name=params['player_name'])
+    if created:
+        msg = "New user registered"
+        player.password = params['password']
+    else:
+        if player.password == params['password']:
+            msg = "Already registered. No effect."
+        else:
+            msg = "player_name " + params['player_name'] + ' already exists. Password mismatch.'
+            return JsonResponse(socket, params, {}, ERROR, msg)
 
+    ip = socket.ip
+    player.ip_address = ip
+    player.save()
 
+    result = login_helper(socket, player)
+    return JsonResponse(socket, params, result, OK, msg)
+
+@login_required
+def logout(socket, params):
+    socket.logout()
+    return JsonResponse(socket, params, {}, OK, '')
 
 @login_required
 @required_params('game_name')
 def get_my_stats(socket, params):
-    stats = PlayerStats
     stats = socket.player.get_stats_by_name(params['game_name'])
     return JsonResponse(socket, params, stats.details(), OK, '')
 
@@ -66,7 +95,7 @@ def get_player_stats(socket, params):
         print 'get_player_stats:', params
         player = Player.objects.get(id=int(params['player_id']))
     except:
-        return JsonResponse(socket, params, {}, ERROR, 'player_id:' + params['player_id'] + ' not found')
+        return JsonResponse(socket, params, {}, ERROR, 'player_id:{0} not found'.format( params['player_id']))
     stats = player.get_stats_by_name(params['game_name'])
     if stats:
         return JsonResponse(socket, params, stats.details(), OK, '')

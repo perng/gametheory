@@ -63,24 +63,26 @@ class GameTable:
         else:
             self.players[player.id] = player
             result = JOIN_SUCCEED
-            msg = {'sys_cmd':'player_joined', 'player_id': player.id }
+            msg = {'cmd':'player_joined', 'player_id': player.id }
             BroadCast(player.id, [p.socket for p in self.players.values()], msg)
         self.lock.release()
 
         # Game start if enough players, TODO: time-based game-start
         if self.num_players()>= self.game_room.gamespec.num_players_min:
             game = self.game_room.gamespec
-            msg = {'table_id': self.id, 'sys_cmd': 'game_start',
+            msg = {'table_id': self.id, 'cmd': 'game_start',
                    'players': [p.id for p in self.players.values()]}
             self.status = PLAYING
             BroadCast(player.id, [p.socket for p in self.players.values()], msg)
+        player.gametables[self.id] = self
         return result
 
     def leave(self, player):
         if player.id not in self.players:
             return NOT_IN_TABLE
         del self.players[player.id]
-        msg = {'sys_cmd':'player_left', 'player_id': player.id }
+        del player.gametables[self.id]
+        msg = {'cmd':'player_left', 'player_id': player.id }
         BroadCast(player.id, [p.socket for p in self.players.values()], msg)
         if self.num_players() < self.game_room.gamespec.num_players_min:
             self.status = WAITING

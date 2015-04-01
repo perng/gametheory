@@ -20,4 +20,5 @@ def SendMessage(socket, msg):
 def BroadCast(sender_id, sockets, msg):
     msg['sender_id'] = sender_id
     for socket in sockets:
-        socket.sendMessage(json.dumps(msg).encode('utf8'), False)
+        if sender_id != socket.player.id:
+            socket.sendMessage(json.dumps(msg).encode('utf8'), False)
