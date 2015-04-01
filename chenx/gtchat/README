@@ -3,7 +3,7 @@
 
 By: X. Chen
 Created on: 3/18/2015
-Last modified: 3/21/2015
+Last modified: 3/23/2015
 
 
 == About ==
@@ -26,9 +26,11 @@ Communication is done in Json.
 
 No persistence is used at this time, user data is cached in memory.
 
-commands: 
-register, login, update_pwd, create_room, invite, 
-join_room, leave_room, speak, whisper, broadcast, logout
+API commands: 
+register, login, update_pwd, 
+get_room_list, get_user_list, get_room_user_list
+create_room, invite, invite_reply, join_room, leave_room, 
+speak, whisper, broadcast, logout
 admin_show_table
 
 -- register
@@ -49,6 +51,7 @@ For unregistered temporary user:
 
 # server will send to this client:
 ok(session_id, user list, room list)/fail
+# server also will send this event notification to all active users.
 
 -- update_pwd
 # only a logged in user can change his/her password.
@@ -57,6 +60,21 @@ ok(session_id, user list, room list)/fail
 
 # server will send to this client:
 ok/fail
+
+-- api_get_room_list
+# get list of all active rooms.
+# server expects to receive:
+{"cmd":"get_room_list"}
+
+-- api_get_user_list
+# get list of all active users.
+# server expects to receive:
+{"cmd":"get_user_list"}
+
+-- api_get_room_user_list
+# get list of users in a room.
+# server expects to receive:
+{"cmd":"get_room_user_list", "room_name":"room1"}
 
 -- create_room
 # server expects to receive:
@@ -75,6 +93,16 @@ new room created.
 # server will send to invitee:
 {"cmd":"c_invited", "msg":msg, "room_name":room_name, "usr":usr}
 # c_invited is a client side API call, that client should handle for properly display.
+
+-- invite_reply
+# server expects to receive:
+{"cmd":"invite_reply", "inviter":"user", "room_name":"room1", "reply":reply}
+# reply code can one of Y (yes), N (no) , L (later).
+
+# server will send to inviter:
+{"cmd":"c_invite_reply", "msg":reply, "usr":usr}
+# c_invited_reply is a client side API call, that client should handle for properly display.
+# for chatroom, c_invited_reply also will redirect user to the invited room, if reply is yes.
 
 -- join_room
 # server expects to receive:
@@ -133,7 +161,7 @@ message.
 
 # server will send this update to clients in the room
 user exit from room.
-# server will send this update to all clients (optional, can be expensive)
+# server will send this update to all clients.
 
 
 -- Optional server API field: tracker --
@@ -188,7 +216,6 @@ send "0" as the value of tracker in response messages.
 
 # only client 3 should receive this, since he is the one being invited.
 {"cmd":"invite", "room_name":"nerdhaus", "invitee":"user3"}
-
 
 >>> test invite
 
@@ -335,9 +362,10 @@ These types are defined: c_response
 # For message to be sent certain group of users that user usr has done something defined by type:
 # 1) join_room - send to all users in the room
 # 2) leave_room - send to all users in the room
-# 3) login - send to all users (optional, since this is expensive. don't do this now)
-# 4) logout - send to all users (optional, since this is expensive. don't do this now)
-#             but can consider send this event to another user in active private chat with usr.
+# 3) room_created - sent to all users
+# 4) room_gone - sent to all users
+# 5) login - send to all users 
+# 6) logout - send to all users
 # the client expects to receive:
 {"cmd":"c_event", "type":type, "user":usr, "tracker":tracker}
 
@@ -366,7 +394,12 @@ Modified client.html to add the textbox for user input, and modified output form
 Testing can be done with test.py, which creates process(es) of client.py, and sends requests to server.
 It compares returned output and expected output to make testing judgement. 
 
-usage: test.py [test_filename]
+usage: test.py {test_filename} [-v|-f]
+
+test_filename is mandatory.
+option switches are: 
+ -v: verbose, print all test cases.
+ -f: verbose subcategory, print failed test cases only.
 
 This script reads from given test file.
 The test file contains a series of test cases.
@@ -404,16 +437,51 @@ open client.html in a browser.
 - testing framework:
   - provide suites of test cases (in progress)
   - multiple clients test
-- separate chatroom.py from server.py as a single file (can leave to later)
-- api call to get active users list, 
+- api call update_pwd
+- api call whisper
+- api call broadcast
+- api call to get active users list (done)
 - api call to query status of a sepecific user.
-- api call to get active room list, 
+- api call to get active room list (done)
 - api call to query status of a sepecific room.
+- keep session status when user refresh web page client.html.
 - client.html (in progress)
 - client.py (optional)
 
 
 == Change Log ==
+
+-- 3/24/2015 --
+
+* Finished create/leave/join in command line
+* Finished invite/invite_reply
+* UI update.
+
+-- 3/23/2015 --
+
+* UI functions:
+  - display room users (done in console)
+  - display all users (done in console)
+  - display all rooms (done in console)
+  - when a user logs in/out, show msg in status bar. (done)
+* added event login/logout to push to users; 
+* improved client.html: updated UI, and miscellaneous.
+
+-- 3/22/2015 --
+
+* added server api_get_room_list.
+* added server api_get_user_list.
+* fixed a bug: when unregister a client, should also do logout for that user.
+  otherwise that user's session lingers on.
+  from another point of view, this can be a way of continuing persistent connection
+  when a user refreshes his page. Such that when a user lost connection, still
+  keep his sessions, when he reconnects, recover the session. This will need
+  server side remember the user's information such as current room, and on
+  client side remembers user status in local_storage.
+* added room_created and room_gone to client side API c_event.
+* html client is working for most part: create_room, join_room, leave_room,
+  speak.
+* now have a console to output debug message. Separate console from chatroom.
 
 -- 3/21/2015 --
 

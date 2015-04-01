@@ -1,20 +1,45 @@
 <!DOCTYPE html>
 <html>
    <head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+      <meta name="description" content="Chatroom">
+      <meta name="keywords" content="websocket chatroom, websocket, chatroom">
+      <script type="text/javascript" src="js/ajax/libs/jquery/1.4/jquery.min.js"></script>
       <title>Websocket Chatroom</title>
       <script type="text/javascript">
          var socket = null;
          var isopen = false;
          var current_cmd = '';  // keep track of current status.
          var current_tid = '';  // keep track of current tracker id.
+         var current_user = ''; // keep track of current logged in user.
+         var current_room = ''; // keep track of current room.
+         var request_src = ''; // used for command line requests @rooms, @users.
+
+         // If this is not empty, the server textbox and connect button will
+         // be hidden, and when the page is loaded it'll automatically connect to 
+         // server given by the value of AUTO_CONNECT.
+         var AUTO_CONNECT = ''; 
+         //AUTO_CONNECT = 'ws://127.0.0.1:9000';
+
+         // If DEBUG is true, the debug console will be shown.
+         var DEBUG = true;
+         //DEBUG = false;
+
+         function send_data(data) {
+             appendConsole('==> Send: ' + data);
+             socket.send(data);
+         }
+
          function doDisconnect(startup) {
+             if (! startup && ! confirm('Are you sure to disconnect?')) return;
+
              if (socket != null) socket.close();
              socket = null;
              isopen = false;
-             //if (! startup) appendChatroom("<font color='green'>Disconnected!</font>");
+             //if (! startup) appendConsole("<font color='green'>Disconnected!</font>");
              if (! startup) dispConnectionStatus("<font color='green'>Disconnected!</font>")
              toggleButton(true);
-             updateInfo('');
+             cleanup_logout();
          }
          function dispConnectionStatus(msg) {
              document.getElementById('connection_status').innerHTML = msg;
@@ -30,35 +55,45 @@
          }
          function doConnect() {
          //window.onload = function() {
+            cleanup_logout(); // clean up before start.
+
             document.getElementById('btnConnect').disabled = true;
-            //appendChatroom("<font color='orange'>connecting ...</font>");
+            //appendConsole("<font color='orange'>connecting ...</font>");
             dispConnectionStatus("<font color='orange'>Connecting ...</font>")
             var ws = "ws://" + document.getElementById('ws').value;
+            if (AUTO_CONNECT != '') ws = AUTO_CONNECT;
+
             socket = new WebSocket(ws); 
             socket.binaryType = "arraybuffer";
             socket.onopen = function() {
                //console.log("Connected!");
                isopen = true;
-               //appendChatroom("<font color='green'>Connected!</font>");
-               dispConnectionStatus("<font color='green'>Connected!</font>");
+
+               if (AUTO_CONNECT != '') {
+                   dispConnectionStatus("Welcome to chatroom.");
+               } else {
+                   //dispConnectionStatus("<font color='green'>Connected!</font>");
+                   dispConnectionStatus('');
+               }
+
                updateInfo('');
                toggleButton(false);
             }
             socket.onerror = function() {
-                //appendChatroom("<font color='red'>Connection not opened.</font>");
+                //appendConsole("<font color='red'>Connection not opened.</font>");
                 dispConnectionStatus("<font color='red'>Connection not opened.</font>")
                 document.getElementById('btnConnect').disabled = false;
-                updateInfo("<font color='red'>Cannot open connection.</font>");
+                updateInfo("Cannot open connection.", 'error');
             }
             socket.onmessage = function(e) {
                if (typeof e.data == "string") {
                   //console.log("Text message received: " + e.data);
-                  appendChatroom("Text message received: " + e.data);
+                  appendConsole("Text message received: " + e.data);
                   process_message(e.data);
                } else {
                   var arr = new Uint8Array(e.data);
                   //console.log("Binary message received: " + hex);
-                  appendChatroom("Binary message received: " + decodeBinaryMsg(arr));
+                  appendConsole("Binary message received: " + decodeBinaryMsg(arr));
                }
             }
             socket.onclose = function(e) {
@@ -79,12 +114,14 @@
          function toggleButton(v) {
             document.getElementById('btnConnect').disabled = false;
             document.getElementById('btnConnect').value = v ? 'Connect' : 'Disconnect';
-            document.getElementById('btnSendTxt').disabled = v;
-            document.getElementById('txtMsg').disabled = v;
-            document.getElementById('txtMsg').focus();
-            //document.getElementById('btnSendBin').disabled = v;
             document.getElementById('ws').disabled = ! v;
             document.getElementById('span_action').style.display = v ? 'none' : 'block';
+         }
+         function disableChatroom(v) {
+            document.getElementById('btnSendTxt').disabled = v;
+            document.getElementById('txtMsg').disabled = v;
+            if (v) document.getElementById('txtMsg').focus();
+            //document.getElementById('btnSendBin').disabled = v;
          }
          function sendText() {
             if (isopen) {
@@ -96,9 +133,88 @@
                    msg = o.value;
                    o.value = '';
                }
-               socket.send(msg);
-               //console.log("Text message sent: " + msg);
-               appendChatroom("me>>> " + msg);
+
+               current_tid = make_tracker();
+
+               if (msg == '@rooms') {
+                   request_src = 'console';
+                   current_cmd = "get_room_list";
+                   data = '{"cmd":"get_room_list", "tracker":"' + current_tid + '"}';
+                   send_data(data);
+                   //appendChatroomInfo(msg + ":");
+               }
+               else if (msg == '@users') {
+                   request_src = "console"
+                   current_cmd = "get_user_list";
+                   data = '{"cmd":"get_user_list", "tracker":"' + current_tid + '"}';
+                   send_data(data);
+                   //appendChatroomInfo(msg + ":");
+               }
+               else if (msg == '@help') {
+                   appendChatroomInfo(msg + 
+": @rooms (list rooms), @who (list room users), @users (list logged in users), @create {room} (create and join a room), @join {room} (join a room), @leave (leave a room), @where (show current name)");
+               }
+               else if (msg == '@leave') {
+                   doLeaveRoom();
+               }
+               else if (msg == '@create') {
+                   appendChatroomInfo('@create: please provide a room name');
+               }
+               else if (msg.startsWith('@create ')) {
+                   request_src = "console";
+                   var room_name = msg.substr(8); // after '@create '
+                   if (room_name == '') {
+                       appendChatroomInfo('@create: please provide a room name');
+                   }
+                   appendConsole('Now create room: ' + room_name);
+                   doCreateRoom(room_name);
+               }
+               else if (msg == '@join') {
+                   appendChatroomInfo('@create: please provide a room name');
+               }
+               else if (msg.startsWith('@join ')) {
+                   var room_name = msg.substr(6); // after '@join '
+                   if (room_name == '') {
+                       appendChatroomInfo('@create: please provide a room name');
+                   }
+                   appendConsole('Now join room: ' + room_name);
+                   doJoinRoom(room_name);
+               }
+               // All commands below need a non-empty current_room.
+               else if (current_room == '') {
+                   //appendChatroomInfo('>> ' + msg);
+                   appendChatroomInfo('You are not in a room, text is not sent: ' + msg);
+                   appendChatroomInfo('Type @rooms for room list, @create {room} to create room, @join {room} to join a room, @help for more.');
+                   appendConsole('Type message before join a room:' + msg);
+               }
+               else if (msg == '@who') {
+                   current_cmd = "get_room_user_list";
+                   data = '{"cmd":"get_room_user_list", "room_name":"' + current_room + '", "tracker":"' + current_tid + '"}';
+                   send_data(data);
+                   //appendChatroomInfo(msg + ":");
+               }
+               else if (msg == '@where') {
+                   appendChatroomInfo('@where: you are in room: ' + current_room);
+               }
+               else if (msg == '@invite') {
+                   appendChatroomInfo('@create: please provide a user name');
+               }
+               else if (msg.startsWith('@invite ')) {
+                   var user_name = $.trim( msg.substr(8) ); // after '@invite '
+                   if (user_name == '') {
+                       appendChatroomInfo('@create: please provide a user name');
+                   }
+                   appendConsole('Now invite: ' + user_name);
+                   doInvite(user_name);
+               }
+               else {
+                   current_cmd = "speak";
+                   data = '{"cmd":"speak", "room_name":"' + current_room + '", "msg":"' + msg + 
+                          '", "tracker":"' + current_tid + '"}';
+                   send_data(data);
+                   //console.log("Text message sent: " + msg);
+                   appendChatroom('<font color="green">>> ' + msg + '</font>');
+               }
             } else {
                //console.log("Connection not opened.")
                appendChatroom("<font color='red'>Connection not opened.</font>");
@@ -123,20 +239,29 @@
                    }
                }
 
-               socket.send(buf);
+               send_data(buf);
                //console.log("Binary message sent.");
-               appendChatroom("Binary message sent: " + decodeBinaryMsg(arr));
+               appendConsole("Binary message sent: " + decodeBinaryMsg(arr));
                o.value = '';
             } else {
                //console.log("Connection not opened.")
-               appendChatroom("<font color='red'>Connection not opened.</font>");
+               appendConsole("<font color='red'>Connection not opened.</font>");
             }
          };
+         function appendConsole(msg) {
+             var c = document.getElementById('console');
+             if (c) { c.innerHTML += msg + '<br/>'; }
+             updateScroll(c);
+             getInputFocus();
+         }
          function appendChatroom(msg) {
              var c = document.getElementById('chatroom');
              if (c) { c.innerHTML += msg + '<br/>'; }
-             updateScroll();
+             updateScroll(c);
              getInputFocus();
+         }
+         function appendChatroomInfo(msg) {
+             appendChatroom('<font color="orange">' + msg + '</font>');
          }
          function checkEnter(e) {
              // look for window.event in case event isn't passed in
@@ -147,8 +272,8 @@
              document.getElementById('txtMsg').focus();
          }
          /* Scroll down to always show most recent message at bottom. */
-         function updateScroll() {
-             var e = document.getElementById("chatroom");
+         function updateScroll(e) {
+             //var e = document.getElementById("chatroom");
              e.scrollTop = e.scrollHeight;
          }
          function clearChatroom() {
@@ -165,9 +290,30 @@
                   window.getSelection().addRange(range);
               }
          }
-         function updateInfo(msg) {
+         function updateInfo(msg, type) {
+             if (msg == '') {
+                 document.getElementById('div_info').innerHTML = '';
+                 return;
+             }
+
+             type = (typeof type === 'undefined') ? 'ok' : type;
+
+             if (type == 'ok') {
+                 msg = '<font color="green">' + msg + '</font>';
+             } 
+             else if (type == 'info') {
+                 msg = '<font color="orange">' + msg + '</font>';
+             }
+             else if (type == 'error') {
+                 msg = '<font color="red">' + msg + '</font>';
+             }
+
              document.getElementById('div_info').innerHTML = msg;
              //document.getElementById('connection_status').innerHTML = msg;
+         }
+         function ucFirst(s) {
+             if (s.length == 0) return '';
+             return s.substr(0,1).toUpperCase() + s.substr(1);
          }
 
          function showFormReg() {
@@ -179,12 +325,13 @@
              document.getElementById('form_reg').style.display='none';
              document.getElementById('form_login').style.display='block';
              document.getElementById('login_name').focus();
+             $('#div_info').html('');
          }
          function doRegister() {
              var usr = document.getElementById('reg_name').value.trim();
              var pwd = document.getElementById('reg_pwd').value.trim();
              if (usr == '' || pwd == '') {
-                 updateInfo('<font color="red">Register failed: name and password cannot be empty.</font>');
+                 updateInfo('Register failed: name and password cannot be empty.', 'error');
                  document.getElementById('reg_name').focus();
                  return;
              }
@@ -192,7 +339,7 @@
              var msg = '{"cmd":"register","usr":"' + usr + '","pwd":"' + pwd + '","tracker":"' + current_tid + '"}';
              //alert(msg);
              current_cmd = 'register';
-             socket.send(msg);
+             send_data(msg);
          }
          function doLogin() {
              var usr = document.getElementById('login_name').value;
@@ -202,12 +349,88 @@
                         pwd + '","tracker":"' + current_tid + '"}';
              //alert(msg);
              current_cmd = 'login';
-             socket.send(msg);
+             send_data(msg);
          }
          function doLogout() {
              if (! confirm('Are you sure to log out?')) return;
+
+             // should logout locally no matter what happen on server side.
+             // if disconnected before sending logout msg, will not get any
+             // response anyways. So do UI logout display here.
+             //$('#div_logout').html('');
+             //updateInfo('You are logging out.', 'info');
+             //document.getElementById('span_action').style.display = 'block';
+             //cleanup_logout();
+
              var msg = '{"cmd":"logout"}';
-             socket.send(msg);
+             send_data(msg);
+         }
+         function doCreateRoom(room) {
+             var room_name = $.trim(room);
+             if (room_name == '') {
+                 updateInfo("Please enter a room name.", 'error');
+                 if (request_src != 'concole') $('#txtNewRoom').focus();
+                 return;
+             }
+             var msg = '{"cmd":"create_room","room_name":"' + room_name + '"}';
+             send_data(msg);
+         }
+         function doLeaveRoom() {
+             if (current_room == '') return;
+
+             current_tid = make_tracker();
+             current_cmd = "leave_room";
+             var msg = '{"cmd":"leave_room", "room_name":"' + current_room +
+                       '", "tracker":"' + current_tid + '"}';
+             send_data(msg);
+         }
+         function doJoinRoom(room) {
+             var room_name = $.trim(room);
+             if (room_name == '') {
+                 updateInfo('Please select a room to join', 'error');
+                 return;
+             }
+             current_tid = make_tracker();
+             current_cmd = "join_room";
+             var msg = '{"cmd":"join_room", "room_name":"' + room_name + 
+                       '", "tracker":"' + current_tid + '"}';
+             send_data(msg);
+         }
+         function doInvite(user) {
+             var user_name = $.trim(user);
+
+             current_tid = make_tracker();
+             current_cmd = "invite";
+             var msg = '{"cmd":"invite", "room_name":"' + current_room +
+                       '", "invitee":"' + user_name +
+                       '", "tracker":"' + current_tid + '"}';
+             send_data(msg);
+         }
+         function doInviteReply(e, v) {
+             // continue only when Enter is pressed.
+             e = e || window.event;
+             if (e.keyCode != 13) { return; }
+
+             v = v.toLowerCase();
+
+             var reply = '';
+             if (v == 'yes' || v == 'y') { reply = 'Y'; }
+             else if (v == 'no' || v == 'n') { reply = 'N'; }
+             else if (v == 'later' || v == 'l') { reply = 'L'; }
+
+             if (reply != '') {
+                 current_tid = make_tracker();
+                 var inviter = $('#inviter').val();
+                 var inviter_room = $('#inviter_room').val();
+                 var msg = '{"cmd":"invite_reply", "inviter":"' + inviter +
+                   '", "room_name":"' + inviter_room + 
+                   '", "reply":"' + reply + '", "tracker":"' + current_tid + '"}';
+                 send_data(msg);
+
+                 $('#span_invite').hide();
+                 $('#txtMsg').removeAttr('disabled');
+                 $('#txtMsg').focus();
+             }
          }
 
          function process_message(msg) {
@@ -220,6 +443,7 @@
              else if (cmd == 'c_whisper') handle_c_whisper(jo);
              else if (cmd == 'c_broadcast') handle_c_broadcast(jo);
              else if (cmd == 'c_invited') handle_c_invited(jo);
+             else if (cmd == 'c_invite_reply') handle_c_invite_reply(jo);
              else if (cmd == 'c_event') handle_c_event(jo);
          }
 
@@ -228,12 +452,19 @@
              var last_cmd = jo.last_cmd;
              var msg = jo.msg;
              var tracker = jo.tracker;
-             dump(':response: ' + status + ', ' + last_cmd + ', ' + msg + ',' + tracker);
+             //dump(':response: ' + status + ', ' + last_cmd + ', ' + msg + ',' + tracker);
+
+             if (status == 'ok') { updateInfo(''); }
+
              if (last_cmd == 'register')         { handle_cr_register(status, msg, tracker); }
              else if (last_cmd == 'login')       { handle_cr_login(status, msg, tracker); }
              else if (last_cmd == 'update_pwd')  { handle_cr_update_pwd(status, msg, tracker); }
+             else if (last_cmd == 'get_room_list')  { handle_cr_get_room_list(status, msg, tracker); }
+             else if (last_cmd == 'get_user_list')  { handle_cr_get_user_list(status, msg, tracker); }
+             else if (last_cmd == 'get_room_user_list')  { handle_cr_get_room_user_list(status, msg, tracker); }
              else if (last_cmd == 'create_room') { handle_cr_create_room(status, msg, tracker); }
              else if (last_cmd == 'invite')      { handle_cr_invite(status, msg, tracker); }
+             else if (last_cmd == 'invite_reply')      { handle_cr_invite_reply(status, msg, tracker); }
              else if (last_cmd == 'join_room')   { handle_cr_join_room(status, msg, tracker); }
              else if (last_cmd == 'leave_room')  { handle_cr_leave_room(status, msg, tracker); }
              else if (last_cmd == 'speak')       { handle_cr_speak(status, msg, tracker); }
@@ -247,7 +478,8 @@
              var usr = jo.usr;
              var room_name = jo.room_name;
              var tracker = jo.tracker;
-             dump(':speak: ' + msg + ',' + room_name + ',' + tracker);
+             //dump(':speak: ' + msg + ',' + room_name + ',' + tracker);
+             appendChatroom('>> ' + usr + ': ' + msg);
          }
          function handle_c_whisper(jo) {
              var msg = jo.msg;
@@ -267,15 +499,103 @@
              var room_name = jo.room_name;
              var tracker = jo.tracker;
              dump(':invited: ' + msg + ',' + usr + ',' + room_name + ',' + tracker);
+
+             // disable message box, enable after reply to invitatio request.
+             $('#txtMsg').attr('disabled', 'disabled');
+
+             $('#inviter').val(usr);
+             $('#inviter_room').val(room_name);
+             $('#invite_msg').html(usr + ' invited you to join room ' +
+                                   room_name + ' (yes/no/later)?');
+             $('#span_invite').show();
+             $('#txtInviteReply').focus();
+         }
+         function handle_c_invite_reply(jo) {
+             var msg = jo.msg;
+             var usr = jo.usr;
+             var tracker = jo.tracker;
+             dump(':invited: ' + msg + ',' + usr + ',' + tracker);
+
+             if (msg == 'Y') {
+                 appendChatroomInfo(usr + ' accepted your invitation.');
+             } 
+             else if (msg == 'N') {
+                 appendChatroomInfo(usr + ' rejected your invitation.');
+             } 
+             else if (msg == 'L') {
+                 appendChatroomInfo(usr + ' will accept your invitation later.');
+             }
+             else {
+                 appendChatroomInfo('Unknown invitation reply code: ' + 
+                                    msg + ' from ' + usr);
+             }
          }
          function handle_c_event(jo) {
              var type = jo.type;
              var usr = jo.usr;
              var tracker = jo.tracker;
-             dump(':event: ' + type + ',' + usr + ',' + tracker);
+             //dump(':event: ' + type + ',' + usr + ',' + tracker);
+             
+             if (type == 'join_room') {
+                 if (current_room != '') {
+                     msg = 'User "' + usr + '" entered room.';
+                     appendChatroomInfo(msg);
+                 }
+             }
+             else if (type == 'leave_room') {
+                 if (current_room != '') {
+                     msg = 'User "' + usr + '" left room.';
+                     appendChatroomInfo(msg);
+                 }
+             }
+             else if (type == 'room_created') {
+                 var v = usr.split(':');
+                 if (v.length == 2 && v[1] != '') {
+                     var room_name = v[1];
+                     addRoom(room_name);
+                     $('#span_msg').html('New room ' + room_name + ' is created.');
+                     $('#span_msg').show().delay(5000).fadeOut();
+                 }
+                 else if (DEBUG) {
+                     dump('Event room_created wrong parameter (no room): ' + usr);
+                 }
+             }
+             else if (type == 'room_gone') {
+                 var v = usr.split(':');
+                 if (v.length == 2 && v[1] != '') {
+                     var room_name = v[1];
+                     removeRoom(room_name);
+                     $('#span_msg').html('Room ' + room_name + ' is gone.');
+                     $('#span_msg').show().delay(5000).fadeOut();
+                 }
+                 else if (DEBUG) {
+                     dump('Event room_created wrong parameter (no room): ' + usr);
+                 }
+             }
+             else if (type == 'login') {
+                 $('#span_msg').html('User ' + ucFirst(usr) + ' logs in.');
+                 $('#span_msg').show().delay(5000).fadeOut();
+             }
+             else if (type == 'logout') {
+                 var action = (tracker == '' ? ' is disconnected.' : 'logs out.');
+                 $('#span_msg').html('User ' + ucFirst(usr) + action);
+                 $('#span_msg').show().delay(5000).fadeOut();
+             }
+
          }
+
+         function addRoom(room_name) {
+             $('#selectRoomList').append($('<option>', {
+                 value: room_name,
+                 text: room_name
+             }));
+         }
+         function removeRoom(room_name) {
+             $('#selectRoomList option[value=' + room_name + ']').remove();
+         }
+
          function dump(msg) {
-             appendChatroom(msg);
+             appendConsole(msg);
          }
 
          function make_tracker() {
@@ -293,10 +613,10 @@
              if (status == 'ok') {
                  //document.getElementById('span_action').style.display = 'none';
                  document.getElementById('reg_pwd').value = ''; // clear password.
-                 updateInfo("<font color='green'>You are registered. Now you can log in.");
+                 updateInfo("You are registered. Now you can log in.");
                  cancelFormReg();
              } else {
-                 updateInfo('<font color="red">Register failed: ' + msg + '.</font>');
+                 updateInfo('Register failed: ' + msg + '.', 'error');
                  document.getElementById('reg_name').focus();
              }
          }
@@ -310,29 +630,266 @@
              if (status == 'ok') {
                  document.getElementById('span_action').style.display = 'none';
                  document.getElementById('login_pwd').value = ''; // clear password.
-                 updateInfo("<font color='green'>You are logged in. <a href='#' onclick='doLogout();'>Log out</a></font>");
+                 //updateInfo("You are logged in. <a href='#' onclick='doLogout();'>Log out</a>");
+
+                 current_user = $('#login_name').val();
+                 var msg = ' [<a href="#" onclick="doLogout();">Logout</a>] ';
+                 $('#div_logout').html(msg);
+
+                 $('#div_user').html('User: ' + current_user);
+
+                 client_get_room_list();
+
+                 // enable chatroom once logged in, so user can
+                 // use command interface too, instead of must use 
+                 // GUI for create/join room.
+                 disableChatroom(false); 
+                 appendChatroomInfo('You are logged in.');
+                 appendChatroomInfo('Type @rooms for room list, @create {room} to create room, @join {room} to join a room, @help for more.');
              } else {
-                 updateInfo('<font color="red">Invalid login name or password.</font>');
+                 updateInfo('Invalid login name or password.', 'error');
                  document.getElementById('login_name').focus();
              }
          }
          function handle_cr_update_pwd(status, msg, tracker) {
 
          }
-         function handle_cr_create_room(status, msg, tracker) {
 
+         function handle_cr_get_room_list_console(status, msg, tracker) {
+             if (status != 'ok') {
+                 updateInfo(msg, 'error');
+                 return;
+             }
+
+             msg = msg.split(',').sort().join(', ');
+             appendChatroomInfo("@rooms: " + msg);
+         }
+         function handle_cr_get_room_list(status, msg, tracker) {
+             if (request_src == 'console') {
+                 handle_cr_get_room_list_console(status, msg, tracker);
+                 request_src = '';
+                 return;
+             }
+
+             //appendConsole('now populate room list: ' + msg);
+             if (status == 'ok') {
+                 var o = $('#selectRoomList');
+
+                 // clear all entries and insert first option.
+                 o.children().remove();
+                 o.append($('<option>', {
+                         value: '',
+                         text: '-- select room --'
+                 }));
+
+                 if (msg != '') {
+                     var rooms = msg.split(',');
+                     rooms.forEach(function(room_name) {
+                         o.append($('<option>', {
+                             value: room_name,
+                             text: room_name
+                         }));
+                     });
+                 }
+             }
+             else {
+                 updateInfo('Error when get room list:' + msg + '.', 'error');
+                 document.getElementById('login_name').focus();
+             }
+             document.getElementById('form_room').style.display = 'block';
+         }
+
+         function handle_cr_get_user_list_console(status, msg, tracker) {
+             if (status != 'ok') {
+                 updateInfo(msg, 'error');
+                 return;
+             }
+            
+             msg = msg.split(',').sort().join(', ');
+             appendChatroomInfo("@users: " + msg);
+         }
+         function handle_cr_get_user_list(status, msg, tracker) {
+             if (request_src == 'console') {
+                 handle_cr_get_user_list_console(status, msg, tracker);
+                 request_src = '';
+                 return;
+             }
+
+         }
+
+         function handle_cr_get_room_user_list(status, msg, tracker) {
+             if (status != 'ok') {
+                 updateInfo(msg, 'error');
+                 return;
+             }
+
+             msg = msg.split(',').sort().join(', ');
+             appendChatroomInfo("@who: current room peers: " + msg);
+         }
+         function handle_cr_create_room(status, msg, tracker) {
+             request_src = '';
+             if (status != 'ok') {
+                 updateInfo(msg, 'error');
+                 appendChatroomInfo(msg);
+                 return;
+             }
+
+             var v = msg.split(':');
+             //appendConsole("handle create room: " + v[0] + ", " + v[1]);
+             var room_name = v[1];
+
+             $('#selectRoomList').append($('<option>', {
+                 value: room_name,
+                 text: room_name
+             }));
+             $('#selectRoomList').val(room_name); // set as current option.
+             $('#selectRoomList').attr('disabled', 'disabled');
+             $('#btnJoinRoom').val('Leave room');
+             $('#spanCreateRoom').hide();
+
+             if (current_room != '') {
+                 appendChatroomInfo('You left room ' + current_room);
+             }
+             current_room = room_name;
+             //disableChatroom(false);
+            
+             $('#div_room').html('Room: ' + room_name);
+             appendChatroomInfo('You created and entered room ' + room_name + '.');
+             appendConsole('You created and joined room: ' + room_name);
          }
          function handle_cr_invite(status, msg, tracker) {
+             if (status != 'ok') {
+                 appendChatroomInfo(msg);
+                 return;
+             }
+             var v = msg.split(':');
+             if (v.length < 2) {
+                 updateInfo('invalid invite msg: ' + msg, 'error');
+                 appendChatroom('Error happened when invite user to join.');
+                 return;
+             }
 
+             var invitee = v[0];
+             appendChatroomInfo('You invited ' + invitee + ' to join.');
          }
-         function handle_cr_join_room(status, msg, tracker) {
+         function handle_cr_invite_reply(status, msg, tracker) {
+             if (status != 'ok') {
+                 appendChatroomInfo(msg);
+                 return;
+             }
+             var v = msg.split(':');
+             if (v.length < 3) {
+                 updateInfo('invalid invite msg: ' + msg, 'error');
+                 //appendChatroom('invalid invite reply message.');
+                 return;
+             }
 
+             var inviter = v[0];
+             var room = v[1];
+             var reply = v[2];
+
+             if (reply == 'Y') {
+                 msg = 'You accepted invitation of ' + 
+                       inviter +' to join room ' + room + '.';
+             }
+             else if (reply == 'N') {
+                 msg = 'You rejected invitation of ' + 
+                       inviter +' to join room ' + room + '.';
+             }
+             else if (reply == 'L') {
+                 msg = 'You will accept invitation of ' + 
+                       inviter +' to join room ' + room + ' later.';
+             } else {
+                 msg = 'invalid invite reply message.';
+             }
+             appendChatroomInfo(msg);
+
+             if (reply == 'Y') {
+                 doJoinRoom(room);
+             }
+         }
+
+         function handle_cr_join_room(status, msg, tracker) {
+             if (status != 'ok') {
+                 //updateInfo(msg, 'error');
+                 appendChatroomInfo(msg);
+                 return;
+             }
+             if (tracker != current_tid) {
+                 if (DEUBG) {
+                     msg = 'join room message with wrong tracker.';
+                     updateInfo(msg, 'error');
+                     appendChatroomInfo('Error: ' + msg);
+                 }
+                 return;
+             }
+
+             var v = msg.split(':');
+             if (v.length < 2 || v[1] == '') {
+                 updateInfo("join_room: invalid room name.");
+                 return;
+             }
+             var room_name = v[1];
+
+             //room_name = $('#selectRoomList').val();
+             $('#selectRoomList').val(room_name); // set as current option.
+             $('#selectRoomList').attr('disabled', 'disabled');
+             $('#btnJoinRoom').val('Leave room');
+             $('#spanCreateRoom').hide();
+             current_room = room_name;
+             //disableChatroom(false);
+
+             $('#div_room').html('Room: ' + room_name);
+             appendChatroomInfo('You entered room ' + room_name + '.');
+             appendConsole('You joined room: ' + room_name);
          }
          function handle_cr_leave_room(status, msg, tracker) {
+             if (status != 'ok') {
+                 updateInfo(msg, 'error');
+                 return;
+             }
+             if (tracker != current_tid) {
+                 if (DEBUG) {
+                     msg = 'leave room message with wrong tracker.';
+                     updateInfo(msg, 'error');
+                 }
+                 updateInfo(msg, 'error');
+                 return;
+             }
 
+             $('#div_room').html('Room: ');
+             appendChatroomInfo('You left room ' + current_room + '.');
+
+             var fields = msg.split(':');
+             var room_is_gone = (fields.length >= 3 && fields[2] == '0');
+             if (room_is_gone) {
+                 $('#selectRoomList').find('option:selected').remove();
+             }
+
+             $('#selectRoomList').removeAttr('disabled');
+             $('#btnJoinRoom').val('Join Room');
+             $('#spanCreateRoom').show();
+             current_room = '';
+             //disableChatroom(true);
          }
          function handle_cr_speak(status, msg, tracker) {
-
+             if (status != 'ok') {
+                 //updateInfo(msg, 'error');
+                 appendChatroom('<font color="red">Error sending message (tracker: ' 
+                                + tracker + '): ' + msg + '</font>');
+                 return;
+             }
+             if (tracker != current_tid) {
+                 if (DEUBG) {
+                     msg = 'speak message with wrong tracker.';
+                     //appendChatroom('<font color="red">Wrong tracker ' 
+                     //               + tracker + ': ' + msg + '</font>');
+                     // Note this is possible when the user speaks too fast that
+                     // he sends a msg before response of the first msg comes back.
+                     return;
+                 }
+                 return;
+             }
          }
          function handle_cr_whisper(status, msg, tracker) {
 
@@ -345,13 +902,86 @@
          }
          function handle_cr_logout(status, msg, tracker) {
              if (status == 'ok') {
-                 updateInfo('<font color="orange">You are logged out.</font>');
+                 $('#div_logout').html('');
+                 updateInfo('You are logged out.', 'info');
                  document.getElementById('span_action').style.display = 'block';
+                 cleanup_logout();
              }
              else {
                  updateInfo(msg);
+                 cleanup_logout(); // should do cleanup no matter what.
              }
          }
+         function cleanup_logout() {
+             document.getElementById('form_room').style.display = 'none';
+
+             // clean up the select room list.
+             $('#selectRoomList').children().remove();
+             $('#selectRoomList').removeAttr('disabled');
+             $('#btnJoinRoom').val('Join Room');
+             $('#spanCreateRoom').show();
+             current_user = '';
+             current_room = '';
+             disableChatroom(true);
+
+             $('#div_logout').html('');
+             $('#div_user').html('User: ');
+             $('#div_room').html('Room: ');
+             updateInfo('');
+         }
+
+         function client_get_room_list() {
+             var tracker = make_tracker();
+             var msg = '{"cmd":"get_room_list", "tracker":"' + tracker + '"}';
+             send_data(msg);
+         }
+         function client_get_user_list() {
+             var tracker = make_tracker();
+             var msg = '{"cmd":"get_user_list", "tracker":"' + tracker + '"}';
+             send_data(msg);
+         }
+
+         $(document).ready(function() {
+             $('#txtNewRoom').keyup(function (e) {
+                 if(e.which === 13) {
+                     doCreateRoom( $(this).val() );
+                 }
+             });
+
+             $('#btnClearConsole').click(function() {
+                 $('#console').html('');
+             });
+
+             $('#btnJoinRoom').click(function() {
+                 if ($(this).val() == 'Leave room') {
+                     doLeaveRoom();
+                 } else {
+                     doJoinRoom( $('#selectRoomList').val() );
+                 }
+             });
+
+             getInputFocus();
+
+             if (DEBUG) {
+                 $('#debug_console').show();
+             }
+
+             $('#cbToggleDebug').click(function() {
+                 if ($(this).attr('checked')) { 
+                     $('#btnClearConsole').show();
+                     $('#console').show();
+                 } else {
+                     $('#btnClearConsole').hide();
+                     $('#console').hide();
+                 }
+             });
+
+             doDisconnect(true); // initialize to clean state.
+             if (AUTO_CONNECT != '') {
+                 $('#div_server').hide();
+                 doConnect();
+             }
+         });
       </script>
 
       <style type="text/css">
@@ -364,14 +994,78 @@
         position: relative;
         bottom: 0;
       }
+      #console {
+        height: 180px;
+        width: 720px;
+        background-color: #eeeeff;
+        overflow:auto;
+        overflow-y: scroll;
+        position: relative;
+        bottom: 0;
+      }
+      #div_status {
+        width:718px; 
+        line-height:25px; 
+        height:25px; 
+        position: relative; 
+        background-color:#eeeeee; 
+        border: solid 1px #dddddd;
+      }
+      #div_user {
+        position: absolute;
+        overflow:hidden;
+        white-space: nowrap;
+        float:left; line-height:25px;
+        padding-left: 5px;
+        padding-right:5px;
+        height:23px;
+        width:110px;
+        color:#666;
+        border: solid 1px #cccccc;
+      }
+      #div_room {
+        position: absolute; 
+        left: 120px;
+        overflow:hidden; 
+        white-space: nowrap; 
+        float:left; line-height:25px; 
+        padding-left: 5px;
+        padding-right:5px; 
+        height:23px; 
+        width:140px; 
+        color:#666; 
+        border: solid 1px #cccccc;
+      }
+      #div_msg {
+        position: absolute; 
+        padding-left:5px; 
+        left:270px; 
+        width:441px; 
+        height:23px; 
+        border: solid 1px #cccccc;
+        color: orange;
+      }
+      #span_invite {
+          background-color: #ccffcc;
+          border: solid 1px #99cc99;
+          position: absolute;
+          top: 130px;
+          left: 150px;
+          padding: 5px;
+      }
       </style>
    </head>
-   <body onload="doDisconnect(true);">
+   <body>
       <h1>Websocket Chatroom</h1>
 
+      <span id='div_server'>
       Server: ws://<input type="text" id="ws" value="127.0.0.1:9000"/>
       <input type='button' id='btnConnect' onclick='btnConnect_onclick(this);' value='Connect'></input>
-      <span id='connection_status'></span>&nbsp;&nbsp;<span id="div_info"></span>
+      </span>
+
+      <span id='connection_status'></span>&nbsp;&nbsp;
+      <span id='div_logout'></span>
+      <span id="div_info"></span>
       <br/><br/>
 
       <span id='span_action' style='display:none;'>
@@ -391,20 +1085,50 @@
       <br/><br/>
       </span>
       </span>
-      <!--div id='div_info'></div-->
+
+      <div id='form_room' style='display:none;'>
+      <input id="btnJoinRoom" type="button" value="Join Room" onclicki="doJoinRoom( $('#selectRoomList').val() );"/>
+      <select id="selectRoomList"><option value="">-- select room --</option></select>
+
+      <span id='spanCreateRoom'>
+      or
+      <!--input id="btnCreateRoom" type="button" value="Create Room" onclick='doCreateRoom();'/-->
+      Create Room: <input type="text" id="txtNewRoom"/>
+      </span>
+      <br/><br/>
+      </div>
 
       <input type="text" id="txtMsg" onkeypress="checkEnter(event);" size="50"/>
-      <button id='btnSendTxt' onclick='sendText();'>Send Text Message</button>
+      <button style='display:none;' id='btnSendTxt' onclick='sendText();'>Send Text Message</button>
       <button style='display:none;' id='btnSendBin' onclick='sendBinary();'>Send Binary Message</button>
-      <button onclick='clearChatroom();'>Clear Chat History</button>
-      <button onclick="selectText('chatroom');">Select/Copy Chat History</button>
+      <button onclick='clearChatroom();' title='Clear chat history'>Clear History</button>
+      <button onclick="selectText('chatroom');" title='Select history for copy'>Select History</button>
 
       <br/><br/>
 
-      <div id="chatroom" ></div>
+      <div id="chatroom">
+          <span id='span_invite' style='display:none;'>
+          <span id='invite_msg'></span>
+          <input type='text' id='txtInviteReply' onkeypress="doInviteReply(event, this.value);" style="width: 100px;"/>
+          <span id='inviter' style='display:none;'></span>
+          <span id='inviter_room' style='display:none;'></span>
+          </span>
+      </div>
 
-      <script type="text/javascript">
-      getInputFocus();
-      </script>
+      <div id="div_status">
+          <div id='div_user'>User: </div>
+          <div id='div_room'>Room: </div>
+          <div id='div_msg'>
+              <span id='span_msg' style='color: orange;'></span>
+          </div>
+      </div>
+      <br/>
+ 
+      <div id="debug_console" style="display:none;">
+          <input type="checkbox" id="cbToggleDebug" title="Click to toggle debug console"/>
+          Debug console: <a href='#' id='btnClearConsole' style="display:none;">Clear console</a><br/>
+          <div id="console" style="display:none;"></div>
+      </div>
+
    </body>
 </html>
