@@ -8,10 +8,21 @@
  */
 
 if (typeof (Chess6p_Remote) === 'undefined') {
+
+    // String.starsWith exists in firefox, but not in iOS safari and maybe other browsers.
+    if (typeof String.prototype.startsWith != 'function') {
+        String.prototype.startsWith = function (str){
+            //return this.indexOf(str) === 0; // O(n)
+            return this.slice(0, str.length) == str; // O(1)
+        };
+    }
     
     var Chess6p_Remote = function() {
         this.DEBUG = true;
         this.DEBUG = false;
+
+        this.ws = "ws://gametheory.olidu.com:80";
+        this.ws = "ws://homecox.com:9000";
 
         // if these values will be accessed in UI by jquery or javascript DOM, 
         // so cannot be accessed as private value. must define as public, and use 'this.'.
@@ -324,9 +335,9 @@ if (typeof (Chess6p_Remote) === 'undefined') {
             var sender_id = jo.sender_id;
     
             if (sender_id == current_player_id) return;
-    
+
             if (msg == this.C_RESET_GAME) {
-                if ( confirm('Another player wants to start a new game. OK?') ) {
+                if ( confirm('The other player wants to start a new game. OK?') ) {
                     this.send_msg_reply_reset('Y');
                     this.showInfo('Game starts!');
                     this.remote_game_started = true;
@@ -344,7 +355,7 @@ if (typeof (Chess6p_Remote) === 'undefined') {
                     this.remote_game_started = true;
                     sp.reset();
                 } else {
-                    alert('Another player does not want to start a new game.');
+                    alert('The other player does not want to start a new game.');
                 }
             }
             else { // move peer's piece on my board.
@@ -505,12 +516,9 @@ if (typeof (Chess6p_Remote) === 'undefined') {
 
 
     Chess6p_Remote.prototype.doConnect = function() {
-       var ws = "ws://gametheory.olidu.com:80";
-       //ws = "ws://homecox.com:9000";
-       
        var _this = this;
     
-       socket = new WebSocket(ws); 
+       socket = new WebSocket(this.ws); 
        socket.binaryType = "arraybuffer";
        socket.onopen = function() {
           isopen = true;
@@ -545,8 +553,12 @@ if (typeof (Chess6p_Remote) === 'undefined') {
        socket.onclose = function(e) {
           _this.turnOnGameRoomUI(false);
           var msg = '';
-          if (current_cmd == "login") { msg = 'Login failed.'; }
-          else { msg = 'Connection is closed.'; }
+          if (current_cmd == "login") { 
+              msg = 'Login failed.'; 
+          }
+          else { 
+              msg = 'Connection is closed.'; 
+          }
     
           _this.appendConsole(msg);
           _this.showInfo(msg, 'error');

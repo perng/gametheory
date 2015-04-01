@@ -64,11 +64,11 @@
     }
     #span_me {
         padding-left: 5px;
+        display:inline-block;
+        width:110px;
         /*background-color:green;*/
-        width:120px;
         overflow:hidden;
         white-space:nowrap;
-        display:inline-block;
         float:left;
         text-align: left;
         font-size:10pt;
@@ -77,7 +77,7 @@
         position:relative;
         left:0px;
         /*background-color:red;*/
-        width:20%;
+        /*width:20%;*/
         display:inline-block;
         color:#999;
         font-size:10pt;
@@ -85,7 +85,7 @@
     #span_you {
         padding-right: 5px;
         display:inline-block;
-        width:120px;
+        width:110px;
         /*background-color:green;*/
         overflow:hidden;
         white-space:nowrap;
@@ -409,7 +409,9 @@ function restart() {
 
         // request to reset unfinished game, or start a new game after a game finishes.
         // both are essentially the same: to start a new game. So can be combined.
-        sp_remote.send_msg_reset();
+        if (confirm('Restart game needs consent of the other player. OK?')) {
+            sp_remote.send_msg_reset();
+        }
         return;
     }
 
