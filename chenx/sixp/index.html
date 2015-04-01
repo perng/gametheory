@@ -266,16 +266,16 @@
       <br/><span id="span_info"></span><br/>
 
       <div id="div_register" style="text-align: center;">
-          <a href="#" onclick="showRegForm();" id="link_reg">Register</a>
-          <div id="form_reg" style="display:none; text-align:center; ibackground-color:green;">
+          <a href="#" id="link_reg">Register</a>
+          <div id="form_reg" style="display:none; text-align:center;">
 
           <!-- "need "margin-left:auto; margin-right:auto;" to center table in div. -->
           <table style="margin-left:auto; margin-right:auto;">
           <tr><td>NAME: </td><td><input type='txt' id='reg_name'/></td></tr>
           <tr><td>UUID: </td><td><input type='password' id='reg_pwd'/></td></tr>
           <tr><td>&nbsp;</td><td align="left">
-          <input type='button' value='Register' onclick='doRegister();'/>
-          <input type="button" value="Cancel" onclick="hideRegForm();"/>
+          <input type='button' id="btnReg" value='Register'/>
+          <input type="button" id="btnCancelReg" value="Cancel"/>
           </td></tr>
           <tr><td colspan="2">&nbsp;</td></tr>
           </table>
@@ -308,23 +308,97 @@
 
 <script type="text/javascript">
 <!--
-var c;
+var bgImg;
+var sp;
 var langWords = Array("Start!", "White Win!", "Black Win!", "Game Over: ", " You Win! ", " You lost! ",
                       "Play Music", "Stop Music", "Play Sound", "Stop Sound");
+var sp_remote;
+
+$(document).ready(function() {
+    sp_remote = new Chess6p_Remote();
+
+    bgImg = new Image();
+    bgImg.src = "image/bg.jpg";  // Force preload image.
+    bgImg.onload = function() {  // do init() only when image is loaded.
+        init();
+    };
+
+    $('#cbRemote').click(function() {
+        sp_remote.showLoginForm($(this).attr('checked'));
+    });
+
+
+    if (! sp_remote.isRemotePlay()) { return; }  // Stop here if not remote play mode.
+
+    /*$('#login_id').watermark('Player ID');
+    $('#reg_name').watermark('NAME');
+    $('#reg_pwd').watermark('UUID');*/
+
+    if (isMobile()) { sp_remote.DEBUG = false; }
+    if (sp_remote.DEBUG) { $('#debug_console').show(); }
+
+    $('#btnClearConsole').click(function() {
+        $('#console').html('');
+    });
+
+    $('#btnLogin').click(function() {
+        if ($(this).val() == 'Login') {
+            sp_remote.doLogin();
+        } else {
+            sp_remote.doLogout();
+        }
+    });
+
+    $('#btnJoin').click(function() {
+        if ($(this).val() == 'Join') {
+            sp_remote.doJoinRoom();
+        } else {
+            sp_remote.doLeaveRoom();
+        }
+    });
+
+    $('#cbToggleDebug').click(function() {
+        if ($(this).attr('checked')) { 
+            $('#btnClearConsole').show();
+            $('#console').show();
+        } else {
+            $('#btnClearConsole').hide();
+            $('#console').hide();
+        }
+    });
+
+    $('#link_reg').click(function() { sp_remote.showRegForm(); });
+    $('#btnReg').click(function() { sp_remote.doRegister(); });
+    $('#btnCancelReg').click(function() { sp_remote.hideRegForm(); });
+  
+});
+
 
 function init() {
     setMobileUI();
 
-    c = new Chess6p();
+    sp = new Chess6p();
     toggleHelp(true); 
     //toggleOptionPanel();
     playMusic();
     playSound();
 }
 
+function isMobile() {
+    var D=navigator.userAgent.toLowerCase();
+    var x=(D.indexOf("android")!=-1)||(D.indexOf("iphone")!=-1);
+    return x;
+}
+
+function setMobileUI() {
+    if (! this.isMobile()) return;
+    $('#debug_console').hide();
+    $('#div_remote').width('300');
+}
+
 function restart() {
-    if (isRemotePlay() && both_sides_connected) {
-        if (c.stepCount == 1) {
+    if (sp_remote.isRemotePlay() && sp_remote.both_sides_connected) {
+        if (sp.stepCount == 1) {
             alert('Already at the start of new game.');
             return;
         }
@@ -335,7 +409,7 @@ function restart() {
 
         // request to reset unfinished game, or start a new game after a game finishes.
         // both are essentially the same: to start a new game. So can be combined.
-        send_msg_reset();
+        sp_remote.send_msg_reset();
         return;
     }
 
@@ -343,7 +417,7 @@ function restart() {
 }
 
 function reset() {
-    c.reset(); 
+    sp.reset(); 
 }
 
 function toggleOptionPanel() {
@@ -355,8 +429,8 @@ function toggleOptionPanel() {
 }
 
 function saveChange() {
-    c.updateConfig();
-    c.saveConfig();
+    sp.updateConfig();
+    sp.saveConfig();
     reset();
     toggleOptionPanel();
 }
@@ -382,12 +456,12 @@ function playMusic() {
 function playSound(o) {
     var o = document.getElementById('idToggleSoundMov');
     if (o.title == 'Play Sound') {
-        c.setUseSoundMov(true);
+        sp.setUseSoundMov(true);
         o.title = 'Stop Sound';
         o.src = 'image/sound.png';
         playSoundMov();
     } else {
-        c.setUseSoundMov(false);
+        sp.setUseSoundMov(false);
         o.title = 'Play Sound';
         o.src = 'image/sound_mute.png';
     }
@@ -417,7 +491,7 @@ function playSoundSav() {
 }
 
 function help() {
-    //c.toggleHelp();
+    //sp.toggleHelp();
     var d = document.getElementById("divHelpPanel");
     if (!d) { return; }
 
@@ -430,19 +504,19 @@ function toggleHelp(v) {
 } 
 
 function helpOnStart() {
-    if (c.onStart) {
+    if (sp.onStart) {
         toggleHelp(false);
-        c.onStart = false;
+        sp.onStart = false;
     }
 }
 
 function saveBoard() {
-    c.saveBoard();
+    sp.saveBoard();
     playSoundSav();
 }
 
 function recoverBoard() {
-    c.recoverBoard();
+    sp.recoverBoard();
     playSoundMov();
 }
 

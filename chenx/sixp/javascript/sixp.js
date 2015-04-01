@@ -168,8 +168,8 @@ if (typeof (Chess6p) == "undefined") {
         // if this.remotePlay is off, this always return true.
         if (! this.remotePlay) return true;
 
-        //appendConsole('remoteGameStart: ' + remote_game_started);
-        return remote_game_started;
+        //appendConsole('remoteGameStart: ' + sp_remote.remote_game_started);
+        return sp_remote.remote_game_started;
     }
 
     Chess6p.prototype.reset = function() {
@@ -219,7 +219,7 @@ if (typeof (Chess6p) == "undefined") {
         if (this.timeout4) { clearTimeout(this.timeout4); }
         if (this.timeout5) { clearTimeout(this.timeout5); }
         
-        this.remotePlay = isRemotePlay(); //document.getElementById("cbRemote").checked;
+        this.remotePlay = sp_remote.isRemotePlay(); //document.getElementById("cbRemote").checked;
 
         this.inGameOverStatus = false;
         this.currentMoveSide = 1; // Black
@@ -318,8 +318,8 @@ if (typeof (Chess6p) == "undefined") {
     Chess6p.prototype.endGame = function() {
         this.inGameOverStatus = true;
         if (this.remotePlay) { 
-            remote_game_started = false; 
-            showInfo('Game ended!');
+            sp_remote.remote_game_started = false; 
+            sp_remote.showInfo('Game ended!');
         } 
 
         var msg = (this.currentMoveSide == 1) ? langWords[1] : langWords[2]; // "White Win!" : "Black Win!";
@@ -695,7 +695,7 @@ if (typeof (Chess6p) == "undefined") {
 
         if (this.isCurrentMoveSide() && 
             this.remotePlay && this.remoteGameStarted()) {
-            send_msg_move(curIndex, dstIndex);
+            sp_remote.send_msg_move(curIndex, dstIndex);
         }
                
         this.recordMoveHistory(this.currentMoveSide, curIndex, dstIndex);
@@ -873,7 +873,7 @@ if (typeof (Chess6p) == "undefined") {
 
         if (this.doExplosion > 0) {
             var me = this;
-            me.timeout3 = setTimeout('c.drawExplosions()', this.explosionInterval);
+            me.timeout3 = setTimeout('sp.drawExplosions()', this.explosionInterval);
         }
         else {
             this.doExplosionPos.length = 0; // = []; // clear position array.
@@ -960,7 +960,7 @@ if (typeof (Chess6p) == "undefined") {
         //alert(url);
 
         $.get(url, function(data) {
-            var me = c; // c is global variable defined in index.html
+            var me = sp; // sp is global variable defined in index.html
             //alert(":" + data);
             if (data == '') {
                 if (me.DEBUG) {
@@ -986,7 +986,7 @@ if (typeof (Chess6p) == "undefined") {
     }
 
     Chess6p.prototype.remoteMove = function(data) {
-        var me = c; // c is global variable defined in index.html
+        var me = sp; // sp is global variable defined in index.html
         var move = data.split("/");
         if (move.length != 2) {
             me.setDebug("error: invalid move data: " + data);
@@ -1138,7 +1138,7 @@ if (typeof (Chess6p) == "undefined") {
         localStorage["sixp.config.autoSaveRecover"] = 
             (document.getElementById('idAutoSaveRecover').checked ? 1 : 0);
 
-        showLoginForm( document.getElementById('cbRemote').checked );
+        sp_remote.showLoginForm( document.getElementById('cbRemote').checked );
     }
 
     Chess6p.prototype.recoverConfig = function() {
@@ -1155,7 +1155,7 @@ if (typeof (Chess6p) == "undefined") {
         document.getElementById('idAutoSaveRecover').checked = 
             (localStorage["sixp.config.autoSaveRecover"] == 1) ? true : false;
 
-        showLoginForm( document.getElementById('cbRemote').checked );
+        sp_remote.showLoginForm( document.getElementById('cbRemote').checked );
     }
 
     Chess6p.prototype.updateConfig = function() {
