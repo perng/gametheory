@@ -110,12 +110,22 @@ if (typeof (Chess6p_Remote) === 'undefined') {
 
     Chess6p_Remote.prototype.showLoginForm = function(show) {
         if(show) {  
+            if( ! window.WebSocket ) {
+                this.showInfo('You browser does not support websocket.<br/>Cannot play remotely.', 
+                              'error');
+                return;
+            }
+
             $('#form_login').show();
             $('#link_reg').show();
             $('#div_players').show();
             document.getElementById('gameLevel').disabled = true;
             document.getElementById('comSide').disabled = true;
         } else {
+            if( ! window.WebSocket ) {
+                this.showInfo('');
+            }
+
             $('#form_login').hide();
             $('#link_reg').hide();
             $('#div_players').hide();
