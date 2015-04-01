@@ -15,6 +15,7 @@
     <![endif]--> 
     
     <script type="text/javascript" language="javascript" src="javascript/jquery-1.6.1.min.js"></script>
+    <script type="text/javascript" language="javascript" src="javascript/watermark/jquery.watermark.min.js"></script>
 
     <script type="text/javascript" language="javascript" src="javascript/gametheory.js"></script>
     <!--[if ! IE]>--> <script type="text/javascript" src="javascript/sixp.js"></script> <!--<![endif]-->
@@ -251,36 +252,29 @@
 
       <span id='form_login' style='display:none; text-align:center;'>
 
-      <span style="width:70px; display:inline-block;">Player ID: </span>
       <input type='text' id='login_id' style="width:158px;"/>
       <input type='button' id='btnLogin' value='Login' style="width:60px;"/>
 
       <span id="span_game_room" style="display:none;">
-      <span style="width:70px; display:inline-block;">&nbsp;</span>
       <select id="selectGameRoom" style="width:165px;">
       <option value="">-- select Game Room --</option>
       </select>
       <input type="button" id="btnJoin" value="Join" style="width:60px;"/>
       </span>
 
-      <br/><span id="span_info"></span><br/>
+      <br/>
+      </span> <!-- end of form_login -->
 
-      <div id="div_register" style="text-align: center;">
-          <a href="#" id="link_reg">Register</a>
-          <div id="form_reg" style="display:none; text-align:center;">
-
-          <!-- "need "margin-left:auto; margin-right:auto;" to center table in div. -->
-          <table style="margin-left:auto; margin-right:auto;">
-          <tr><td>NAME: </td><td><input type='txt' id='reg_name'/></td></tr>
-          <tr><td>UUID: </td><td><input type='password' id='reg_pwd'/></td></tr>
-          <tr><td>&nbsp;</td><td align="left">
+      <div id="form_reg" style="display:none; text-align:center;">
+          <input type='txt' id='reg_name'/><br/>
+          <input type='password' id='reg_pwd'/><br/>
           <input type='button' id="btnReg" value='Register'/>
           <input type="button" id="btnCancelReg" value="Cancel"/>
-          </td></tr>
-          <tr><td colspan="2">&nbsp;</td></tr>
-          </table>
-          </div>
       </div>
+
+      <span id="span_info"></span><br/>
+
+      <a href="#" id="link_reg">Register</a>
 
       </center>
 
@@ -330,9 +324,9 @@ $(document).ready(function() {
 
     if (! sp_remote.isRemotePlay()) { return; }  // Stop here if not remote play mode.
 
-    /*$('#login_id').watermark('Player ID');
-    $('#reg_name').watermark('NAME');
-    $('#reg_pwd').watermark('UUID');*/
+    $('#login_id').watermark('Player ID');
+    $('#reg_name').watermark('Name');
+    $('#reg_pwd').watermark('Uuid');
 
     if (isMobile()) { sp_remote.DEBUG = false; }
     if (sp_remote.DEBUG) { $('#debug_console').show(); }
@@ -346,6 +340,12 @@ $(document).ready(function() {
             sp_remote.doLogin();
         } else {
             sp_remote.doLogout();
+        }
+    });
+
+    $('#login_id').keyup(function(e) {
+        if ($('#btnLogin').val() == 'Login' && e.which == 13) {
+            sp_remote.doLogin();
         }
     });
 

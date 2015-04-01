@@ -43,11 +43,14 @@ if (typeof (Chess6p_Remote) === 'undefined') {
     }
 
     Chess6p_Remote.prototype.showRegForm = function() {
+        $('#form_login').hide();
         $('#link_reg').hide();
         $('#form_reg').show();
+        this.showInfo('');
     }
 
     Chess6p_Remote.prototype.hideRegForm = function() {
+        $('#form_login').show();
         $('#link_reg').show();
         $('#form_reg').hide();
         this.showInfo('');
@@ -373,12 +376,11 @@ if (typeof (Chess6p_Remote) === 'undefined') {
     
         if (reply_cmd == 'login') {
             if (status == 'ok') {
-                //$('#btnLogin').attr('disabled', 'disabled');
                 $('#btnLogin').val('Logout');
                 this.showInfo('Login succeeded.');        
                 this.send_msg_get_game_rooms();
     
-                $('#div_register').hide();
+                $('#link_reg').hide();
             } 
             else {
                 this.turnOnGameRoomUI(false);
@@ -445,6 +447,7 @@ if (typeof (Chess6p_Remote) === 'undefined') {
                 $('#reg_pwd').val('');
                 $('#form_reg').hide();
                 $('#link_reg').show();
+                $('#form_login').show();
             } else {
                 this.handle_message_not_ok(status, msg, tracker);
             }
@@ -471,7 +474,7 @@ if (typeof (Chess6p_Remote) === 'undefined') {
             return;
         }
     
-        this.showInfo('Please select a game room below.');
+        this.showInfo('Please select a game room.');
         
         // clean up the select room list.
         $('#selectGameRoom').children().remove();
