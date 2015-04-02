@@ -53,7 +53,7 @@ The result of each round of game is recorded.
   * response: {"status": "ok", "msg": "No operation", "reply_cmd": "noop", "_tracker": 0}
 
 # Player API
-* register_by_password
+* register_by_password  -- if successful, no need to login. If called with same player_name and password as before, it's equivalent to login_by_password
   * request: {"cmd":"register_by_password", "player_name":"charles", "password": "abcde"}
   * response:{"status": "ok", "player_name": "charles", "reply_cmd": "register_by_password", "msg": "New user registered", "player_id": 1, "ip_address": "127.0.0.1"}
 
@@ -61,7 +61,7 @@ The result of each round of game is recorded.
   * request: {"cmd":"login_by_password", "player_name":"charles", "password": "abcde"}
   * response: {"status": "ok", "player_name": "charles", "reply_cmd": "login_by_password", "msg": "", "player_id": 1, "ip_address": "127.0.0.1"}
 
-* register_by_uuid
+* register_by_uuid -- if successful, no need to login. If called with same uuid and uuid_type as before, it's equivalent to login_by_uuid
   * request: {"cmd":"register_by_uuid", "player_name": "david", "uuid": "xidkeu", "uuid_type": "MAC"}
   * response: {"status": "ok", "player_name": "david", "reply_cmd": "register_by_uuid", "msg": "New user registered", "player_id": 2, "ip_address": "127.0.0.1"}
 
