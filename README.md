@@ -92,6 +92,7 @@ The result of each round of game is recorded.
   * request: {"cmd":"unicast", "receiver_id": 1, "message": "Hello!"}
   * response: {"status": "ok", "msg": "", "reply_cmd": "unicast"}
   * The receiver receive: {"sender_name": "david", "message": "Hello!", "cmd": "unicast", "sender_id": 2}
+
 # Game API
 * get_games : Get game information of all games.
   * request: {"_tracker": 1, "cmd": "get_games"}
