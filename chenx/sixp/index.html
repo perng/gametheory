@@ -43,6 +43,22 @@
         height: 24px; width:100px; font-weight: bold; 
         text-align: center;
     }
+    #divHelpPanel {
+        float: center;
+        padding: 5px;
+        font-size: 10pt;
+        text-align: left; 
+        vertical-align: top; 
+        border: solid 0px; 
+        display: none;
+        position: absolute; 
+        z-index:300; 
+        background-color:rgba(255,255,255,0.75); 
+        /*IE.START*/
+        background-color: white; 
+        opacity:0.75;filter:alpha(opacity=75);
+        /*IE.END*/
+    }
 
     #console {
         height: 180px;
@@ -64,11 +80,11 @@
     }
     #span_me {
         padding-left: 5px;
+        display:inline-block;
+        width:110px;
         /*background-color:green;*/
-        width:120px;
         overflow:hidden;
         white-space:nowrap;
-        display:inline-block;
         float:left;
         text-align: left;
         font-size:10pt;
@@ -77,7 +93,7 @@
         position:relative;
         left:0px;
         /*background-color:red;*/
-        width:20%;
+        /*width:20%;*/
         display:inline-block;
         color:#999;
         font-size:10pt;
@@ -85,7 +101,7 @@
     #span_you {
         padding-right: 5px;
         display:inline-block;
-        width:120px;
+        width:110px;
         /*background-color:green;*/
         overflow:hidden;
         white-space:nowrap;
@@ -198,15 +214,15 @@
     </tr>
     </table></div>
 
-    <div id="divHelpPanel" style="float: center; padding: 5px; font-size: 10pt; 
-     text-align: left; vertical-align: top; border: solid 0px; display: none; 
-     position: absolute; z-index:300; background-color:rgba(255,255,255,0.75); /*IE.START*/background-color: white; opacity:0.75;filter:alpha(opacity=75);/*IE.END*/" 
-     onmouseover="javascript:helpOnStart();" ontouchstart="javascript:helpOnStart();">
+    <div id="divHelpPanel" onmouseover="javascript:helpOnStart();" ontouchstart="javascript:helpOnStart();">
 
     <table width="100%"><tr>
-    <td align="center"><div style="font-size: 14pt; font-weight: bold;">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Six-Piece Chess</div></td>
+    <td align="center">
+        <div style="font-size: 14pt; font-weight: bold;">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Six-Piece Chess</div>
+    </td>
     <td style="width:30px;">
-    <input type="image" src="image/btnCloseX.gif" onClick="javascript:toggleHelp(false);"/></td>
+        <input type="image" src="image/btnCloseX.gif" onClick="javascript:toggleHelp(false);"/>
+    </td>
     </tr></table>
 
     <p align="center"><b>Rules</b></p>
@@ -215,8 +231,8 @@
     <li>
     Moving side kills opponent's piece when:<br/>
     1) moving side moves 2 pieces together,<br/>
-    2) 1 of the 2 pieces is next to opponent's piece,<br/>
-    3) there are only 3 pieces on this row/column.
+    2) one piece is next to opponent's piece,<br/>
+    3) only 3 pieces are on this row/column.
     </li>
     <li>One side loses when has &lt; 2 pieces or can't move.</li>
     </ul>
@@ -274,7 +290,7 @@
 
       <span id="span_info"></span><br/>
 
-      <a href="#" id="link_reg">Register</a>
+      <a href="#" id="link_reg" style="display:none;">Register</a>
 
       </center>
 
@@ -409,7 +425,9 @@ function restart() {
 
         // request to reset unfinished game, or start a new game after a game finishes.
         // both are essentially the same: to start a new game. So can be combined.
-        sp_remote.send_msg_reset();
+        if (confirm('Restart game needs consent of the other player. OK?')) {
+            sp_remote.send_msg_reset();
+        }
         return;
     }
 
