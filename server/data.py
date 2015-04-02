@@ -104,6 +104,7 @@ class RunTimeDataStore:
     '''
     def __init__(self, factory):
         self.factory = factory
+        self.players = {}
         self.gamerooms = {} #room.id --> room
         self.gameroom_tables = {}  # room.id --> table.id --> table
         self.gametables = {}  # table.id --> table
@@ -111,6 +112,7 @@ class RunTimeDataStore:
         for gameroom in gamerooms:
             self.gamerooms[gameroom.id] = gameroom
             self.gameroom_tables[gameroom.id] = {}
+
 
     def add_table(self, gameroom_id):
         gameroom = self.gamerooms[int(gameroom_id)]

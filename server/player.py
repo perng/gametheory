@@ -24,6 +24,7 @@ def login_helper(socket, player):
     socket.player = player
     player.socket = socket
     player.gametables = {}
+    socket.factory.datastore.players[player.id] = player
     return  player.info()
 
 @required_params('uuid', 'uuid_type', 'player_name')
@@ -128,7 +129,6 @@ def get_my_stats(socket, params):
 @required_params('player_id','game_name')
 def get_player_stats(socket, params):
     try:
-        print 'get_player_stats:', params
         player = Player.objects.get(id=int(params['player_id']))
     except:
         return JsonResponse(socket, params, {}, ERROR, 'player_id:{0} not found'.format( params['player_id']))
@@ -212,3 +212,15 @@ def rank_city(socket, player_id):
     rank = Player.objects.filter(score__gt=player.score, country=player.country, city=player.city).count() + 1
     return JsonResponse({'status': OK, 'rank': rank})
 
+@login_required
+@required_params('receiver_id', 'message')
+def unicast(socket, params):
+    sender = socket.player
+    try:
+        receiver = socket.factory.datastore.players[int(params['receiver_id'])]
+    except:
+        return JsonResponse(socket, params, {}, ERROR, 'player_id:{0} not found'.format( params['receiver_id']))
+    result = {'cmd': 'unicast', 'sender_id':sender.id, 'sender_name': sender.player_name,
+              'message': params['message']}
+    receiver.socket.sendMessage(json.dumps(result).encode('utf8'), False)
+    return JsonResponse(socket, params, {}, OK, '')

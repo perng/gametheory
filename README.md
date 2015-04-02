@@ -88,6 +88,10 @@ The result of each round of game is recorded.
   * request: {"level": 1, "cmd": "update_stats", "score": 123, "game_name": "Game Theory", "player_id": 3, "_tracker": 7, "gem": -1}
   * response: {"status": "ok", "level": 12, "reply_cmd": "update_stats", "msg": "", "score": 2553, "player_id": 3, "_tracker": 7, "xp": 0, "gem": -1}
 
+* unicast
+  * request: {"cmd":"unicast", "receiver_id": 1, "message": "Hello!"}
+  * response: {"status": "ok", "msg": "", "reply_cmd": "unicast"}
+  * The receiver receive: {"sender_name": "david", "message": "Hello!", "cmd": "unicast", "sender_id": 2}
 # Game API
 * get_games : Get game information of all games.
   * request: {"_tracker": 1, "cmd": "get_games"}
