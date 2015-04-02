@@ -29,7 +29,7 @@ def login_helper(socket, player):
 @required_params('uuid', 'uuid_type', 'player_name')
 def login_by_uuid(socket, params):
     try:
-        player = Player.objects.get_or_create(player_name=params['player_name'])
+        player = Player.objects.get(player_name=params['player_name'])
     except:
         msg = "Player doesn't exist:" +  params['player_name']
         return JsonResponse(socket, params, {}, ERROR, msg)

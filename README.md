@@ -53,13 +53,25 @@ The result of each round of game is recorded.
   * response: {"status": "ok", "msg": "No operation", "reply_cmd": "noop", "_tracker": 0}
 
 # Player API
-* register: for first-time registration, or rename. Client should save 'player_id' for later communication
-  * requet: {"_tracker": 3, "cmd": "register", "player_name": "Albert Einstein", "uuid": "xxxxx", "uuid_type": "FB"} 
-  * response: {"status": "ok", "player_name": "Albert Einstein", "reply_cmd": "register", "msg": "User renamed", "player_id": 3, "_tracker": 3, "ip_address": "127.0.0.1"}  
-  
-* login: need to be called after connected
-  * request: {"player_id": 3, "_tracker": 4, "cmd": "login"}
-  * response: {"status": "ok", "msg": "", "reply_cmd": "login", "_tracker": 4}
+* register_by_password
+  * request: {"cmd":"register_by_password", "player_name":"charles", "password": "abcde"}
+  * response:{"status": "ok", "player_name": "charles", "reply_cmd": "register_by_password", "msg": "New user registered", "player_id": 1, "ip_address": "127.0.0.1"}
+
+* login_by_password
+  * request: {"cmd":"login_by_password", "player_name":"charles", "password": "abcde"}
+  * response: {"status": "ok", "player_name": "charles", "reply_cmd": "login_by_password", "msg": "", "player_id": 1, "ip_address": "127.0.0.1"}
+
+* register_by_uuid
+  * request: {"cmd":"register_by_uuid", "player_name": "david", "uuid": "xidkeu", "uuid_type": "MAC"}
+  * response: {"status": "ok", "player_name": "david", "reply_cmd": "register_by_uuid", "msg": "New user registered", "player_id": 2, "ip_address": "127.0.0.1"}
+
+*login_by_uuid
+  * request: {"cmd":"login_by_uuid", "player_name": "david", "uuid": "xidkeu", "uuid_type": "MAC"}
+  * response:{"status": "ok", "player_name": "david", "reply_cmd": "login_by_uuid", "msg": "", "player_id": 2, "ip_address": "127.0.0.1"}
+
+* logout 
+  * request: {"cmd":"logout"}
+  * response: {"status": "ok", "msg": "", "reply_cmd": "logout"}
 
 * get_my_stats : Get the stats of the logged-in user for a particular game
   * request: {"_tracker": 5, "cmd": "get_my_stats", "game_name": "Game Theory"}
