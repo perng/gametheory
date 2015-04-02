@@ -26,16 +26,44 @@ def login_helper(socket, player):
     player.gametables = {}
     return  player.info()
 
-
 @required_params('uuid', 'uuid_type', 'player_name')
 def login_by_uuid(socket, params):
+    try:
+        player = Player.objects.get_or_create(player_name=params['player_name'])
+    except:
+        msg = "Player doesn't exist:" +  params['player_name']
+        return JsonResponse(socket, params, {}, ERROR, msg)
+    if player.uuid_type != params['uuid_type']:
+        msg = "UUID type mismatch:" +  params['uuid_type']
+        return JsonResponse(socket, params, {}, ERROR, msg)
+    if player.uuid != params['uuid']:
+        msg = "UUID mismatch:" +  params['uuid_type']
+        return JsonResponse(socket, params, {}, ERROR, msg)
+    result = login_helper(socket, player)
+    return JsonResponse(socket, params, result, OK, '')
+
+@required_params('password', 'player_name')
+def login_by_password(socket, params):
+    try:
+        player = Player.objects.get(player_name=params['player_name'])
+    except:
+        msg = "Player doesn't exist:" +  params['player_name']
+        return JsonResponse(socket, params, {}, ERROR, msg)
+    if player.password != params['password']:
+        msg = "Password mismatch:" +  params['password']
+        return JsonResponse(socket, params, {}, ERROR, msg)
+    result = login_helper(socket, player)
+    return JsonResponse(socket, params, result, OK, '')
+
+@required_params('uuid', 'uuid_type', 'player_name')
+def register_by_uuid(socket, params):
     player, created = Player.objects.get_or_create(player_name=params['player_name'])
     if created:
         msg = "New user registered"
-        player.player_uuid = params['uuid']
+        player.uuid = params['uuid']
         player.uuid_type = params['uuid_type']
     else:
-        if player.player_uuid == params['uuid'] and player.uuid_type == params['uuid_type']:
+        if player.uuid == params['uuid'] and player.uuid_type == params['uuid_type']:
             msg = "Already registered. No effect."
         else:
             msg = "player_name " + params['player_name'] + ' already exists. UUID mismatch.'
@@ -58,7 +86,7 @@ def login_by_uuid(socket, params):
     return JsonResponse(socket, params, result, OK, msg)
 
 @required_params('password', 'player_name')
-def login_by_password(socket, params):
+def register_by_password(socket, params):
     player, created = Player.objects.get_or_create(player_name=params['player_name'])
     if created:
         msg = "New user registered"
@@ -76,6 +104,14 @@ def login_by_password(socket, params):
 
     result = login_helper(socket, player)
     return JsonResponse(socket, params, result, OK, msg)
+
+@login_required
+@required_params('new_password')
+def change_password(socket, params):
+    # TODO(perng) check password length requirement
+    socket.player.password = params['new_password']
+    socket.player.save()
+    return JsonResponse(socket, params, {}, OK, 'Password changed.')
 
 @login_required
 def logout(socket, params):
