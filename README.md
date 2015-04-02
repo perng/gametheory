@@ -73,6 +73,10 @@ The result of each round of game is recorded.
   * request: {"cmd":"logout"}
   * response: {"status": "ok", "msg": "", "reply_cmd": "logout"}
 
+* change_password
+  * request: {"cmd":"change_password", "player_name":"charles", "new_password": "12345"}
+  * response: {"status": "ok", "msg": "Password changed.", "reply_cmd": "change_password"}
+
 * get_my_stats : Get the stats of the logged-in user for a particular game
   * request: {"_tracker": 5, "cmd": "get_my_stats", "game_name": "Game Theory"}
   * response: {"status": "ok", "level": 11, "reply_cmd": "get_my_stats", "msg": "", "score": 2430, "player_id": 3, "_tracker": 5, "xp": 0, "gem": 0}
