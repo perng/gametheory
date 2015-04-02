@@ -19,7 +19,7 @@ NOT_IN_TABLE = 3
 class GameTable:
     def __init__(self, data_store, game_room):
         self.game_room = game_room
-        self.players = {}
+        self.players = []
         self.waiting_player = Queue.Queue() # TODO implement queuing
         # self.kibitzers = {}  # TODO implement kibitzing
         self.lock = threading.Lock()
@@ -32,6 +32,22 @@ class GameTable:
     def num_players(self):
         return len(self.players)
 
+    def player_index(self, player):
+        if type(player) == int:  # it's player_id
+            for i in range(len(self.players)):
+                if self.players[i].id == player:
+                    return i
+            else:
+                return -1
+        else:
+            for i in range(len(self.players)):
+                if self.players[i] == player:
+                    return i
+            else:
+                return -1
+    def delete_player(self, player):
+        del self.players[self.player_index(player)]
+
     def waiting(self):
         return self.status == WAITING
     def full(self):
@@ -41,10 +57,10 @@ class GameTable:
 
     def leaders(self):
         num = min(2, self.num_players())
-        return self.players.keys()[:num]
+        return [p.id for p in self.players[:num]]
 
     def broadcast(self, sender_id, msg):
-        BroadCast(sender_id, [p.socket for p in self.players.values()], msg)
+        BroadCast(sender_id, [p.socket for p in self.players], msg)
 
     def sit(self, player):
         '''
@@ -64,26 +80,26 @@ class GameTable:
             self.players[player.id] = player
             result = JOIN_SUCCEED
             msg = {'cmd':'player_joined', 'player_id': player.id }
-            BroadCast(player.id, [p.socket for p in self.players.values()], msg)
+            BroadCast(player.id, [p.socket for p in self.players], msg)
         self.lock.release()
 
         # Game start if enough players, TODO: time-based game-start
         if self.num_players()>= self.game_room.gamespec.num_players_min:
             game = self.game_room.gamespec
             msg = {'table_id': self.id, 'cmd': 'game_start',
-                   'players': [p.id for p in self.players.values()]}
+                   'players': [p.id for p in self.players]}
             self.status = PLAYING
-            BroadCast(player.id, [p.socket for p in self.players.values()], msg)
+            BroadCast(player.id, [p.socket for p in self.players], msg)
         player.gametables[self.id] = self
         return result
 
     def leave(self, player):
         if player.id not in self.players:
             return NOT_IN_TABLE
-        del self.players[player.id]
+        self.delete_player(player)
         del player.gametables[self.id]
         msg = {'cmd':'player_left', 'player_id': player.id }
-        BroadCast(player.id, [p.socket for p in self.players.values()], msg)
+        BroadCast(player.id, [p.socket for p in self.players], msg)
         if self.num_players() < self.game_room.gamespec.num_players_min:
             self.status = WAITING
 
@@ -96,7 +112,7 @@ class GameTable:
         return len(self.players)
 
     def get_players(self):
-        return self.players.values()
+        return self.players
 
 
 class RunTimeDataStore:
