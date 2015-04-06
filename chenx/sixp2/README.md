@@ -3,7 +3,7 @@
 
 By: X. Chen  
 Created on: 3/24/2015  
-Last modified: 3/25/2015
+Last modified: 4/5/2015
 
 To add remote human/human play feature.
 
@@ -48,6 +48,17 @@ As of 3/25/2015, a few quick comments on the API are:
 
 
 <h2>Change Log</h2>
+
+-- 4/5/2015
+
+- Changed 6-pieces according to gametheory API update.
+- Did these:
+  - register_by_password (done)
+  - login_by_password (done)
+  - logout (done)
+  - PLAYING/WAITING/game_started (done, wait for more gametheory API update)
+  - update_password (done)
+- added issues #12, #13, reopened #6.
 
 -- 3/29/2015
 
