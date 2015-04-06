@@ -22,19 +22,9 @@ To add remote human/human play feature.
 
 <h2>Issues</h2>
 
-As of 3/25/2015, a few quick comments on the API are:
+As of 4/5/2015, a few quick comments on the API are:
 
-- Can sys_cmd be combined with cmd?
-  - sometimes cmd and sys_cmd are redundant and can be confusing.
-  - now sys_cmd.player_joined and cmd.PLAYING, cmd.WAITING messages are confusing and not easy
-    to implement right, their order matters, and player_id information dispersed.
-- In one room can have multiple tables? is this a bug?
-- no logout yet. so now I use refresh page to fake logout (which just breaks the connection).
-  In the long run you want to keep the state when refreshing page.
 - There should be a invite mechanism
-- If the other side is disconnected (e.g., close browser), the server should remove the side's
-  information from connected users. Otherwise local side will continue to show game started
-  when I get in, but the other side is no longer on line.
 
 
 <h2>To Do</h2>
