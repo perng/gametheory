@@ -257,8 +257,8 @@ if (typeof (Chess6p_Remote) === 'undefined') {
 
     Chess6p_Remote.prototype.appendConsole = function(msg) {
         var c = document.getElementById('console');
-        if (c) { sp.innerHTML += msg + '<br/>'; }
-        sp.scrollTop = sp.scrollHeight;
+        if (c) { c.innerHTML += msg + '<br/>'; }
+        c.scrollTop = c.scrollHeight;
     }
 
     Chess6p_Remote.prototype.send_data = function(data) {

@@ -268,10 +268,14 @@
 
       <span id='form_login' style='display:none; text-align:center;'>
 
-      <input type='text' id='login_id' style="width:158px;"/>
+      <span id='input_login'>
+      <input type='text' id='login_name'/><br/>
+      <input type='password' id='login_pwd'/><br/>
+      </span>
+      <span id='login_info'></span>
       <input type='button' id='btnLogin' value='Login' style="width:60px;"/>
 
-      <span id="span_game_room" style="display:none;">
+      <span id="span_game_room" style="display:none;"><br/>
       <select id="selectGameRoom" style="width:165px;">
       <option value="">-- select Game Room --</option>
       </select>
@@ -284,13 +288,25 @@
       <div id="form_reg" style="display:none; text-align:center;">
           <input type='txt' id='reg_name'/><br/>
           <input type='password' id='reg_pwd'/><br/>
+          <input type='password' id='reg_pwd2'/><br/>
           <input type='button' id="btnReg" value='Register'/>
           <input type="button" id="btnCancelReg" value="Cancel"/>
       </div>
 
+      <div id="form_updatepwd" style="display:none; text-align:center;">
+          <input type='txt' id='updatepwd_name' disabled style="background:#eeeeee;"/><br/>
+          <input type='password' id='updatepwd_old_pwd'/><br/>
+          <input type='password' id='updatepwd_pwd'/><br/>
+          <input type='password' id='updatepwd_pwd2'/><br/>
+          <input type='button' id="btnUpdatePwd" value='Update Password'/>
+          <input type="button" id="btnCancelUpdatePwd" value="Cancel"/>
+      </div>
+
       <span id="span_info"></span><br/>
 
-      <a href="#" id="link_reg" style="display:none;">Register</a>
+      <span id="span_reg" style="display:none;">
+      <a href="#" id="link_reg">Register</a>
+      </span>
 
       </center>
 
@@ -340,9 +356,17 @@ $(document).ready(function() {
 
     //if (! sp_remote.isRemotePlay()) { return; }  // Stop here if not remote play mode.
 
-    $('#login_id').watermark('Player ID');
-    $('#reg_name').watermark('Name');
-    $('#reg_pwd').watermark('Uuid');
+    $('#login_name').watermark('Username');
+    $('#login_pwd').watermark('Password');
+
+    $('#reg_name').watermark('Username');
+    $('#reg_pwd').watermark('Password');
+    $('#reg_pwd2').watermark('Password (repeat)');
+
+    $('#updatepwd_name').watermark('Username');
+    $('#updatepwd_old_pwd').watermark('Old Password');
+    $('#updatepwd_pwd').watermark('New Password');
+    $('#updatepwd_pwd2').watermark('New Password (repeat)');
 
     if (isMobile()) { sp_remote.DEBUG = false; }
     if (sp_remote.DEBUG) { $('#debug_console').show(); }
@@ -359,7 +383,12 @@ $(document).ready(function() {
         }
     });
 
-    $('#login_id').keyup(function(e) {
+    $('#login_name').keyup(function(e) {
+        if ($('#btnLogin').val() == 'Login' && e.which == 13) {
+            sp_remote.doLogin();
+        }
+    });
+    $('#login_pwd').keyup(function(e) {
         if ($('#btnLogin').val() == 'Login' && e.which == 13) {
             sp_remote.doLogin();
         }
@@ -386,7 +415,10 @@ $(document).ready(function() {
     $('#link_reg').click(function() { sp_remote.showRegForm(); });
     $('#btnReg').click(function() { sp_remote.doRegister(); });
     $('#btnCancelReg').click(function() { sp_remote.hideRegForm(); });
-  
+
+    $('#link_update_pwd').click(function() { sp_remote.showUpdatePwdForm(); });
+    $('#btnUpdatePwd').click(function() { sp_remote.doUpdatePwd(); });
+    $('#btnCancelUpdatePwd').click(function() { sp_remote.hideUpdatePwdForm(); });
 });
 
 

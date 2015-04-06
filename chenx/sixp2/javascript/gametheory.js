@@ -41,6 +41,7 @@ if (typeof (Chess6p_Remote) === 'undefined') {
         var current_room = ''; // keep track of current room.
 
         var current_player_id = '';
+        var current_player_name = '';
         var current_table_id = '';
         this.current_is_black = false; // whether is black side (play first).
         var current_players;
@@ -55,25 +56,53 @@ if (typeof (Chess6p_Remote) === 'undefined') {
 
     Chess6p_Remote.prototype.showRegForm = function() {
         $('#form_login').hide();
-        $('#link_reg').hide();
+        $('#span_reg').hide();
         $('#form_reg').show();
         this.showInfo('');
     }
 
     Chess6p_Remote.prototype.hideRegForm = function() {
         $('#form_login').show();
-        $('#link_reg').show();
+        $('#span_reg').show();
         $('#form_reg').hide();
         this.showInfo('');
+    }
+
+    Chess6p_Remote.prototype.showUpdatePwdForm = function() {
+        $('#form_login').hide();
+        //$('#span_reg').hide();
+        //$('#form_reg').hide();
+        $('#updatepwd_name').val(current_player_name);
+        $('#form_updatepwd').show();
+        $('#updatepwd_old_pwd').focus();
+        this.showInfo('');
+    }
+
+    Chess6p_Remote.prototype.hideUpdatePwdForm = function() {
+        $('#form_login').show();
+        //$('#span_reg').show();
+        //$('#form_reg').hide();
+        $('#form_updatepwd').hide();
+        this.showInfo('');
+
+        $('#updatepwd_old_pwd').val('');
+        $('#updatepwd_pwd').val('');
+        $('#updatepwd_pwd2').val('');
     }
 
     Chess6p_Remote.prototype.doRegister = function() {
         var usr = document.getElementById('reg_name').value.trim();
         var pwd = document.getElementById('reg_pwd').value.trim();
+        var pwd2 = document.getElementById('reg_pwd2').value.trim(); 
         if (usr == '' || pwd == '') {
-            this.showInfo('Register failed: name and uuid cannot be empty.', 'error');
+            this.showInfo('Name and password cannot be empty.', 'error');
             if (usr == '') { document.getElementById('reg_name').focus(); }
             else           { document.getElementById('reg_pwd').focus();  }
+            return;
+        }
+        else if (pwd != pwd2) {
+            this.showInfo('Two passwords should match.', 'error');
+            document.getElementById('reg_pwd').focus();
             return;
         }
     
@@ -83,9 +112,46 @@ if (typeof (Chess6p_Remote) === 'undefined') {
         this.doConnect();
     }
 
+    Chess6p_Remote.prototype.doUpdatePwd = function() {
+        var usr = document.getElementById('updatepwd_name').value.trim();
+        var old_pwd = document.getElementById('updatepwd_old_pwd').value.trim();
+        var pwd = document.getElementById('updatepwd_pwd').value.trim();
+        var pwd2 = document.getElementById('updatepwd_pwd2').value.trim();
+        if (usr == '' || pwd == '' || old_pwd == '') {
+            this.showInfo('Password cannot be empty.', 'error');
+            if (usr == '') { document.getElementById('updatepwd_name').focus(); }
+            else if (old_pwd == '') { document.getElementById('updatepwd_old_pwd').focus();  }
+            else { document.getElementById('updatepwd_pwd').focus();  }
+            return;
+        }
+        else if (pwd != pwd2) {
+            this.showInfo('Two new passwords should match.', 'error');
+            document.getElementById('updatepwd_pwd').focus();
+            return;
+        }
+   
+        this.appendConsole('update password');
+        this.showInfo('Update password ...');
+        current_cmd = "update_pwd";
+        this.send_msg_updatepwd();
+    }
+
     Chess6p_Remote.prototype.doLogout = function() {
-        $('#selectGameRoom').removeAttr('disabled');
-        location.reload();
+        this.doLogoutCleanup();
+        this.send_msg_logout();
+        //location.reload();
+    }
+
+    Chess6p_Remote.prototype.doLogoutCleanup = function() {
+        this.leaveTableCleanup();
+        this.turnOnGameRoomUI(false);
+
+        $('#input_login').show();
+        $('#login_info').html('');
+        $('#btnLogin').val('Login');
+        $('#span_reg').show();
+
+        this.showInfo('You are logged out.');
     }
 
     Chess6p_Remote.prototype.doJoinRoom = function() {
@@ -117,7 +183,7 @@ if (typeof (Chess6p_Remote) === 'undefined') {
             }
 
             $('#form_login').show();
-            $('#link_reg').show();
+            $('#span_reg').show();
             $('#div_players').show();
             document.getElementById('gameLevel').disabled = true;
             document.getElementById('comSide').disabled = true;
@@ -127,7 +193,7 @@ if (typeof (Chess6p_Remote) === 'undefined') {
             }
 
             $('#form_login').hide();
-            $('#link_reg').hide();
+            $('#span_reg').hide();
             $('#div_players').hide();
             document.getElementById('gameLevel').disabled = false;
             document.getElementById('comSide').disabled = false;
@@ -135,9 +201,12 @@ if (typeof (Chess6p_Remote) === 'undefined') {
     }
 
     Chess6p_Remote.prototype.doLogin = function() {
-        if ($.trim( $('#login_id').val() ) == '') {
-            this.showInfo('Please enter Player ID');
-            $('#login_id').focus();
+        var name = $.trim( $('#login_name').val() );
+        var pwd  = $.trim( $('#login_pwd').val() );
+        if (name == '' || pwd == '') {
+            this.showInfo('Username and password cannot be empty.', 'error');
+            if (name == '') $('#login_name').focus();
+            else if (pwd == '') $('#login_pwd').focus();
             return;
         }
         this.appendConsole('login');
@@ -159,8 +228,8 @@ if (typeof (Chess6p_Remote) === 'undefined') {
         var pwd = document.getElementById('reg_pwd').value.trim();
     
         current_tid = this.make_tracker();
-        var msg = '{"_tracker": ' + current_tid + ', "cmd": "register", "player_name": "' +
-                  usr + '", "uuid": "' + pwd + '", "uuid_type": "WEB"} ';
+        var msg = '{"_tracker": ' + current_tid + ', "cmd": "register_by_password", "player_name": "' +
+                  usr + '", "password": "' + pwd + '"} ';
         //alert(msg);
     
         current_cmd = 'register';
@@ -168,15 +237,33 @@ if (typeof (Chess6p_Remote) === 'undefined') {
     }
 
     Chess6p_Remote.prototype.send_msg_login = function() {
-        //var name = $.trim( $('#login_name').val() );
-        //var pwd  = $.trim( $('#login_pwd').val() );
-        var id = $.trim( $('#login_id').val() );
+        var name = $.trim( $('#login_name').val() );
+        var pwd  = $.trim( $('#login_pwd').val() );
         var tracker = this.make_tracker();
         current_cmd = "login";
-        current_player_id = id;
     
-        var msg = '{"player_id": ' + id + ', "_tracker": ' + tracker +
-        ', "cmd": "login"}';
+        var msg = '{"player_name": "' + name + '", "password":"' + pwd + 
+        '", "_tracker": ' + tracker + ', "cmd": "login_by_password"}';
+        this.send_data(msg);
+    }
+
+    Chess6p_Remote.prototype.send_msg_updatepwd = function() {
+        var name = $.trim( $('#updatepwd_name').val() );
+        var old_pwd  = $.trim( $('#updatepwd_old_pwd').val() );
+        var pwd  = $.trim( $('#updatepwd_pwd').val() );
+        var tracker = this.make_tracker();
+        current_cmd = "login";
+   
+        var msg = '{"player_name": "' + current_player_name + '", "new_password":"' + pwd +
+        '", "old_password":"' + old_pwd + '", "_tracker": ' + tracker + ', "cmd": "change_password"}';
+        this.send_data(msg);
+    }
+
+    Chess6p_Remote.prototype.send_msg_logout = function() {
+        var tracker = this.make_tracker();
+        current_cmd = "logout";
+   
+        var msg = '{"cmd":"logout"}';
         this.send_data(msg);
     }
 
@@ -239,8 +326,6 @@ if (typeof (Chess6p_Remote) === 'undefined') {
     }
 
     Chess6p_Remote.prototype.showInfo = function(msg, type) {
-        //if (! this.DEBUG) return;
-    
         type = (typeof type === 'undefined') ? 'ok' : type;
         if (type == 'ok') {
             msg = '<font color="green">' + msg + '</font>';
@@ -256,6 +341,8 @@ if (typeof (Chess6p_Remote) === 'undefined') {
     }
 
     Chess6p_Remote.prototype.appendConsole = function(msg) {
+        if (! this.DEBUG) return;
+
         var c = document.getElementById('console');
         if (c) { c.innerHTML += msg + '<br/>'; }
         c.scrollTop = c.scrollHeight;
@@ -284,14 +371,15 @@ if (typeof (Chess6p_Remote) === 'undefined') {
     }
 
     Chess6p_Remote.prototype.handle_sys_cmd = function(jo) {
-        var sys_cmd = jo.sys_cmd;
+//        var sys_cmd = jo.sys_cmd;
+        var sys_cmd = jo.cmd;
     
         if (sys_cmd == 'player_joined') {
             var player_id = jo.player_id;
             var sender_id = jo.sender_id;
             // This may be redundant. But useful when a player left and re-join.
             if (player_id == current_player_id) {
-                $('#span_me').html(this.iconPlayerOn + 'Player ' + current_player_id + this.getMyColorPiece());
+                //$('#span_me').html(this.iconPlayerOn + 'Player ' + current_player_id + this.getMyColorPiece());
             } else {
                 $('#span_you').html('Player ' + player_id + this.iconPlayerOn + this.getMyColorPiece());
             }
@@ -316,6 +404,7 @@ if (typeof (Chess6p_Remote) === 'undefined') {
             current_players = players;
             $('#span_table').html('Table ' + table_id);
             
+/*
             if (this.current_is_black) {
                 // black side table id is already displayed when processing WAITING message.
                 // this is needed by 1st player to display the other player's icon.
@@ -332,6 +421,7 @@ if (typeof (Chess6p_Remote) === 'undefined') {
             else {
             //    $('#span_table').html('Table ' + table_id); // white side.
             }
+*/
     
             this.showInfo('Game starts!');
             this.both_sides_connected = true;
@@ -379,9 +469,11 @@ if (typeof (Chess6p_Remote) === 'undefined') {
     Chess6p_Remote.prototype.handle_message = function(data) {
         this.appendConsole("<== Text received: " + data);
     
+        // There are 2 kinds of commands: sys_cmd, reply_cmd.
         var jo = JSON.parse(data);
     
-        var sys_cmd = jo.sys_cmd;
+//        var sys_cmd = jo.sys_cmd;
+var sys_cmd = jo.cmd;
         if (! (typeof sys_cmd === 'undefined')) {
             this.appendConsole('sys cmd receved');
             this.handle_sys_cmd(jo);
@@ -397,17 +489,47 @@ if (typeof (Chess6p_Remote) === 'undefined') {
         //this.appendConsole(":reply_cmd=" + reply_cmd + ", status=" + status + 
         //              ", msg=" + msg + ", tracker=" + tracker);
     
-        if (reply_cmd == 'login') {
+        if (reply_cmd == 'login_by_password') {
             if (status == 'ok') {
+                current_player_name = jo.player_name;
+                current_player_id = jo.player_id;
+                $('#login_pwd').val('');
+                $('#input_login').hide();
+                $('#login_info').html( current_player_name + ' is in. ' 
+                     + '<a href="#" id="link_update_pwd" onclick="sp_remote.showUpdatePwdForm();">Update Password</a>'
+                 );
                 $('#btnLogin').val('Logout');
-                this.showInfo('Login succeeded.');        
+                this.showInfo('Login succeeded.' + this.current_player_name);
                 this.send_msg_get_game_rooms();
     
-                $('#link_reg').hide();
+                $('#span_reg').hide();
             } 
             else {
+                if (msg.startsWith('Password mismatch')) {
+                    this.showInfo('Please enter correct username and password.', 'error');
+                    $('#login_name').focus();
+                    return;
+                }
                 this.turnOnGameRoomUI(false);
                 this.handle_message_not_ok(status, msg, tracker);
+            }
+        }
+        else if (reply_cmd == 'change_password') {
+            if (status == 'ok') {
+                this.showInfo(msg);
+                alert(msg);
+                $('#updatepwd_old_pwd').val('');
+                $('#updatepwd_pwd').val('');
+                $('#updatepwd_pwd2').val('');
+            } else {
+                this.handle_message_not_ok(status, msg, tracker);
+            }
+        }
+        else if (reply_cmd == 'logout') {
+            if (status == 'ok') {
+                //this.turnOnGameRoomUI(false);
+            } else {
+                //this.handle_message_not_ok(status, msg, tracker);
             }
         }
         else if (reply_cmd == 'get_game_rooms') {
@@ -428,16 +550,22 @@ if (typeof (Chess6p_Remote) === 'undefined') {
                 if (game_status == 'WAITING') {
                     this.current_is_black = true;
                     $('#span_me').html(this.iconPlayerOn + 'Player ' + current_player_id + this.getMyColorPiece(true));
-                    //$('#span_table').html('Table ' + current_table_id); // off position. need to set center.
+                    $('#span_table').html('Table ' + current_table_id); // off position. need to set center.
                     this.showInfo('You joined game. Waiting for another player..');
                 }
                 else if (game_status == 'PLAYING') {
                     this.current_is_black = false;
+                    current_table_id = jo.table_id;
                     $('#span_me').html(this.iconPlayerOn + 'Player ' + current_player_id + this.getMyColorPiece(false));
+                    $('#span_table').html('Table ' + current_table_id);
                     // show 1st player's icon.
+if (typeof current_players == 'undefined') {
+    var first_player_id = 0;
+} else {
                     var first_player_id = 
                                 (current_player_id != current_players[0]) ?
                                 current_players[0] : current_players[1];
+}
                     $('#span_you').html(this.getMyColorPiece(true) + 'Player ' + 
                     first_player_id + this.iconPlayerOn);
     
@@ -459,20 +587,35 @@ if (typeof (Chess6p_Remote) === 'undefined') {
                 this.handle_message_not_ok(status, msg, tracker);
             }
         }
-        else if (reply_cmd == "register") {
+        else if (reply_cmd == "register_by_password") {
             var my_player_id = jo.player_id;
+            var my_player_name = jo.player_name;
             if (status == 'ok') {
-                this.showInfo('Register succeeded. Your player id is ' + my_player_id + '.');
-                alert('Register succeeded. Your player id is ' + my_player_id +
-                      '.\nPlease keep your player id for login.');
+                if (msg == 'Already registered. No effect.') {
+                    msg = 'This username already exists.';
+                    this.showInfo(msg, 'error');
+                    alert(msg);
+                    $('#reg_name').focus();
+                    return;
+                } 
+
+                this.showInfo(msg); 
+                alert(msg);
     
                 $('#reg_name').val('');
                 $('#reg_pwd').val('');
+                $('#reg_pwd2').val('');
                 $('#form_reg').hide();
-                $('#link_reg').show();
+                $('#span_reg').show();
                 $('#form_login').show();
             } else {
                 this.handle_message_not_ok(status, msg, tracker);
+                if (msg.indexOf('already exists') > 0) {
+                    msg = 'This username already exists.';
+                    this.showInfo(msg, 'error');
+                    alert(msg);
+                    $('#reg_name').focus();
+                }
             }
         }
     }
