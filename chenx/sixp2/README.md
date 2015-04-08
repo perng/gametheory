@@ -39,6 +39,12 @@ As of 4/5/2015, a few quick comments on the API are:
 
 <h2>Change Log</h2>
 
+-- 4/7/2015
+
+- Change midi play from using embed tag to use MidiPlayer javascript.
+- Update UI: for logout, use link intead of button; for update-pwd, don't use old pwd.
+- Changed background music, sounds softer.
+
 -- 4/5/2015
 
 - Changed 6-pieces according to gametheory API update.
