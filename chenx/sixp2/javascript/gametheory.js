@@ -74,7 +74,8 @@ if (typeof (Chess6p_Remote) === 'undefined') {
         //$('#form_reg').hide();
         $('#updatepwd_name').val(current_player_name);
         $('#form_updatepwd').show();
-        $('#updatepwd_old_pwd').focus();
+        //$('#updatepwd_old_pwd').focus();
+        $('#updatepwd_pwd').focus();
         this.showInfo('');
     }
 
@@ -114,7 +115,7 @@ if (typeof (Chess6p_Remote) === 'undefined') {
 
     Chess6p_Remote.prototype.doUpdatePwd = function() {
         var usr = document.getElementById('updatepwd_name').value.trim();
-        var old_pwd = document.getElementById('updatepwd_old_pwd').value.trim();
+        var old_pwd = 'dummy'; // document.getElementById('updatepwd_old_pwd').value.trim();
         var pwd = document.getElementById('updatepwd_pwd').value.trim();
         var pwd2 = document.getElementById('updatepwd_pwd2').value.trim();
         if (usr == '' || pwd == '' || old_pwd == '') {
@@ -137,6 +138,9 @@ if (typeof (Chess6p_Remote) === 'undefined') {
     }
 
     Chess6p_Remote.prototype.doLogout = function() {
+        if (! confirm("Are you sure to logout?")) {
+            return;
+        }
         this.doLogoutCleanup();
         this.send_msg_logout();
         //location.reload();
@@ -150,6 +154,7 @@ if (typeof (Chess6p_Remote) === 'undefined') {
         $('#login_info').html('');
         $('#btnLogin').val('Login');
         $('#span_reg').show();
+$('#btnLogin').show();
 
         this.showInfo('You are logged out.');
     }
@@ -496,9 +501,10 @@ var sys_cmd = jo.cmd;
                 $('#login_pwd').val('');
                 $('#input_login').hide();
                 $('#login_info').html( current_player_name + ' is in. ' 
-                     + '<a href="#" id="link_update_pwd" onclick="sp_remote.showUpdatePwdForm();">Update Password</a>'
+                     + '<a href="#" id="link_update_pwd" onclick="sp_remote.showUpdatePwdForm();">Update Password</a> | <a href="#" onclick="sp_remote.doLogout();">Logout</a><br/>'
                  );
                 $('#btnLogin').val('Logout');
+$('#btnLogin').hide();
                 this.showInfo('Login succeeded.' + this.current_player_name);
                 this.send_msg_get_game_rooms();
     
@@ -521,6 +527,7 @@ var sys_cmd = jo.cmd;
                 $('#updatepwd_old_pwd').val('');
                 $('#updatepwd_pwd').val('');
                 $('#updatepwd_pwd2').val('');
+                this.hideUpdatePwdForm();
             } else {
                 this.handle_message_not_ok(status, msg, tracker);
             }
