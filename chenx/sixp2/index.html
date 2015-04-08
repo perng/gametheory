@@ -8,6 +8,8 @@
 
     <title>Six-Piece Chess</title>
 
+    <script type="text/javascript" src="javascript/midi.min.js"></script>
+
     <!--[if IE]>
     <script type="text/javascript" src="javascript/excanvas/excanvas.js"></script>
     <script type="text/javascript" src="javascript/excanvas/canvas.text.js"></script>
@@ -339,6 +341,7 @@ var sp;
 var langWords = Array("Start!", "White Win!", "Black Win!", "Game Over: ", " You Win! ", " You lost! ",
                       "Play Music", "Stop Music", "Play Sound", "Stop Sound");
 var sp_remote;
+var bgmusic;
 
 $(document).ready(function() {
     sp_remote = new Chess6p_Remote();
@@ -353,6 +356,7 @@ $(document).ready(function() {
         sp_remote.showLoginForm($(this).attr('checked'));
     });
 
+    bgmusic = new MidiPlayer("sound/Bach.mid", "divSound", true, 0);
 
     //if (! sp_remote.isRemotePlay()) { return; }  // Stop here if not remote play mode.
 
@@ -492,12 +496,14 @@ function playMusic() {
         if (navigator.appName == "Microsoft internet Explorer") {
             sound.innerHTML = '<bgsound src="sound/Bach.mid" loop="1">';
         } else {
-            sound.innerHTML = '<embed src="sound/Bach.mid" hidden="true" border="0" width="0" height="2" autostart="true" loop="true">';
+            //sound.innerHTML = '<embed src="sound/Bach.mid" hidden="true" border="0" width="0" height="2" autostart="true" loop="true">';
+            bgmusic.play();
         }
         o.title = 'Stop Music';
         o.src = 'image/sound.png';
     } else {
-        if (sound) sound.innerHTML = ''; 
+        //if (sound) sound.innerHTML = ''; 
+        bgmusic.stop();
         o.title = 'Play Music';
         o.src = 'image/sound_mute.png';
     }
