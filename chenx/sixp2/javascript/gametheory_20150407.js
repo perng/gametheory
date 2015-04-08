@@ -74,6 +74,7 @@ if (typeof (Chess6p_Remote) === 'undefined') {
         //$('#form_reg').hide();
         $('#updatepwd_name').val(current_player_name);
         $('#form_updatepwd').show();
+        //$('#updatepwd_old_pwd').focus();
         $('#updatepwd_pwd').focus();
         this.showInfo('');
     }
@@ -85,6 +86,7 @@ if (typeof (Chess6p_Remote) === 'undefined') {
         $('#form_updatepwd').hide();
         this.showInfo('');
 
+        $('#updatepwd_old_pwd').val('');
         $('#updatepwd_pwd').val('');
         $('#updatepwd_pwd2').val('');
     }
@@ -113,11 +115,13 @@ if (typeof (Chess6p_Remote) === 'undefined') {
 
     Chess6p_Remote.prototype.doUpdatePwd = function() {
         var usr = document.getElementById('updatepwd_name').value.trim();
+        var old_pwd = 'dummy'; // document.getElementById('updatepwd_old_pwd').value.trim();
         var pwd = document.getElementById('updatepwd_pwd').value.trim();
         var pwd2 = document.getElementById('updatepwd_pwd2').value.trim();
-        if (usr == '' || pwd == '') {
+        if (usr == '' || pwd == '' || old_pwd == '') {
             this.showInfo('Password cannot be empty.', 'error');
             if (usr == '') { document.getElementById('updatepwd_name').focus(); }
+            else if (old_pwd == '') { document.getElementById('updatepwd_old_pwd').focus();  }
             else { document.getElementById('updatepwd_pwd').focus();  }
             return;
         }
@@ -148,8 +152,9 @@ if (typeof (Chess6p_Remote) === 'undefined') {
 
         $('#input_login').show();
         $('#login_info').html('');
-        $('#btnLogin').show();
+        $('#btnLogin').val('Login');
         $('#span_reg').show();
+$('#btnLogin').show();
 
         this.showInfo('You are logged out.');
     }
@@ -249,12 +254,13 @@ if (typeof (Chess6p_Remote) === 'undefined') {
 
     Chess6p_Remote.prototype.send_msg_updatepwd = function() {
         var name = $.trim( $('#updatepwd_name').val() );
+        var old_pwd  = $.trim( $('#updatepwd_old_pwd').val() );
         var pwd  = $.trim( $('#updatepwd_pwd').val() );
         var tracker = this.make_tracker();
         current_cmd = "login";
    
         var msg = '{"player_name": "' + current_player_name + '", "new_password":"' + pwd +
-        '", "_tracker": ' + tracker + ', "cmd": "change_password"}';
+        '", "old_password":"' + old_pwd + '", "_tracker": ' + tracker + ', "cmd": "change_password"}';
         this.send_data(msg);
     }
 
@@ -497,7 +503,8 @@ var sys_cmd = jo.cmd;
                 $('#login_info').html( current_player_name + ' is in. ' 
                      + '<a href="#" id="link_update_pwd" onclick="sp_remote.showUpdatePwdForm();">Update Password</a> | <a href="#" onclick="sp_remote.doLogout();">Logout</a><br/>'
                  );
-                $('#btnLogin').hide();
+                $('#btnLogin').val('Logout');
+$('#btnLogin').hide();
                 this.showInfo('Login succeeded.' + this.current_player_name);
                 this.send_msg_get_game_rooms();
     
@@ -517,6 +524,7 @@ var sys_cmd = jo.cmd;
             if (status == 'ok') {
                 this.showInfo(msg);
                 alert(msg);
+                $('#updatepwd_old_pwd').val('');
                 $('#updatepwd_pwd').val('');
                 $('#updatepwd_pwd2').val('');
                 this.hideUpdatePwdForm();

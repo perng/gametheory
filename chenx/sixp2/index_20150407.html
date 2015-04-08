@@ -297,6 +297,7 @@
 
       <div id="form_updatepwd" style="display:none; text-align:center;">
           <input type='txt' id='updatepwd_name' disabled style="background:#eeeeee;"/><br/>
+          <input type='password' id='updatepwd_old_pwd' style="display:none;"/>
           <input type='password' id='updatepwd_pwd'/><br/>
           <input type='password' id='updatepwd_pwd2'/><br/>
           <input type='button' id="btnUpdatePwd" value='Update Password'/>
@@ -367,6 +368,7 @@ $(document).ready(function() {
     $('#reg_pwd2').watermark('Password (repeat)');
 
     $('#updatepwd_name').watermark('Username');
+    $('#updatepwd_old_pwd').watermark('Old Password');
     $('#updatepwd_pwd').watermark('New Password');
     $('#updatepwd_pwd2').watermark('New Password (repeat)');
 
@@ -378,7 +380,11 @@ $(document).ready(function() {
     });
 
     $('#btnLogin').click(function() {
-        sp_remote.doLogin();
+        if ($(this).val() == 'Login') {
+            sp_remote.doLogin();
+        } else {
+            sp_remote.doLogout();
+        }
     });
 
     $('#login_name').keyup(function(e) {
