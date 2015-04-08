@@ -3,7 +3,7 @@
 
 By: X. Chen  
 Created on: 3/24/2015  
-Last modified: 4/5/2015
+Last modified: 4/7/2015
 
 To add remote human/human play feature.
 
