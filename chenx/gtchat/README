@@ -3,7 +3,7 @@
 
 By: X. Chen
 Created on: 3/18/2015
-Last modified: 3/23/2015
+Last modified: 4/8/2015
 
 
 == About ==
@@ -450,6 +450,15 @@ open client.html in a browser.
 
 
 == Change Log ==
+
+-- 4/8/2015 --
+
+* room creator is not master.
+  * when he exits from room, room master is set back to empty.
+* added @passwd command, and api_update_pwd2 in server.
+* client detect server reset connection and logout user.
+* added rooms/users panel on right side;
+* encode double quote and decode;
 
 -- 3/24/2015 --
 
