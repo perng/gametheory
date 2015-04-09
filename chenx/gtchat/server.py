@@ -117,6 +117,11 @@ class Cls_Chatroom():
                 new_pwd2 = self.get_param('new_pwd2')
                 self.api_update_pwd(usr, old_pwd, new_pwd, new_pwd2, src, tracker)
 
+            elif cmd == "update_pwd2":
+                # this is used in command line when user is logged in.
+                new_pwd = self.get_param('pwd')
+                self.api_update_pwd2(new_pwd, usr, src, tracker)
+
             elif cmd == "get_room_list":
                 self.api_get_room_list(usr, src, tracker)
 
@@ -411,7 +416,7 @@ class Cls_Chatroom():
 
     def broadcast_to_all(self, msg, src):
         for target_src in self.T_users_active:
-            if target_src != src:  # do not send to self.
+            #if target_src != src:  # do not send to self.
                 self.send_msg(self.get_client(target_src), msg)
     
 
@@ -442,7 +447,8 @@ class Cls_Chatroom():
         self.validate_active_user(src)
         self.validate_active_room(room_name)
 
-        response_msg = ",".join( self.T_rooms[room_name].getUserNameList() )
+        response_msg = room_name + ":" + \
+                       ",".join( self.T_rooms[room_name].getUserNameList() )
         client = self.get_client(src)
         self.send_c_response("ok", "get_room_user_list", response_msg, usr, client, tracker)
 
@@ -466,7 +472,8 @@ class Cls_Chatroom():
             self.api_leave_room(prev_room, usr, src, tracker)
 
         room = Cls_Room(room_name)  # create a Room object.
-        room.addUser(src, usr);         # add first user.
+        room.addUser(src, usr)      # add first user.
+        room.setMaster(usr)         # set as room master.
         self.T_users_active[src].setRoom(room_name)
 
         self.T_rooms[room_name] = room  # add room to room list.
@@ -623,16 +630,22 @@ class Cls_Chatroom():
         """
         self.validate_active_user(src)
         self.validate_active_room(room_name)
+
+        room = self.T_rooms[room_name]
  
-        self.T_rooms[room_name].removeUser(src)
+        room.removeUser(src)
         self.T_users_active[src].setRoom('')
 
+        if room.getMaster() == usr:
+            room.setMaster('')
+
         room_is_gone = False
-        if self.T_rooms[room_name].isEmpty():
+        if room.isEmpty():
             del self.T_rooms[room_name]
             room_is_gone = True
 
-            # send this notification to all users (except sender) so they can update room list.
+            # send this notification to all users (except sender) 
+            # so they can update room list.
             msg = self.make_msg_c_event("room_gone", usr + ":" + room_name, tracker)
             self.broadcast_to_all(msg, src)
 
@@ -726,6 +739,24 @@ class Cls_Chatroom():
         response_msg = "password of user '" + usr + "' is changed"
         client = self.get_client(src)
         self.send_c_response("ok", "update_pwd", response_msg, usr, client, tracker)
+
+    def api_update_pwd2(self, new_pwd, usr, src, tracker):
+        """
+        Used when user is logged in, so no need for old password.
+        """
+        if (len(new_pwd) < 8):
+            raise Exception("new password length should >= 8")
+        if not usr in self.T_users:
+            raise Exception("this username does not exist")
+        if new_pwd == self.T_users[usr]:
+            raise Exception("the new password should not be the same as the old")
+
+        self.T_users[usr] = new_pwd
+
+        # send response message to sender.
+        response_msg = "password of user '" + usr + "' is changed"
+        client = self.get_client(src)
+        self.send_c_response("ok", "update_pwd2", response_msg, usr, client, tracker)
 
 
     def api_register(self, usr, pwd, src, client, tracker):
@@ -826,13 +857,21 @@ class Cls_Room():
         self.room_name = room_name
         self.user_list = {}  # entry: src:usr
         self.user_src = {}   # entry: usr:src. Used by invite_reply only.
+        self.master = ''     # room master
 
     def __str__(self):
         return "[room - name: " + self.room_name \
+             + ", master: " + self.getMaster() \
              + ", users: " + ",".join(self.getUserNameList()) + "]"
         
     def __repr__(self):
         return self.__str__()
+
+    def setMaster(self, m):
+        self.master = m
+
+    def getMaster(self):
+        return self.master
 
     def addUser(self, src, usr):
         self.user_list[src] = usr

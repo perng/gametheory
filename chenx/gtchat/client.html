@@ -20,6 +20,7 @@
          // server given by the value of AUTO_CONNECT.
          var AUTO_CONNECT = ''; 
          //AUTO_CONNECT = 'ws://127.0.0.1:9000';
+         AUTO_CONNECT = 'ws://192.168.198.131:9000';
 
          // If DEBUG is true, the debug console will be shown.
          var DEBUG = true;
@@ -48,9 +49,13 @@
          function btnConnect_onclick(b) {
              if (b.value == 'Connect') {
                  b.disabled = true;
+                 current_cmd = 'doConnect';
                  doConnect();
              } else {
                  doDisconnect(false);
+                 setTimeout(function() { 
+                     dispConnectionStatus("<font color='green'>Connection is closed.</font>"); 
+                 }, 10);
              }
          }
          function doConnect() {
@@ -68,6 +73,7 @@
             socket.onopen = function() {
                //console.log("Connected!");
                isopen = true;
+               current_cmd = '';
 
                if (AUTO_CONNECT != '') {
                    dispConnectionStatus("Welcome to chatroom.");
@@ -83,7 +89,7 @@
                 //appendConsole("<font color='red'>Connection not opened.</font>");
                 dispConnectionStatus("<font color='red'>Connection not opened.</font>")
                 document.getElementById('btnConnect').disabled = false;
-                updateInfo("Cannot open connection.", 'error');
+                //updateInfo("Cannot open connection.", 'error');
             }
             socket.onmessage = function(e) {
                if (typeof e.data == "string") {
@@ -102,6 +108,15 @@
                dispConnectionStatus("<font color='green'>Connection is closed.</font>")
                socket = null;
                isopen = false;
+
+               if (current_cmd == 'doConnect') {
+                   dispConnectionStatus("<font color='red'>Server is not available.</font>");
+               } else {
+                   handle_cr_logout('ok', 'connection reset by server', '0');
+                   toggleButton(true);
+                   cleanup_logout();
+                   dispConnectionStatus("<font color='red'>Connection reset by server.</font>");
+               }
             }
          };
          function decodeBinaryMsg(arr) {
@@ -152,7 +167,7 @@
                }
                else if (msg == '@help') {
                    appendChatroomInfo(msg + 
-": @rooms (list rooms), @who (list room users), @users (list logged in users), @create {room} (create and join a room), @join {room} (join a room), @leave (leave a room), @where (show current name)");
+": @rooms (list rooms), @who (list room users), @users (list logged in users), @create {room} (create and join a room), @join {room} (join a room), @leave (leave a room), @where (show current name), @passwd {new password} (update password)");
                }
                else if (msg == '@leave') {
                    doLeaveRoom();
@@ -180,6 +195,16 @@
                    appendConsole('Now join room: ' + room_name);
                    doJoinRoom(room_name);
                }
+               else if (msg.startsWith('@passwd ')) {
+                   var pwd = msg.substr(8);
+                   if (pwd == '' || pwd.length < 8) {
+                       appendChatroomInfo('@passwd: password must be at least 8 characters in length');
+                   }
+                   else {
+                       doUpdatePwd2(pwd);
+                       appendChatroomInfo('@passwd: changing password ..');
+                   }
+               }
                // All commands below need a non-empty current_room.
                else if (current_room == '') {
                    //appendChatroomInfo('>> ' + msg);
@@ -188,6 +213,7 @@
                    appendConsole('Type message before join a room:' + msg);
                }
                else if (msg == '@who') {
+                   request_src = "console_who";
                    current_cmd = "get_room_user_list";
                    data = '{"cmd":"get_room_user_list", "room_name":"' + current_room + '", "tracker":"' + current_tid + '"}';
                    send_data(data);
@@ -209,17 +235,30 @@
                }
                else {
                    current_cmd = "speak";
-                   data = '{"cmd":"speak", "room_name":"' + current_room + '", "msg":"' + msg + 
+                   //alert(msg);
+                   data = '{"cmd":"speak", "room_name":"' + current_room + '", "msg":"' + strEncode(msg) + 
                           '", "tracker":"' + current_tid + '"}';
                    send_data(data);
                    //console.log("Text message sent: " + msg);
-                   appendChatroom('<font color="green">>> ' + msg + '</font>');
+                   appendChatroom('<font color="#99ff99">>> ' + msg + '</font>');
                }
             } else {
                //console.log("Connection not opened.")
                appendChatroom("<font color='red'>Connection not opened.</font>");
             }
-         };
+         }
+
+
+         // double quote need be encoded.
+         function strEncode(s) {
+             s = s.replace(/&/g, "&amp;");
+             return s.replace(/"/g, '&quot;');
+         }
+         function strDecode(s) {
+             s = s.replace(/&quot;/g, '"');
+             return s.replace(/&amp;/g, '&');
+         }
+
          // http://stackoverflow.com/questions/14430633/how-to-convert-text-to-binary-code-in-javascript
          function sendBinary() {
             if (isopen) {
@@ -376,11 +415,21 @@
              send_data(msg);
          }
          function doLeaveRoom() {
-             if (current_room == '') return;
+             if (current_room == '') {
+                 appendChatroomInfo('@leave You are not in any room yet.');
+                 return;
+             }
 
              current_tid = make_tracker();
              current_cmd = "leave_room";
              var msg = '{"cmd":"leave_room", "room_name":"' + current_room +
+                       '", "tracker":"' + current_tid + '"}';
+             send_data(msg);
+         }
+         function doUpdatePwd2(pwd) {
+             current_tid = make_tracker();
+             current_cmd = "update_pwd2";
+             var msg = '{"cmd":"update_pwd2", "pwd":"' + pwd +
                        '", "tracker":"' + current_tid + '"}';
              send_data(msg);
          }
@@ -459,6 +508,7 @@
              if (last_cmd == 'register')         { handle_cr_register(status, msg, tracker); }
              else if (last_cmd == 'login')       { handle_cr_login(status, msg, tracker); }
              else if (last_cmd == 'update_pwd')  { handle_cr_update_pwd(status, msg, tracker); }
+             else if (last_cmd == 'update_pwd2')  { handle_cr_update_pwd2(status, msg, tracker); }
              else if (last_cmd == 'get_room_list')  { handle_cr_get_room_list(status, msg, tracker); }
              else if (last_cmd == 'get_user_list')  { handle_cr_get_user_list(status, msg, tracker); }
              else if (last_cmd == 'get_room_user_list')  { handle_cr_get_room_user_list(status, msg, tracker); }
@@ -479,6 +529,7 @@
              var room_name = jo.room_name;
              var tracker = jo.tracker;
              //dump(':speak: ' + msg + ',' + room_name + ',' + tracker);
+             msg = strDecode(msg);
              appendChatroom('>> ' + usr + ': ' + msg);
          }
          function handle_c_whisper(jo) {
@@ -552,6 +603,7 @@
                  var v = usr.split(':');
                  if (v.length == 2 && v[1] != '') {
                      var room_name = v[1];
+                     addRoomsList(room_name);
                      addRoom(room_name);
                      $('#span_msg').html('New room ' + room_name + ' is created.');
                      $('#span_msg').show().delay(5000).fadeOut();
@@ -564,6 +616,7 @@
                  var v = usr.split(':');
                  if (v.length == 2 && v[1] != '') {
                      var room_name = v[1];
+                     removeRoomsList(room_name);
                      removeRoom(room_name);
                      $('#span_msg').html('Room ' + room_name + ' is gone.');
                      $('#span_msg').show().delay(5000).fadeOut();
@@ -573,12 +626,14 @@
                  }
              }
              else if (type == 'login') {
-                 $('#span_msg').html('User ' + ucFirst(usr) + ' logs in.');
+                 addUsersList(usr);
+                 $('#span_msg').html('User ' + usr + ' logs in.');
                  $('#span_msg').show().delay(5000).fadeOut();
              }
              else if (type == 'logout') {
-                 var action = (tracker == '' ? ' is disconnected.' : 'logs out.');
-                 $('#span_msg').html('User ' + ucFirst(usr) + action);
+                 removeUsersList(usr);
+                 var action = (tracker == '' ? ' is disconnected.' : ' logs out.');
+                 $('#span_msg').html('User ' + usr + action);
                  $('#span_msg').show().delay(5000).fadeOut();
              }
 
@@ -592,6 +647,26 @@
          }
          function removeRoom(room_name) {
              $('#selectRoomList option[value=' + room_name + ']').remove();
+         }
+
+         function addRoomsList(room_name) {
+             $('#selectRoomsList').append($('<option>', {
+                 value: room_name,
+                 text: room_name
+             }));
+         }
+         function removeRoomsList(room_name) {
+             $('#selectRoomsList option[value=' + room_name + ']').remove();
+         }
+
+         function addUsersList(user_name) {
+             $('#selectUsersList').append($('<option>', {
+                 value: user_name,
+                 text: user_name
+             }));
+         }
+         function removeUsersList(user_name) {
+             $('#selectUsersList option[value=' + user_name + ']').remove();
          }
 
          function dump(msg) {
@@ -639,6 +714,7 @@
                  $('#div_user').html('User: ' + current_user);
 
                  client_get_room_list();
+                 client_get_user_list();
 
                  // enable chatroom once logged in, so user can
                  // use command interface too, instead of must use 
@@ -653,6 +729,14 @@
          }
          function handle_cr_update_pwd(status, msg, tracker) {
 
+         }
+         function handle_cr_update_pwd2(status, msg, tracker) {
+             if (status != 'ok') {
+                 appendChatroomInfo('Error: ' + msg);
+                 return;
+             }
+
+             appendChatroomInfo(msg);
          }
 
          function handle_cr_get_room_list_console(status, msg, tracker) {
@@ -673,30 +757,40 @@
 
              //appendConsole('now populate room list: ' + msg);
              if (status == 'ok') {
-                 var o = $('#selectRoomList');
+                 // add to selectRoomList.
+                 addToSelectList('selectRoomList', '-- select room --', msg);
 
-                 // clear all entries and insert first option.
-                 o.children().remove();
-                 o.append($('<option>', {
-                         value: '',
-                         text: '-- select room --'
-                 }));
-
-                 if (msg != '') {
-                     var rooms = msg.split(',');
-                     rooms.forEach(function(room_name) {
-                         o.append($('<option>', {
-                             value: room_name,
-                             text: room_name
-                         }));
-                     });
-                 }
+                 // add to selectRoomsList
+                 addToSelectList('selectRoomsList', '', msg);
              }
              else {
                  updateInfo('Error when get room list:' + msg + '.', 'error');
-                 document.getElementById('login_name').focus();
              }
              document.getElementById('form_room').style.display = 'block';
+         }
+
+         function addToSelectList(listName, empty_option, listItems) {
+             var o = $('#' + listName);
+
+             // clear all entries and insert empty option if any.
+             o.children().remove();
+
+             if (empty_option != '') {
+                 o.append($('<option>', {
+                     value: '',
+                     text: empty_option
+                 }));
+             }
+
+             if (listItems != '') {
+                 var items = listItems.split(',');
+                 items.forEach(function(item_name) {
+                     o.append($('<option>', {
+                         value: item_name,
+                         text: item_name
+                     }));
+                 });
+             }
          }
 
          function handle_cr_get_user_list_console(status, msg, tracker) {
@@ -715,6 +809,14 @@
                  return;
              }
 
+             //appendConsole('now populate user list: ' + msg);
+             if (status == 'ok') {
+                 // add to selectUsersList
+                 addToSelectList('selectUsersList', '', msg);
+             }
+             else {
+                 updateInfo('Error when get user list:' + msg + '.', 'error');
+             }
          }
 
          function handle_cr_get_room_user_list(status, msg, tracker) {
@@ -723,8 +825,17 @@
                  return;
              }
 
-             msg = msg.split(',').sort().join(', ');
-             appendChatroomInfo("@who: current room peers: " + msg);
+             var v = msg.split(':');
+             var room_name = v[0];
+             var users = v[1].split(',').sort().join(', ');
+
+             if (request_src == 'console_who') {
+                 appendChatroomInfo("@who: current room peers: " + users);
+             }
+             else {
+                 appendChatroomInfo("room '" + room_name + "' peers: " + users);
+             }
+             request_src = '';
          }
          function handle_cr_create_room(status, msg, tracker) {
              request_src = '';
@@ -916,6 +1027,8 @@
              document.getElementById('form_room').style.display = 'none';
 
              // clean up the select room list.
+             $('#selectRoomsList').children().remove();
+             $('#selectUsersList').children().remove();
              $('#selectRoomList').children().remove();
              $('#selectRoomList').removeAttr('disabled');
              $('#btnJoinRoom').val('Join Room');
@@ -976,19 +1089,75 @@
                  }
              });
 
+             /*$('#selectRoomsList').click(function() {
+                 doGetRoomUsers();
+             });*/
+
+             $('#selectRoomsList').dblclick(function () {
+                 $("#selectRoomsList option:selected").each(function () {
+                     //alert('hi: ' + $(this).val());
+                     doJoinRoom($(this).val());
+                 });
+             });
+
+             /*
+             $("#selectRoomsList").change(function () {
+                $("option", $(this)).each(function (index) {
+                    if ($(this).is(":selected")) {
+                        $(this).css("backgroundColor", "#99ffcc");
+                    }
+                    else {
+                        $(this).css("backgroundColor", "white");
+                    }
+                });
+             });
+
+             $('#selectRoomsList').blur(function() {
+                 // de-select all rows.
+                 document.getElementById('selectRoomsList').selectedIndex = -1;
+             });
+             */
+ 
+             $('#selectUsersList').blur(function() {
+                 // de-select all rows.
+                 document.getElementById('selectUsersList').selectedIndex = -1;
+             });
+
+             //$('#selectUsersList option:even').addClass('evenOption');
+             //$('#selectUsersList option:odd').addClass('oddOption');
+
              doDisconnect(true); // initialize to clean state.
              if (AUTO_CONNECT != '') {
                  $('#div_server').hide();
+                 current_cmd = 'doConnect';
                  doConnect();
              }
          });
       </script>
 
       <style type="text/css">
+      #container {
+          position: relative;
+      }
+      #chatroom_container {
+        position: absolute;
+        float: left;
+//display:none;
+
+        background-color: #bbccee;
+        padding: 5px;
+        width: 724px;
+        -webkit-border-radius:5px;
+        -moz-border-radius:5px;
+        border-radius:5px;
+      }
       #chatroom {
-        height: 300px;
+        height: 450px;
         width: 720px;
-        background-color: #eeeeff;
+        padding: 2px;
+        /*background-color: #eeeeff;*/
+        color: white;
+        background-color: black;
         overflow:auto;
         overflow-y: scroll;
         position: relative;
@@ -1004,7 +1173,7 @@
         bottom: 0;
       }
       #div_status {
-        width:718px; 
+        width:722px; 
         line-height:25px; 
         height:25px; 
         position: relative; 
@@ -1015,7 +1184,8 @@
         position: absolute;
         overflow:hidden;
         white-space: nowrap;
-        float:left; line-height:25px;
+        float:left; 
+        line-height:25px;
         padding-left: 5px;
         padding-right:5px;
         height:23px;
@@ -1028,7 +1198,8 @@
         left: 120px;
         overflow:hidden; 
         white-space: nowrap; 
-        float:left; line-height:25px; 
+        float:left; 
+        line-height:25px; 
         padding-left: 5px;
         padding-right:5px; 
         height:23px; 
@@ -1039,8 +1210,8 @@
       #div_msg {
         position: absolute; 
         padding-left:5px; 
-        left:270px; 
-        width:441px; 
+        left:272px; 
+        width:445px; 
         height:23px; 
         border: solid 1px #cccccc;
         color: orange;
@@ -1052,6 +1223,102 @@
           top: 130px;
           left: 150px;
           padding: 5px;
+      }
+
+
+      #div_right_panel {
+          float: left;
+          position: absolute;
+          left: 740px;
+          width: 202px;
+          height: 490px;
+          background-color: #bbccff;
+          padding-left: 2px;
+          padding-right: 2px;
+
+          -webkit-border-radius:5px;
+          -moz-border-radius:5px;
+          border-radius:5px;
+      }
+
+      #div_RoomsList {
+          top: 0px;
+          left: 740px;
+          width: 200px;
+          height: 200px;
+          padding: 0px;
+      }
+      #selectRoomsList {
+          float: left;
+          top: 0px;
+          left: 740px;
+          width: 200px;
+          height: 180px;
+          padding: 3px;
+      }
+      #selectRoomsList option {
+          background-image:url(images/home.png);
+          background-size: 15px 15px;
+          background-repeat: no-repeat;
+          padding-left: 20px;
+      }
+
+      #div_UsersList {
+          top: 200px;
+          left: 740px;
+          width: 200px;
+          height: 270px;
+          padding: 0px;
+      }
+      #selectUsersList {
+          top: 200px;
+          left: 740px;
+          width: 200px;
+          height: 265px;
+          padding: 3px;
+      }
+      #selectUsersList option {
+          background-image:url(images/icon-person.png);
+          background-size: 15px 15px;
+          background-repeat: no-repeat;
+          padding-left: 20px;
+      }
+
+      .div_title {
+          padding-left: 2px;
+      }
+
+      option:nth-child(odd) { background: white; }
+      option:nth-child(even) { background: #eeeeee; }
+
+  #selectRoomsList option:selected {
+      background-color: #352e7e;
+      color: #fff;
+  }
+  /*** Mozilla based browsers ***/
+  #selectRoomsList option:selected {
+      background-color: #352e7e;
+      color: #fff;
+  }
+  /***For Other Browsers ***/
+  #selectRoomsList option:selected {
+      background-color: #352e7e;
+      color: #fff;
+  }
+  #selectRoomsList option:selected {
+      background-color: #352e7e;
+      color: #fff;
+  }
+  /*** For Webkit ***/
+  #selectRoomsList option:selected {
+      background-color: #352e7e;
+      color: #fff;
+  }
+
+      #debug_console {
+          //clear: both;
+          position: absolute;
+          top: 700px;
       }
       </style>
    </head>
@@ -1106,6 +1373,9 @@
 
       <br/><br/>
 
+      <div id="container">
+
+      <div id="chatroom_container">
       <div id="chatroom">
           <span id='span_invite' style='display:none;'>
           <span id='invite_msg'></span>
@@ -1122,8 +1392,29 @@
               <span id='span_msg' style='color: orange;'></span>
           </div>
       </div>
-      <br/>
- 
+      </div> <!--end of chatroom_container-->
+
+      <div id="div_right_panel">
+
+      <div id="div_RoomsList">
+      <div class="div_title">Rooms:</div>
+      <select id='selectRoomsList' size="5" 
+              title='Double click to enter a room'>
+      </select>
+      </div>
+
+      <div id="div_UsersList">
+      <div class="div_title">Users:</div>
+      <select id='selectUsersList' size="5">
+      </select>
+      </div>
+
+      </div> <!-- end of div_right_panel -->
+
+      </div><!-- end of container -->
+
+      <div style="clear:both;"></div>
+
       <div id="debug_console" style="display:none;">
           <input type="checkbox" id="cbToggleDebug" title="Click to toggle debug console"/>
           Debug console: <a href='#' id='btnClearConsole' style="display:none;">Clear console</a><br/>
