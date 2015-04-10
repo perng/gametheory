@@ -36,7 +36,7 @@
 # 
 
 import sys
-import json, time
+import json, time, re
 
 from twisted.internet import reactor
 from twisted.python import log
@@ -67,6 +67,9 @@ class Cls_Chatroom():
         self.T_users_active_ct = {} # entry: name:[list of session_id], session_id = 1, 2, 3, ...
         self.T_users_active = {}  # entry = src:Cls_ActiveUser_object
         self.T_rooms = {}         # entry = name:user_list
+
+        self.username_pattern = re.compile("^[a-zA-Z0-9_]+$")
+        self.roomname_pattern = re.compile("^[a-zA-Z0-9_]+$")
 
         """
         Use a default room Lobby, when user first logs in, he is in lobby.
@@ -162,6 +165,16 @@ class Cls_Chatroom():
                 room_name = self.get_param('room_name')
                 reply = self.get_param('reply')
                 self.api_invite_reply(inviter, room_name, reply, usr, src, tracker)
+
+            elif cmd == "master":
+                user = self.get_param('user')
+                room_name = self.get_param('room_name')
+                self.api_master(user, room_name, usr, src, tracker)
+
+            elif cmd == "kick":
+                user = self.get_param('user')
+                room_name = self.get_param('room_name')
+                self.api_kick(user, room_name, usr, src, tracker)
 
             elif cmd == "set_room_permission":
                 room_name = self.get_param('room_name')
@@ -463,6 +476,7 @@ class Cls_Chatroom():
             items.append(room_name + ':' + perm)
         return items
 
+
     def api_get_user_list(self, usr, src, tracker):
         """
         Return active user list. 
@@ -480,8 +494,10 @@ class Cls_Chatroom():
         self.validate_active_user(src)
         self.validate_active_room(room_name)
 
-        response_msg = room_name + ":" + \
-                       ",".join( self.T_rooms[room_name].getUserNameList() )
+        room = self.T_rooms[room_name]
+
+        response_msg = room_name + ":" + room.getMaster() + ":" + \
+                       ",".join( room.getUserNameList() )
         client = self.get_client(src)
         self.send_c_response("ok", "get_room_user_list", response_msg, usr, client, tracker)
 
@@ -496,6 +512,8 @@ class Cls_Chatroom():
 
         if room_name in self.T_rooms:
             raise Exception("Room '" + room_name + "' already exists")
+        if not self.roomname_pattern.match(room_name):
+            raise Exception("valid room name should contain only letters, numbers and underscore")
 
         # If user was in another room, he needs to quit there first.
         # Ideally a user will call api_leave_room first before calling
@@ -602,6 +620,72 @@ class Cls_Chatroom():
         data = {"cmd":"c_invite_reply",
                 "msg":reply, "usr":usr, "tracker":tracker}
         return json.JSONEncoder().encode(data)
+
+
+    def api_master(self, user, room_name, usr, src, tracker):
+        """
+        Only user in this room can become room master.
+        """
+        self.validate_active_user(src)
+        self.validate_active_room(room_name)
+        self.validate_active_user_name(user)
+
+        room = self.T_rooms[room_name]
+
+        if user == room.getMaster():
+            raise Exception("User " + user + " is already room master")
+
+        room.setMaster(user)  # set new room master.
+
+        """
+        Now, send reply message to the room users.
+        """
+        # send response message to sender.
+        # new_master:old_master:room_name
+        response_msg = user + ':' + usr + ':' + room_name
+        client = self.get_client(src)
+        self.send_c_response("ok", "master", response_msg, usr, client, tracker)
+
+        # send event message to users in this room.
+        msg = self.make_msg_c_event("master", response_msg, tracker)
+        self.broadcast_to_room(room_name, msg, src)
+
+
+    def api_kick(self, user, room_name, usr, src, tracker):
+        """
+        Only user in this room can become room master.
+        """
+        self.validate_active_user(src)
+        self.validate_active_room(room_name)
+        self.validate_active_user_name(user)
+
+        if user == self.T_rooms[room_name].getMaster():
+            raise Exception('Room master cannot be kicked.')
+
+        user_src = self.T_users_src[user]
+        # kick user out of room. tracker = 0 means is from room_master.
+        # True to push user to Lobby.
+        self.api_leave_room(room_name, user, user_src, 0, True)
+
+        """
+        Now, send reply message to the room users.
+        """
+        # information to send: kicked_user:room_master:room_name
+        info = user + ':' + usr + ':' + room_name
+
+        # send message to kicked user.
+        msg = self.make_msg_c_event("kicked", info, 0);
+        self.send_msg(self.get_client(user_src), msg)
+
+        # send response message to sender/room master.
+        client = self.get_client(src)
+        self.send_c_response("ok", "kick", info, usr, client, tracker)
+
+        # well - no need to broadcast to room,
+        # as leave_room message is already broadcast to room
+        # send event message to users in this room. well - no need.
+        #msg = self.make_msg_c_event("kick", info, tracker)
+        #self.broadcast_to_room(room_name, msg, src)
 
 
     def api_set_room_permission(self, room_name, is_public, usr, src, tracker):
@@ -718,7 +802,7 @@ class Cls_Chatroom():
             self.dump_db("T_rooms", self.T_rooms)
 
         # send response message to sender.
-        response_msg = usr + ":" + room_name  # "user '" + usr + "' left room '" + room_name + "'"
+        response_msg = usr + ":" + room_name  
         response_msg += ":0" if room_is_gone else ":1"  # tell usr if this room is gone.
         client = self.get_client(src)
         self.send_c_response("ok", "leave_room", response_msg, usr, client, tracker)
@@ -875,6 +959,8 @@ class Cls_Chatroom():
             raise Exception("invalid user name")
         if len(pwd) < 8:
             raise Exception("user password length should >= 8")
+        if not self.username_pattern.match(usr):
+            raise Exception("valid user name should contain only letters, numbers and underscore")
 
         if usr in self.T_users:
             raise Exception("this username is not available")

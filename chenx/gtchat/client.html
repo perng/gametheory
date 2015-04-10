@@ -20,8 +20,8 @@
          // be hidden, and when the page is loaded it'll automatically connect to 
          // server given by the value of AUTO_CONNECT.
          var AUTO_CONNECT = ''; 
-         AUTO_CONNECT = 'ws://127.0.0.1:9000';
-         //AUTO_CONNECT = 'ws://192.168.198.131:9000';
+         //AUTO_CONNECT = 'ws://127.0.0.1:9000';
+         AUTO_CONNECT = 'ws://192.168.198.131:9000';
 
          // If DEBUG is true, the debug console will be shown.
          var DEBUG = true;
@@ -168,7 +168,7 @@
                }
                else if (msg == '@help') {
                    appendChatroomInfo(msg + 
-": @rooms (list rooms), @who (list room users), @users (list logged in users), @create {room} (create and join a room), @join {room} (join a room), @leave (leave a room), @where (show current name), @passwd {new password} (update password)");
+": @rooms (list rooms), @who (list room users), @users (list logged in users), @create {room} (create and join a room), @join {room} (join a room), @leave (leave a room), @where (show current name), @public (set room as public), @private (set room as private), @master (assign another room user as master), @kick (kick a user out of current room), @passwd {new password} (update password)");
                }
                else if (msg == '@leave') {
                    doLeaveRoom();
@@ -246,6 +246,36 @@
                    appendConsole('Now invite: ' + user_name);
                    doInvite(user_name);
                }
+               else if (msg == '@master') {
+                   appendChatroomInfo('@master: please provide a user name in this room');
+               }
+               else if (msg.startsWith('@master ')) {
+                   if (! is_room_master) {
+                       appendChatroomInfo('@master: you have no permission for this operation');
+                   }
+                   else {
+                       current_cmd = "master";
+                       var user_name = $.trim( msg.substr(8) ); // after '@master '
+                       data = '{"cmd":"master", "user":"' + user_name + '", "room_name":"' +
+                              current_room + '", "tracker":"' + current_tid + '"}';
+                       send_data(data);
+                   }
+               }
+               else if (msg == '@kick') {
+                   appendChatroomInfo('@kick: please provide a user name in this room');
+               }
+               else if (msg.startsWith('@kick ')) {
+                   if (! is_room_master) {
+                       appendChatroomInfo('@kick: you have no permission for this operation');
+                   }
+                   else {
+                       current_cmd = "kick";
+                       var user_name = $.trim( msg.substr(6) ); // after '@kick '
+                       data = '{"cmd":"kick", "user":"' + user_name + '", "room_name":"' +
+                              current_room + '", "tracker":"' + current_tid + '"}';
+                       send_data(data);
+                   }
+               }
                else {
                    current_cmd = "speak";
                    //alert(msg);
@@ -314,6 +344,9 @@
          }
          function appendChatroomInfo(msg) {
              appendChatroom('<font color="orange">' + msg + '</font>');
+         }
+         function appendChatroomError(msg) {
+             appendChatroom('<font color="red">' + msg + '</font>');
          }
          function checkEnter(e) {
              // look for window.event in case event isn't passed in
@@ -530,6 +563,8 @@
              else if (last_cmd == 'create_room') { handle_cr_create_room(status, msg, tracker); }
              else if (last_cmd == 'invite')      { handle_cr_invite(status, msg, tracker); }
              else if (last_cmd == 'invite_reply')      { handle_cr_invite_reply(status, msg, tracker); }
+             else if (last_cmd == 'master')      { handle_cr_master(status, msg, tracker); }
+             else if (last_cmd == 'kick')      { handle_cr_kick(status, msg, tracker); }
              else if (last_cmd == 'set_room_permission') { handle_cr_set_room_permission(status, msg, tracker); }
              else if (last_cmd == 'join_room')   { handle_cr_join_room(status, msg, tracker); }
              else if (last_cmd == 'leave_room')  { handle_cr_leave_room(status, msg, tracker); }
@@ -666,7 +701,40 @@
                  $('#span_msg').html('User ' + usr + action);
                  $('#span_msg').show().delay(5000).fadeOut();
              }
+             else if (type == 'master') {
+                 var v = usr.split(':'); // new_master:room_name 
+                 if (v.length == 3) {
+                     var new_master = v[0];
+                     var old_master = v[1];
+                     var room_name = v[2];
+                     //$('#span_msg').html('Room ' + room_name + ' is gone.');
+                     //$('#span_msg').show().delay(5000).fadeOut();
+                     setRoomMaster(new_master, old_master, room_name);
+                     if (new_master == current_user) {
+                         is_room_master = true;
+                         appendChatroomInfo(old_master + ' appointed you as the new room master.');
+                     }
+                 }
+                 else if (DEBUG) {
+                     dump('Event master wrong parameter (no new master): ' + usr);
+                 }
+             }
+             else if (type == 'kicked') {
+                 var v = usr.split(':');  // kicked_user:room_master:room_name
+                 var room = v[2];
+                 appendChatroomInfo('You are kicked out of the room ' + room);
+             }
+             else if (type == 'kick') {
+                 var v = usr.split(':');  // kicked_user:room_master:room_name
+                 var user = v[0];
+                 appendChatroomInfo('user ' + user + ' is kicked out');
+             }
+         }
 
+         function setRoomMaster(new_master, old_master, room_name) {
+             //appendChatroomInfo('::Room ' + room_name + ' new master is ' + new_master);
+             setRoomMasterIcon(old_master, false);
+             setRoomMasterIcon(new_master, true);
          }
 
          function setRoomPermission(room_name, is_public) {
@@ -708,10 +776,13 @@
              if (status == 'ok') {
                  //document.getElementById('span_action').style.display = 'none';
                  document.getElementById('reg_pwd').value = ''; // clear password.
-                 updateInfo("You are registered. Now you can log in.");
+                 msg = "You are registered. Now you can log in.";
+                 appendChatroomInfo(msg);
+                 alert(msg);
                  cancelFormReg();
              } else {
-                 updateInfo('Register failed: ' + msg + '.', 'error');
+                 //updateInfo('Register failed: ' + msg + '.', 'error');
+                 appendChatroomError('Register failed: ' + msg + '.', 'error');
                  document.getElementById('reg_name').focus();
              }
          }
@@ -891,6 +962,15 @@
              }
          }
 
+         function setRoomMasterIcon(user, isMaster) {
+             var bgImg = isMaster ? 'url(images/master.gif)' : 'url(images/person.png)';
+             var title = isMaster ? 'Room master' : '';
+
+             $('#selectRoomUsersList option[value=' + user + ']').css(
+                 'background-image', bgImg
+             ).attr('title', title);
+         }
+
          function handle_cr_get_room_user_list(status, msg, tracker) {
              if (status != 'ok') {
                  updateInfo(msg, 'error');
@@ -899,15 +979,19 @@
 
              var v = msg.split(':');
              var room_name = v[0];
-             var users = v[1].split(',').sort().join(', ');
+             var room_master = v[1];
+             var users = v[2];
 
              if (request_src == 'console_who') {
+                 users = users.split(',').sort().join(', ');
                  appendChatroomInfo("@who: current room users: " + users);
              }
              else if (request_src == 'showRoomUsers') {
-                 addToSelectList('selectRoomUsersList', '', v[1]);
+                 addToSelectList('selectRoomUsersList', '', users);
+                 setRoomMasterIcon(room_master, true);
              }
              else {
+                 users = users.split(',').sort().join(', ');
                  appendChatroomInfo("room '" + room_name + "' users: " + users);
              }
              request_src = '';
@@ -915,8 +999,8 @@
          function handle_cr_create_room(status, msg, tracker) {
              request_src = '';
              if (status != 'ok') {
-                 updateInfo(msg, 'error');
-                 appendChatroomInfo(msg);
+                 //updateInfo(msg, 'error');
+                 appendChatroomError('@create failed: ' +msg);
                  return;
              }
 
@@ -989,6 +1073,53 @@
              appendChatroomInfo(msg);
          }
 
+         function handle_cr_master(status, msg, tracker) {
+             if (status != 'ok') {
+                 appendChatroomInfo(msg);
+                 return;
+             }
+             if (tracker != current_tid) {
+                 if (DEBUG) {
+                     msg = 'master message with wrong tracker.';
+                     //updateInfo(msg, 'error');
+                     appendChatroomInfo('Error: ' + msg);
+                 }
+                 return;
+             }
+
+             var v = msg.split(':');
+             var new_master = v[0];
+             var old_master = v[1];
+             var room_name = v[2]; // should be the same as current_room.
+
+             msg = "You set room master to " + msg + '.';
+             appendChatroomInfo(msg);
+             setRoomMaster(new_master, old_master, room_name);
+             is_room_master = false; // current_user is no longer room master.
+         }
+
+         function handle_cr_kick(status, msg, tracker) {
+             if (status != 'ok') {
+                 appendChatroomInfo(msg);
+                 return;
+             }
+             if (tracker != current_tid) {
+                 if (DEBUG) {
+                     msg = 'kick message with wrong tracker.';
+                     //updateInfo(msg, 'error');
+                     appendChatroomInfo('Error: ' + msg);
+                 }
+                 return;
+             }
+
+             var v = msg.split(':'); // kicked_user:room_master:room_name
+             var user = v[0];
+             var room_name = v[2]; // should be the same as current_room.
+
+             msg = 'User ' + user + ' is kicked out of this room.';
+             appendChatroomInfo(msg);
+         }
+
          function handle_cr_set_room_permission(status, msg, tracker) {
              if (status != 'ok') {
                  appendChatroomInfo(msg);
@@ -1013,7 +1144,7 @@
                  appendChatroomInfo(msg);
                  return;
              }
-             if (tracker != current_tid) {
+             if (tracker != current_tid && tracker != 0) { // 0 - from server.
                  if (DEBUG) {
                      msg = 'join room message with wrong tracker.';
                      //updateInfo(msg, 'error');
@@ -1050,7 +1181,7 @@
                  appendChatroomInfo(msg);
                  return;
              }
-             if (tracker != current_tid) {
+             if (tracker != current_tid && tracker != 0) { // 0 - from server.
                  if (DEBUG) {
                      msg = 'leave room message with wrong tracker.';
                      appendConsole(msg, 'error');
@@ -1424,7 +1555,7 @@
           border-radius:5px;
       }
       #selectUsersList option {
-          background-image:url(images/icon-person.png);
+          background-image:url(images/person.png);
           background-size: 15px 15px;
           background-repeat: no-repeat;
           padding-left: 20px;
@@ -1450,7 +1581,7 @@
           border-radius:5px;
       }
       #selectRoomUsersList option {
-          background-image:url(images/icon-person.png);
+          background-image:url(images/person.png);
           background-size: 15px 15px;
           background-repeat: no-repeat;
           padding-left: 20px;
