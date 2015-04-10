@@ -451,6 +451,12 @@ open client.html in a browser.
 
 == Change Log ==
 
+-- 4/9/2015 --
+
+* improve UI;
+* added RoomUserList;
+* allow multiple login; allow multiple login into one room;
+
 -- 4/8/2015 --
 
 * room creator is not master.
