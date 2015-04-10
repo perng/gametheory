@@ -85,7 +85,7 @@ class Cls_Chatroom():
 
     def createLobby(self):
         room_name = self.LOBBY_NAME 
-        room = Cls_Room(room_name)
+        room = Cls_Room(room_name, True)
         self.T_rooms[room_name] = room
 
 
@@ -163,9 +163,14 @@ class Cls_Chatroom():
                 reply = self.get_param('reply')
                 self.api_invite_reply(inviter, room_name, reply, usr, src, tracker)
 
+            elif cmd == "set_room_permission":
+                room_name = self.get_param('room_name')
+                is_public = True if self.get_param('permission') == '1' else False
+                self.api_set_room_permission(room_name, is_public, usr, src, tracker)
+
             elif cmd == "join_room":
                 room_name = self.get_param('room_name')
-                self.api_join_room(room_name, usr, src, tracker)
+                self.api_join_room(room_name, usr, src, tracker, False)
 
             elif cmd == "leave_room":
                 room_name = self.get_param('room_name')
@@ -444,10 +449,19 @@ class Cls_Chatroom():
         Return room list. Happens when a user logs in and then want to see what rooms can join.
         """
         self.validate_active_user(src)
-        response_msg = ",".join(self.T_rooms.keys())
+        #response_msg = ",".join(self.T_rooms.keys())
+        response_msg = ",".join( self.get_room_list_with_permission() )
         client = self.get_client(src)
         self.send_c_response("ok", "get_room_list", response_msg, usr, client, tracker)
 
+
+    def get_room_list_with_permission(self):
+        # used by api_get_room_list only
+        items = []
+        for room_name in self.T_rooms:
+            perm = '1' if self.T_rooms[room_name].getIsPublic() else '0'
+            items.append(room_name + ':' + perm)
+        return items
 
     def api_get_user_list(self, usr, src, tracker):
         """
@@ -490,7 +504,7 @@ class Cls_Chatroom():
         if prev_room != "":
             self.api_leave_room(prev_room, usr, src, tracker, False)
 
-        room = Cls_Room(room_name)  # create a Room object.
+        room = Cls_Room(room_name, True)  # create a Room object.
         room.addUser(src, usr)      # add first user.
         room.setMaster(usr)         # set as room master.
         self.T_users_active[src].setRoom(room_name)
@@ -576,6 +590,11 @@ class Cls_Chatroom():
         client = self.get_client(src)
         self.send_c_response("ok", "invite_reply", response_msg, usr, client, tracker)
 
+        #api_join_room(self, room_name, usr, src, tracker):
+        if reply == 'Y':
+            self.api_join_room(room_name, usr, src, tracker, True)
+
+
     """
     'c_invited' is a client side API call.
     """
@@ -585,7 +604,30 @@ class Cls_Chatroom():
         return json.JSONEncoder().encode(data)
 
 
-    def api_join_room(self, room_name, usr, src, tracker):
+    def api_set_room_permission(self, room_name, is_public, usr, src, tracker):
+        """
+        Only room master can do this operation.
+        """
+        self.validate_active_user(src)
+        self.validate_active_room(room_name)
+
+        room = self.T_rooms[room_name]
+        if room.getMaster() != usr:
+            raise Exception('User ' + usr + ' has no permission on this operation')
+
+        room.setIsPublic(is_public)
+
+        # Now, send message back to usr
+        response_msg = '1' if is_public else '0'
+        client = self.get_client(src)
+        self.send_c_response("ok", "set_room_permission", response_msg, usr, client, tracker)
+
+        # broadcast to all
+        msg = self.make_msg_c_event("set_room_permission", usr + ':' + room_name + ':' + response_msg, tracker)
+        self.broadcast_to_all(msg, src)
+
+
+    def api_join_room(self, room_name, usr, src, tracker, invited):
         """
         Only users in this room receive this.
         """
@@ -596,6 +638,9 @@ class Cls_Chatroom():
         #if self.T_rooms[room_name].containsUsername(usr):
         #    raise Exception("user '" + usr + \
         #          "' is already in room '" + room_name + "'")
+
+        if not self.T_rooms[room_name].getIsPublic() and not invited:
+            raise Exception('Cannot join a private room. Invitation is needed.')
 
         # If user was in another room, he needs to quit there first.
         # Ideally a user will call api_leave_room first before calling
@@ -927,11 +972,12 @@ class Cls_ActiveUser():
 
 
 class Cls_Room():
-    def __init__(self, room_name):
+    def __init__(self, room_name, is_public):
         self.room_name = room_name
         self.user_list = {}  # entry: src:usr
         self.user_src = {}   # entry: usr:src. Used by invite_reply only.
         self.master = ''     # room master
+        self.is_public = is_public  # boolean value: room is public/private
 
     def __str__(self):
         return "[room - name: " + self.room_name \
@@ -940,6 +986,12 @@ class Cls_Room():
         
     def __repr__(self):
         return self.__str__()
+
+    def setIsPublic(self, is_public):
+        self.is_public = is_public
+
+    def getIsPublic(self):
+        return self.is_public
 
     def setMaster(self, m):
         self.master = m
