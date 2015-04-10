@@ -64,13 +64,29 @@ class Cls_Chatroom():
         """
         self.T_users = {}         # entry = name:pwd
         self.T_users_src = {}     # entry = name:src. E.g. usr1:tcp4:127.0.0.1:57778
+        self.T_users_active_ct = {} # entry: name:[list of session_id], session_id = 1, 2, 3, ...
         self.T_users_active = {}  # entry = src:Cls_ActiveUser_object
         self.T_rooms = {}         # entry = name:user_list
+
+        """
+        Use a default room Lobby, when user first logs in, he is in lobby.
+        When a user leaves any room, he is back in Lobby.
+        """
+        self.USE_LOBBY = True
+        self.LOBBY_NAME = "Lobby"
+        if self.USE_LOBBY:
+            self.createLobby()
        
         self.loadDB()
 
         if DEBUG:
             print ">>> new Cls_Chatroom instance created"
+
+
+    def createLobby(self):
+        room_name = self.LOBBY_NAME 
+        room = Cls_Room(room_name)
+        self.T_rooms[room_name] = room
 
 
     def loadDB(self):
@@ -153,7 +169,10 @@ class Cls_Chatroom():
 
             elif cmd == "leave_room":
                 room_name = self.get_param('room_name')
-                self.api_leave_room(room_name, usr, src, tracker)
+                if self.USE_LOBBY and self.LOBBY_NAME == room_name:
+                    raise Exception("You are in room " + self.LOBBY_NAME)
+                else:
+                    self.api_leave_room(room_name, usr, src, tracker, True)
 
             elif cmd == "speak":
                 msg = self.get_param('msg')
@@ -469,7 +488,7 @@ class Cls_Chatroom():
         # api_create_room, but it may not be done properly by client.
         prev_room = self.T_users_active[src].room
         if prev_room != "":
-            self.api_leave_room(prev_room, usr, src, tracker)
+            self.api_leave_room(prev_room, usr, src, tracker, False)
 
         room = Cls_Room(room_name)  # create a Room object.
         room.addUser(src, usr)      # add first user.
@@ -574,16 +593,16 @@ class Cls_Chatroom():
         self.validate_active_room(room_name)
 
         # A user already in a room cannot join again.
-        if self.T_rooms[room_name].containsUsername(usr):
-            raise Exception("user '" + usr + \
-                  "' is already in room '" + room_name + "'")
+        #if self.T_rooms[room_name].containsUsername(usr):
+        #    raise Exception("user '" + usr + \
+        #          "' is already in room '" + room_name + "'")
 
         # If user was in another room, he needs to quit there first.
         # Ideally a user will call api_leave_room first before calling
         # api_join_room, but it may not be done properly by client.
         prev_room = self.T_users_active[src].room
         if prev_room != "":
-            self.api_leave_room(prev_room, usr, src, tracker)
+            self.api_leave_room(prev_room, usr, src, tracker, False)
 
         self.T_users_active[src].setRoom(room_name)
         self.T_rooms[room_name].addUser(src, usr)
@@ -624,7 +643,7 @@ class Cls_Chatroom():
         return json.JSONEncoder().encode(data)
 
 
-    def api_leave_room(self, room_name, usr, src, tracker):
+    def api_leave_room(self, room_name, usr, src, tracker, from_api_leave_room):
         """
         Only users in this room receive this.
         """
@@ -640,7 +659,8 @@ class Cls_Chatroom():
             room.setMaster('')
 
         room_is_gone = False
-        if room.isEmpty():
+        if room.isEmpty() \
+           and (not self.USE_LOBBY or room_name != self.LOBBY_NAME):
             del self.T_rooms[room_name]
             room_is_gone = True
 
@@ -658,13 +678,17 @@ class Cls_Chatroom():
         client = self.get_client(src)
         self.send_c_response("ok", "leave_room", response_msg, usr, client, tracker)
 
-        # if room became empty and was removed, just return.
-        if room_is_gone:
-            return  
+        # if room still exists, send event message to users in this room.
+        if not room_is_gone:
+            msg = self.make_msg_c_event("leave_room", usr, tracker)
+            self.broadcast_to_room(room_name, msg, src)
 
-        # otherwise room still exists, send event message to users in this room.
-        msg = self.make_msg_c_event("leave_room", usr, tracker)
-        self.broadcast_to_room(room_name, msg, src)
+        # api_leave_room may be called from api_create_room and api_join_room,
+        # in those 2 cases don't add user to lobby.
+        if from_api_leave_room and \
+           (self.USE_LOBBY and room_name != self.LOBBY_NAME):
+            # add user to default chatroom Lobby.
+            self.addUserToLobby(usr, src, tracker)
 
 
     def api_login(self, type, usr, pwd, src, client, tracker):
@@ -694,8 +718,18 @@ class Cls_Chatroom():
         if (type == 'reg'): # register user
             if usr not in self.T_users or self.T_users[usr] != pwd:
                 raise Exception("invalid login information")
-            #if usr in self.T_users_active:
-            #    raise Exception("this user has already logged in")
+
+            if usr in self.T_users_src:
+                #raise Exception("user " + usr + " has already logged in")
+                # Do below to allow multiple logins of the same user.
+                # get sequence number.
+                n = self.getFirstMisingIntInList(self.T_users_active_ct[usr])
+                self.T_users_active_ct[usr].insert(n - 1, n)
+                #print "n = " + str(n), self.T_users_active_ct[usr]
+                usr = usr + ' (' + str(n) + ')'
+            else:
+                self.T_users_active_ct[usr] = [1]
+
         else: # 'tmp'. anonymous user
             if usr in self.T_users:
                 raise Exception("this username has been taken")
@@ -708,13 +742,41 @@ class Cls_Chatroom():
         self.T_users_src[usr] = src  
 
         # send response message to sender.
-        response_msg = "user '" + usr + "' is logged in"
+        response_msg = usr
         client = self.get_client(src)
         self.send_c_response("ok", "login", response_msg, usr, client, tracker)
 
         # send this notification to all users (except sender).
         msg = self.make_msg_c_event("login", usr, tracker)
         self.broadcast_to_all(msg, src)
+
+        if self.USE_LOBBY:
+            # add user to default chatroom Lobby.
+            self.addUserToLobby(usr, src, tracker)
+
+
+    def getFirstMisingIntInList(self, list):
+        size = len(list)
+        for i in range(0, size):
+            if list[i] != i + 1:
+                return i + 1
+
+        return size + 1
+
+
+    def addUserToLobby(self, usr, src, tracker):
+        room_name = self.LOBBY_NAME
+        self.T_users_active[src].setRoom(room_name)
+        self.T_rooms[room_name].addUser(src, usr)      
+
+        # send response message to sender.
+        response_msg = usr + ":" + room_name  # "user '" + usr + "' entered room '" + room_name + "'"
+        client = self.get_client(src)
+        self.send_c_response("ok", "join_room", response_msg, usr, client, tracker)
+
+        # send event message to users in this room.
+        msg = self.make_msg_c_event("join_room", usr, tracker)
+        self.broadcast_to_room(room_name, msg, src)
 
  
     def api_update_pwd(self, usr, old_pwd, new_pwd, new_pwd2, src, tracker):
@@ -802,15 +864,27 @@ class Cls_Chatroom():
         room_name = self.T_users_active[src].room
         if room_name != "":
             self.T_rooms[room_name].removeUser(src)
-            if self.T_rooms[room_name].isEmpty():
+            if self.T_rooms[room_name].isEmpty() \
+               and (not self.USE_LOBBY or room_name != self.LOBBY_NAME):
                 del self.T_rooms[room_name]
 
                 # send this notification to all users (except sender) so they can update room list.
                 msg = self.make_msg_c_event("room_gone", usr + ":" + room_name, '0')
                 self.broadcast_to_all(msg, src)
 
+        print "logout user: " + usr
         del self.T_users_active[src]
         del self.T_users_src[usr]
+
+        p_index = usr.find("(");
+        if p_index == -1:
+            del self.T_users_active_ct[usr]
+        else:
+            user = usr[0:p_index - 1]  # strip out username
+            p2_index = usr.find(")");
+            n = usr[p_index + 1:p2_index]  # strip out sequence number.
+            #print usr + ':' + user + ': n = ' + str(n)
+            self.T_users_active_ct[user].remove(int(n))
 
         # send this notification to all users (except sender).
         msg = self.make_msg_c_event("logout", usr, tracker)
