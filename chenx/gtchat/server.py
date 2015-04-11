@@ -113,7 +113,10 @@ class Cls_Chatroom():
             print ('==' + src + ':: ' + msg)
 
         try:
-            self.params = json.loads(msg)
+            # do replacement of \n and \r to avoid json parse error.
+            # either use the line below, or use strict=False.
+            #msg = msg.replace('\r', '\\r').replace('\n', '\\n')
+            self.params = json.loads(msg, strict=False)
 
             cmd = self.get_param('cmd')
             usr = self.get_param_usr(cmd, src)

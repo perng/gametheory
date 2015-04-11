@@ -138,18 +138,23 @@
          function disableChatroom(v) {
             document.getElementById('btnSendTxt').disabled = v;
             document.getElementById('txtMsg').disabled = v;
-            if (v) document.getElementById('txtMsg').focus();
+            document.getElementById('cbSendMode').disabled = v;
             //document.getElementById('btnSendBin').disabled = v;
          }
          function sendText() {
             if (isopen) {
                var msg = "Hello, world!";
                var o = document.getElementById('txtMsg');
-               if (o.value.trim() == '') { getInputFocus(); return; }
+               var v = o.value.trim();
+               //alert('[' + v + ']');
 
-               if (o && o.value != '') {
-                   msg = o.value;
-                   o.value = '';
+               o.value = '';
+
+               if (v == '') { 
+                   getInputFocus();
+                   return; 
+               } else {
+                   msg = v;
                }
 
                current_tid = make_tracker();
@@ -312,6 +317,7 @@
                           '", "tracker":"' + current_tid + '"}';
                    send_data(data);
                    //console.log("Text message sent: " + msg);
+                   msg = decodeNewLine(msg);
                    appendChatroom('<font color="#99ff99">>> ' + msg + '</font>');
                }
             } else {
@@ -329,11 +335,17 @@
          // double quote need be encoded.
          function strEncode(s) {
              s = s.replace(/&/g, "&amp;");
-             return s.replace(/"/g, '&quot;');
+             s = s.replace(/"/g, '&quot;');
+             return s;
          }
          function strDecode(s) {
              s = s.replace(/&quot;/g, '"');
-             return s.replace(/&amp;/g, '&');
+             s = s.replace(/&amp;/g, '&');
+             s = decodeNewLine(s);
+             return s;
+         }
+         function decodeNewLine(s) {
+             return s.replace(/\n/g, '<br/>').replace(/\r/g, '<br/>');
          }
 
          // http://stackoverflow.com/questions/14430633/how-to-convert-text-to-binary-code-in-javascript
@@ -382,10 +394,35 @@
          function appendChatroomError(msg) {
              appendChatroom('<font color="red">' + msg + '</font>');
          }
+
+         function toggleSendMode() {
+             if ( sendTextOnEnter() ) {
+                 $('#btnSendTxt').hide();
+                 $('#txtMsg').css('resize', 'none');
+             }
+             else {
+                 $('#btnSendTxt').show();
+                 $('#txtMsg').css('resize', 'vertical');
+             }
+         }
+         function sendTextOnEnter() {
+             return document.getElementById("cbSendMode").checked;
+         }
          function checkEnter(e) {
+             if (! sendTextOnEnter()) return;
+
              // look for window.event in case event isn't passed in
              e = e || window.event;
-             if (e.keyCode == 13) { sendText(); }
+             if (e.keyCode == 13) { 
+                 // prevent new line from being entered.
+                 e.returnValue = false;
+                 if(e.preventDefault) {
+                     e.preventDefault();
+                 }
+
+                 // now send text to server.
+                 sendText(); 
+             }
          }
          function getInputFocus() {
              if (document.getElementById('span_login').style.display == 'block') {
@@ -566,9 +603,15 @@
              send_data(msg);
          }
          function getCenterPanelHeight() {
+             return 140;
+             /*
+             // Do below if signin/reg/update_pwd spans are inside
+             // div chatroom. But now since they are moved outside 
+             // div chatroom, this is no longer needed.
              var h = document.getElementById('chatroom').scrollHeight;
              h = h - 454 + 120 + 30; // h - chatroom height + init top + 30
              return h;
+             */
          }
          function doCreateRoom(room) {
              current_tid = make_tracker();
@@ -1377,7 +1420,7 @@
                  appendChatroomInfo('You are logged out.', 'info');
                  //$('#span_login').show();
                  //cleanup_logout();
-getInputFocus();
+                 getInputFocus();
              }
              else {
                  updateInfo(msg);
@@ -1526,6 +1569,12 @@ getInputFocus();
              $('#login_name').watermark('Username');
              $('#login_pwd').watermark('Password');
 
+             $('#cbSendMode').click(function() {
+                 toggleSendMode();
+                 getInputFocus();
+             });
+
+             toggleSendMode();
 
              doDisconnect(true); // initialize to clean state.
              if (AUTO_CONNECT != '') {
@@ -1541,7 +1590,7 @@ getInputFocus();
           position: relative;
       }
       #chatroom_container {
-        position: absolute;
+        position: relative; /* absolute;*/
         float: left;
 /*display:none;*/
 
@@ -1766,7 +1815,7 @@ getInputFocus();
 
 
       #span_register, #span_login, #span_updatepwd {
-          display:block; position:absolute; left:240px; top:120px; text-align:center; width:240px; height:135px; background-color:white; padding:10px; border: solid 0px red;
+          display:block; position:absolute; left:240px; top:140px; text-align:center; width:240px; height:135px; background-color:white; padding:10px; border: solid 0px red;
           /*background-image: url(images/sky.gif);
           background-size: 100% 100%;*/
       }
@@ -1784,9 +1833,7 @@ getInputFocus();
       }
 
       #debug_console {
-          /* clear: both; */
-          position: absolute;
-          top: 700px;
+          position: relative; 
       }
       </style>
    </head>
@@ -1803,13 +1850,6 @@ getInputFocus();
       <span id="div_info"></span>
       <br/><br/>
 
-      <input type="text" id="txtMsg" onkeypress="checkEnter(event);" size="50"/>
-      <button style='display:none;' id='btnSendTxt' onclick='sendText();'>Send Text Message</button>
-      <button style='display:none;' id='btnSendBin' onclick='sendBinary();'>Send Binary Message</button>
-      <button onclick='clearChatroom();' title='Clear chat history'>Clear History</button>
-      <button onclick="selectText('chatroom');" title='Select history for copy'>Select History</button>
-
-      <br/><br/>
 
       <div id="container">
 
@@ -1821,8 +1861,11 @@ getInputFocus();
           <span id='inviter' style='display:none;'></span>
           <span id='inviter_room' style='display:none;'></span>
           </span>
+      </div>
+      <!-- end of chatroom -->
 
-
+      <!-- login/reg/update_pwd -->
+      <div id="func_panel"> 
           <span id="span_login" style="display:block;">
           <div style="color:#6666ff; font-weight:bold; padding:5px;">Sign in</div>
           <input id="login_name" onkeyup="javascript:formLoginEnter(event);"/><br/>
@@ -1853,7 +1896,7 @@ getInputFocus();
           </span>
           </span>
 
-      </div>
+      </div> <!-- end of func_panel -->
 
       <div id="div_status">
           <div id='div_user'>User: </div>
@@ -1887,6 +1930,15 @@ getInputFocus();
       </div><!-- end of container -->
 
       <div style="clear:both;"></div>
+
+      <input type="text" id="txtMsg2" onkeypress="checkEnter(event);" size="50" style="display:none;"/>
+      <textarea id="txtMsg" onkeypress="checkEnter(event);" style="width:728px; height: 30px; white-space:pre; resize: none; white-space:pre-wrap; word-wrap:break-word;"></textarea>
+      <br/><input id="cbSendMode" type="checkbox" checked/> Send on Enter
+      <button style='display:none;' id='btnSendTxt' onclick='sendText();'>Send Message</button>
+      <button style='display:none;' id='btnSendBin' onclick='sendBinary();'>Send Binary Message</button>
+      <button onclick='clearChatroom();' title='Clear chat history'>Clear History</button>
+      <button onclick="selectText('chatroom');" title='Select history for copy'>Select History</button>
+
 
       <div id="debug_console" style="display:none;">
           <input type="checkbox" id="cbToggleDebug" title="Click to toggle debug console"/>
