@@ -5,6 +5,7 @@
       <meta name="description" content="Chatroom">
       <meta name="keywords" content="websocket chatroom, websocket, chatroom">
       <script type="text/javascript" src="js/ajax/libs/jquery/1.4/jquery.min.js"></script>
+      <script type="text/javascript" language="javascript" src="js/jquery.watermark.min.js"></script>
       <title>Websocket Chatroom</title>
       <script type="text/javascript">
          var socket = null;
@@ -131,7 +132,8 @@
             document.getElementById('btnConnect').disabled = false;
             document.getElementById('btnConnect').value = v ? 'Connect' : 'Disconnect';
             document.getElementById('ws').disabled = ! v;
-            document.getElementById('span_action').style.display = v ? 'none' : 'block';
+            if (v) $('#span_login').hide();
+            else $('#span_login').show();
          }
          function disableChatroom(v) {
             document.getElementById('btnSendTxt').disabled = v;
@@ -168,7 +170,7 @@
                }
                else if (msg == '@help') {
                    appendChatroomInfo(msg + 
-": @rooms (list rooms), @who (list room users), @users (list logged in users), @create {room} (create and join a room), @join {room} (join a room), @leave (leave a room), @where (show current name), @public (set room as public), @private (set room as private), @master (assign another room user as master), @kick (kick a user out of current room), @passwd {new password} (update password)");
+": @rooms (list rooms), @who (list room users), @users (list logged in users), @create {room} (create and join a room), @join {room} (join a room), @leave (leave a room), @where (show current name), @public (set room as public), @private (set room as private), @master (assign another room user as master), @kick (kick a user out of current room), @max {max_size} (set room max size), @passwd {new password} (update password), @logout (logout)");
                }
                else if (msg == '@leave') {
                    doLeaveRoom();
@@ -196,15 +198,21 @@
                    appendConsole('Now join room: ' + room_name);
                    doJoinRoom(room_name);
                }
-               else if (msg.startsWith('@passwd ')) {
+               else if (msg == '@logout') {
+                   doLogout();
+               }
+               else if (msg == '@passwd') {
+/*
                    var pwd = msg.substr(8);
                    if (pwd == '' || pwd.length < 8) {
                        appendChatroomInfo('@passwd: password must be at least 8 characters in length');
                    }
                    else {
-                       doUpdatePwd2(pwd);
+                       //doUpdatePwd2(pwd);
                        appendChatroomInfo('@passwd: changing password ..');
                    }
+*/
+                   showFormUpdatePwd();
                }
                // All commands below need a non-empty current_room.
                else if (current_room == '') {
@@ -276,6 +284,27 @@
                        send_data(data);
                    }
                }
+               else if (msg == '@max') {
+                   appendChatroomInfo('@max: please provide max room size (0 or positive integer)');
+               }
+               else if (msg.startsWith('@max ')) {
+                   if (! is_room_master) {
+                       appendChatroomInfo('@max: you have no permission for this operation');
+                   }
+                   else {
+                       current_cmd = "max";
+                       var max_size = $.trim( msg.substr(5) ); // after '@max '
+                       if (! isInt(max_size)) {
+                           appendChatroominfo('@max: ' + max_size + ' is not an integer.');
+                       }
+                       else {
+                           if (max_size < 0) max_size = 0;
+                           data = '{"cmd":"max", "size":"' + max_size + '", "room_name":"' +
+                                  current_room + '", "tracker":"' + current_tid + '"}';
+                           send_data(data);
+                       }
+                   }
+               }
                else {
                    current_cmd = "speak";
                    //alert(msg);
@@ -291,6 +320,11 @@
             }
          }
 
+         function isInt(value) {
+             return !isNaN(value) && 
+                    parseInt(Number(value)) == value && 
+                    !isNaN(parseInt(value, 10));
+         }
 
          // double quote need be encoded.
          function strEncode(s) {
@@ -354,7 +388,12 @@
              if (e.keyCode == 13) { sendText(); }
          }
          function getInputFocus() {
-             document.getElementById('txtMsg').focus();
+             if (document.getElementById('span_login').style.display == 'block') {
+                 document.getElementById('login_name').focus();
+             } 
+             else {
+                 document.getElementById('txtMsg').focus();
+             }
          }
          /* Scroll down to always show most recent message at bottom. */
          function updateScroll(e) {
@@ -401,23 +440,46 @@
              return s.substr(0,1).toUpperCase() + s.substr(1);
          }
 
+         function showFormUpdatePwd() {
+             var h = getCenterPanelHeight(); 
+             $('#span_updatepwd').css('top', h + 'px');
+
+             $('#span_updatepwd').show();
+             $('#updatepwd_old').focus();
+         }
+
          function showFormReg() {
-             document.getElementById('form_reg').style.display='block';
-             document.getElementById('form_login').style.display='none';
-             document.getElementById('reg_name').focus();
+             $('#span_login').hide();
+             $('#span_register').show();
+             $('#reg_name').focus();
          }
          function cancelFormReg() {
-             document.getElementById('form_reg').style.display='none';
-             document.getElementById('form_login').style.display='block';
-             document.getElementById('login_name').focus();
              $('#div_info').html('');
+
+             $('#reg_name').val('');
+             $('#reg_pwd').val('');
+             $('#reg_pwd2').val('');
+
+             $('#span_register').hide();
+             $('#span_login').show();
+             $('#login_name').focus();
          }
          function doRegister() {
              var usr = document.getElementById('reg_name').value.trim();
              var pwd = document.getElementById('reg_pwd').value.trim();
+             var pwd2 = document.getElementById('reg_pwd2').value.trim();
              if (usr == '' || pwd == '') {
-                 updateInfo('Register failed: name and password cannot be empty.', 'error');
+                 msg = 'Register failed: name and password cannot be empty.';
+                 //updateInfo(msg, 'error');
+                 alert(msg);
                  document.getElementById('reg_name').focus();
+                 return;
+             }
+             else if (pwd != pwd2) {
+                 msg = 'Register failed: two passwords do not match.';
+                 //updateInfo(msg, 'error');
+                 alert(msg);
+                 document.getElementById('reg_pwd').focus();
                  return;
              }
              current_tid = make_tracker();
@@ -426,9 +488,55 @@
              current_cmd = 'register';
              send_data(msg);
          }
+
+         function doUpdatePwd() {
+             var pwd_old = document.getElementById('updatepwd_old').value.trim();
+             var pwd = document.getElementById('updatepwd_new').value.trim();
+             var pwd2 = document.getElementById('updatepwd_new2').value.trim();
+             if (pwd_old == '' || pwd == '' || pwd2 == '') {
+                 msg = 'Password cannot be empty.';
+                 alert(msg);
+                 if (pwd_old == '') $('#updatepwd_old').focus();
+                 else if (pwd == '') $('#updatepwd_new').focus();
+                 else $('#updatepwd_new2').focus();
+                 return;
+             }
+             else if (pwd != pwd2) {
+                 msg = 'Two passwords do not match.';
+                 alert(msg);
+                 $('#updatepwd_new').focus();
+                 return;
+             }
+             current_tid = make_tracker();
+             var msg = '{"cmd":"update_pwd","old_pwd":"' + pwd_old + '","new_pwd":"' + pwd + '","tracker":"' + current_tid + '"}';
+             //alert(msg);
+             current_cmd = 'update_pwd';
+             send_data(msg);
+         }
+         function cancelUpdatePwd() {
+             $('#updatepwd_old').val('');
+             $('#updatepwd_new').val('');
+             $('#updatepwd_new2').val('');
+             $('#span_updatepwd').hide();
+
+             document.getElementById('txtMsg').focus();
+         }
+         function formUpdatePwdEnter(e) {
+             //if(e.which === 13) { doUpdatePwd(); }
+         }
+
          function doLogin() {
-             var usr = document.getElementById('login_name').value;
-             var pwd = document.getElementById('login_pwd').value;
+             var usr = document.getElementById('login_name').value.trim();
+             var pwd = document.getElementById('login_pwd').value.trim();
+
+             if (usr == '' || pwd == '') {
+                 msg = 'Login failed: name and password cannot be empty.';
+                 alert(msg);
+                 if (usr == '') $('#login_name').focus();
+                 else $('#login_pwd').focus();
+                 return;
+             }
+
              current_tid = make_tracker();
              var msg = '{"cmd":"login","type":"reg","usr":"' + usr + '","pwd":"' + 
                         pwd + '","tracker":"' + current_tid + '"}';
@@ -442,13 +550,25 @@
              // should logout locally no matter what happen on server side.
              // if disconnected before sending logout msg, will not get any
              // response anyways. So do UI logout display here.
-             //$('#div_logout').html('');
+             $('#div_logout').html('');
              //updateInfo('You are logging out.', 'info');
-             //document.getElementById('span_action').style.display = 'block';
-             //cleanup_logout();
+             cleanup_logout();
+
+             var h = getCenterPanelHeight();
+             $('#span_login').css('top', h + 'px');
+             $('#span_register').css('top', h + 'px');
+
+             //cancelFormReg();
+             $('#span_login').show();
+             getInputFocus();
 
              var msg = '{"cmd":"logout"}';
              send_data(msg);
+         }
+         function getCenterPanelHeight() {
+             var h = document.getElementById('chatroom').scrollHeight;
+             h = h - 454 + 120 + 30; // h - chatroom height + init top + 30
+             return h;
          }
          function doCreateRoom(room) {
              current_tid = make_tracker();
@@ -471,13 +591,6 @@
              current_tid = make_tracker();
              current_cmd = "leave_room";
              var msg = '{"cmd":"leave_room", "room_name":"' + current_room +
-                       '", "tracker":"' + current_tid + '"}';
-             send_data(msg);
-         }
-         function doUpdatePwd2(pwd) {
-             current_tid = make_tracker();
-             current_cmd = "update_pwd2";
-             var msg = '{"cmd":"update_pwd2", "pwd":"' + pwd +
                        '", "tracker":"' + current_tid + '"}';
              send_data(msg);
          }
@@ -556,7 +669,6 @@
              if (last_cmd == 'register')         { handle_cr_register(status, msg, tracker); }
              else if (last_cmd == 'login')       { handle_cr_login(status, msg, tracker); }
              else if (last_cmd == 'update_pwd')  { handle_cr_update_pwd(status, msg, tracker); }
-             else if (last_cmd == 'update_pwd2')  { handle_cr_update_pwd2(status, msg, tracker); }
              else if (last_cmd == 'get_room_list')  { handle_cr_get_room_list(status, msg, tracker); }
              else if (last_cmd == 'get_user_list')  { handle_cr_get_user_list(status, msg, tracker); }
              else if (last_cmd == 'get_room_user_list')  { handle_cr_get_room_user_list(status, msg, tracker); }
@@ -565,6 +677,7 @@
              else if (last_cmd == 'invite_reply')      { handle_cr_invite_reply(status, msg, tracker); }
              else if (last_cmd == 'master')      { handle_cr_master(status, msg, tracker); }
              else if (last_cmd == 'kick')      { handle_cr_kick(status, msg, tracker); }
+             else if (last_cmd == 'max')      { handle_cr_max(status, msg, tracker); }
              else if (last_cmd == 'set_room_permission') { handle_cr_set_room_permission(status, msg, tracker); }
              else if (last_cmd == 'join_room')   { handle_cr_join_room(status, msg, tracker); }
              else if (last_cmd == 'leave_room')  { handle_cr_leave_room(status, msg, tracker); }
@@ -729,6 +842,11 @@
                  var user = v[0];
                  appendChatroomInfo('user ' + user + ' is kicked out');
              }
+             else if (type == 'max') {
+                 var v = usr.split(':');  // max_size:room_master:room_name
+                 var size = v[0];
+                 appendChatroomInfo('Room max size is changed to ' + size + '.');
+             }
          }
 
          function setRoomMaster(new_master, old_master, room_name) {
@@ -774,15 +892,16 @@
                  return;
              }
              if (status == 'ok') {
-                 //document.getElementById('span_action').style.display = 'none';
                  document.getElementById('reg_pwd').value = ''; // clear password.
                  msg = "You are registered. Now you can log in.";
-                 appendChatroomInfo(msg);
+                 //appendChatroomInfo(msg);
                  alert(msg);
                  cancelFormReg();
              } else {
+                 msg = 'Register failed: ' + msg + '.';
                  //updateInfo('Register failed: ' + msg + '.', 'error');
-                 appendChatroomError('Register failed: ' + msg + '.', 'error');
+                 //appendChatroomError(msg, 'error');
+                 alert(msg);
                  document.getElementById('reg_name').focus();
              }
          }
@@ -794,10 +913,8 @@
                  return;
              }
              if (status == 'ok') {
-                 document.getElementById('span_action').style.display = 'none';
+                 $('#span_login').hide();
                  document.getElementById('login_pwd').value = ''; // clear password.
-                 //updateInfo("You are logged in. <a href='#' onclick='doLogout();'>Log out</a>");
-
                  // msg is username plus sequence number when the user 
                  // logs in with multple sessions.
                  current_user = msg;  // $('#login_name').val();
@@ -816,20 +933,21 @@
                  appendChatroomInfo('You are logged in.');
                  appendChatroomInfo('Type @rooms for room list, @create {room} to create room, @join {room} to join a room, @help for more.');
              } else {
-                 updateInfo('Invalid login name or password.', 'error');
+                 alert('Invalid login name or password.', 'error');
                  document.getElementById('login_name').focus();
              }
          }
          function handle_cr_update_pwd(status, msg, tracker) {
-
-         }
-         function handle_cr_update_pwd2(status, msg, tracker) {
              if (status != 'ok') {
-                 appendChatroomInfo('Error: ' + msg);
+                 //appendChatroomInfo('Error: ' + msg);
+                 alert('Error: ' + msg);
+                 $('#updatepwd_new').focus();
                  return;
              }
 
-             appendChatroomInfo(msg);
+             //appendChatroomInfo(msg);
+             alert('Your password is updated.');
+             cancelUpdatePwd();
          }
 
          function handle_cr_get_room_list_console(status, msg, tracker) {
@@ -1120,6 +1238,28 @@
              appendChatroomInfo(msg);
          }
 
+         function handle_cr_max(status, msg, tracker) {
+             if (status != 'ok') {
+                 appendChatroomInfo(msg);
+                 return;
+             }
+             if (tracker != current_tid) {
+                 if (DEBUG) {
+                     msg = 'max message with wrong tracker.';
+                     //updateInfo(msg, 'error');
+                     appendChatroomInfo('Error: ' + msg);
+                 }
+                 return;
+             }
+
+             var v = msg.split(':'); // max_size:room_master:room_name
+             var size = v[0];
+             var room_name = v[2]; // should be the same as current_room.
+
+             msg = 'You set the max size of this room to ' + size + '.';
+             appendChatroomInfo(msg);
+         }
+
          function handle_cr_set_room_permission(status, msg, tracker) {
              if (status != 'ok') {
                  appendChatroomInfo(msg);
@@ -1231,15 +1371,17 @@
 
          }
          function handle_cr_logout(status, msg, tracker) {
+             // basically, won't get this.
              if (status == 'ok') {
                  $('#div_logout').html('');
-                 updateInfo('You are logged out.', 'info');
-                 document.getElementById('span_action').style.display = 'block';
-                 cleanup_logout();
+                 appendChatroomInfo('You are logged out.', 'info');
+                 //$('#span_login').show();
+                 //cleanup_logout();
+getInputFocus();
              }
              else {
                  updateInfo(msg);
-                 cleanup_logout(); // should do cleanup no matter what.
+                 //cleanup_logout(); // should do cleanup no matter what.
              }
          }
          function cleanup_logout() {
@@ -1311,6 +1453,14 @@
              showAllUsersPanel();
          }
 
+         function formRegEnter(e) {
+             if(e.which === 13) { doRegister(); }
+         }
+
+         function formLoginEnter(e) {
+             if(e.which === 13) { doLogin(); }
+         }
+
          $(document).ready(function() {
              $('#txtNewRoom').keyup(function (e) {
                  if(e.which === 13) {
@@ -1338,9 +1488,6 @@
                  }
              });
 
-             /*$('#selectRoomsList').click(function() {
-                 doGetRoomUsers();
-             });*/
 
              $('#selectRoomsList').dblclick(function () {
                  $("#selectRoomsList option:selected").each(function () {
@@ -1352,19 +1499,6 @@
                      }
                  });
              });
-
-             /*
-             $("#selectRoomsList").change(function () {
-                $("option", $(this)).each(function (index) {
-                    if ($(this).is(":selected")) {
-                        $(this).css("backgroundColor", "#99ffcc");
-                    }
-                    else {
-                        $(this).css("backgroundColor", "white");
-                    }
-                });
-             });
-             */
 
              $('#selectRoomsList').blur(function() {
                  // de-select all rows.
@@ -1383,6 +1517,15 @@
              $('#span_room_users').click(function() {
                  showRoomUsersPanel();
              });
+
+
+             $('#reg_name').watermark('Username');
+             $('#reg_pwd').watermark('Password');
+             $('#reg_pwd2').watermark('Password (repeat)');
+
+             $('#login_name').watermark('Username');
+             $('#login_pwd').watermark('Password');
+
 
              doDisconnect(true); // initialize to clean state.
              if (AUTO_CONNECT != '') {
@@ -1413,7 +1556,6 @@
         height: 450px;
         width: 720px;
         padding: 2px;
-        /*background-color: #eeeeff;*/
         color: white;
         background-color: black;
         overflow:auto;
@@ -1622,6 +1764,25 @@
       option:nth-child(odd) { background: white; }
       option:nth-child(even) { background: #eeeeee; }
 
+
+      #span_register, #span_login, #span_updatepwd {
+          display:block; position:absolute; left:240px; top:120px; text-align:center; width:240px; height:135px; background-color:white; padding:10px; border: solid 0px red;
+          /*background-image: url(images/sky.gif);
+          background-size: 100% 100%;*/
+      }
+
+      .btnReg {
+          width: 70px;
+          /*color: white;
+          background-color: green;*/
+      }
+
+      .transparent {
+          filter:alpha(opacity=90); 
+          -moz-opacity: 0.9; 
+          opacity: 0.9;
+      }
+
       #debug_console {
           /* clear: both; */
           position: absolute;
@@ -1642,24 +1803,6 @@
       <span id="div_info"></span>
       <br/><br/>
 
-      <span id='span_action' style='display:none;'>
-      <span id='form_reg' style='display:none;'>
-      name: <input type='txt' id='reg_name'/>
-      password: <input type='password' id='reg_pwd'/>
-      <input type='button' value='Register' onclick='doRegister();'></input>
-      &nbsp;&nbsp;<a href='#' onclick="cancelFormReg();">Cancel</a>
-      <br/><br/>
-      </span>
-
-      <span id='form_login' style='display:inline-block;'>
-      name: <input type='txt' id='login_name'/>
-      password: <input type='password' id='login_pwd'/>
-      <input type='button' value='Login' onclick='doLogin();'></input>
-      &nbsp;&nbsp;<a href='#' onclick="showFormReg();">Register</a>
-      <br/><br/>
-      </span>
-      </span>
-
       <input type="text" id="txtMsg" onkeypress="checkEnter(event);" size="50"/>
       <button style='display:none;' id='btnSendTxt' onclick='sendText();'>Send Text Message</button>
       <button style='display:none;' id='btnSendBin' onclick='sendBinary();'>Send Binary Message</button>
@@ -1678,6 +1821,38 @@
           <span id='inviter' style='display:none;'></span>
           <span id='inviter_room' style='display:none;'></span>
           </span>
+
+
+          <span id="span_login" style="display:block;">
+          <div style="color:#6666ff; font-weight:bold; padding:5px;">Sign in</div>
+          <input id="login_name" onkeyup="javascript:formLoginEnter(event);"/><br/>
+          <input id="login_pwd" type="password" onkeyup="javascript:formLoginEnter(event);"/><br/>
+          <span style="display:block; padding:5px;">
+          <input type="button" class="btnReg" id="btnLogin" value="Login" onclick="javascript:doLogin();"/>
+          </span>
+          <a id="link_reg" href='#' style="font-size:11pt;" onclick="javascript:showFormReg();">Register</a>
+          </span>
+
+          <span id="span_register" class="itransparent" style="display:none;">
+          <div style="color:#6666ff; font-weight:bold; padding:5px;">Register Account</div>
+          <input id="reg_name" onkeyup="javascript:formRegEnter(event);"/><br/>
+          <input id="reg_pwd" type="password" onkeyup="javascript:formRegEnter(event);"/><br/>
+          <input id="reg_pwd2" type="password" onkeyup="javascript:formRegEnter(event);"/><br/>
+          <span style="display:block; padding:5px;">
+          <input type="button" class="btnReg" id="reg_btnReg" value="Register" onclick="javascript:doRegister();"/><input type="button" class="btnReg" id="reg_btnCancel" value="Cancel" onclick="javascript:cancelFormReg();"/>
+          </span>
+          </span>
+
+          <span id="span_updatepwd" style="display:none;">
+          <div style="color:#6666ff; font-weight:bold; padding:5px;">Update Password</div>
+          <input id="updatepwd_old" type="password" onkeyup="javascript:formUpdatePwdEnter(event);"/><br/>
+          <input id="updatepwd_new" type="password" onkeyup="javascript:formUpdatePwdEnter(event);"/><br/>
+          <input id="updatepwd_new2" type="password" onkeyup="javascript:formUpdatePwdEnter(event);"/><br/>
+          <span style="display:block; padding:5px;">
+          <input type="button" class="btnReg" value="Update" onclick="javascript:doUpdatePwd();"/><input type="button" class="btnReg" value="Cancel" onclick="javascript:cancelUpdatePwd();"/>
+          </span>
+          </span>
+
       </div>
 
       <div id="div_status">

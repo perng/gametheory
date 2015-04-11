@@ -131,15 +131,9 @@ class Cls_Chatroom():
                 self.api_login(type, usr, pwd, src, client, tracker)
 
             elif cmd == "update_pwd":
-                old_pwd = self.get_param('pwd')
+                old_pwd = self.get_param('old_pwd')
                 new_pwd = self.get_param('new_pwd')
-                new_pwd2 = self.get_param('new_pwd2')
-                self.api_update_pwd(usr, old_pwd, new_pwd, new_pwd2, src, tracker)
-
-            elif cmd == "update_pwd2":
-                # this is used in command line when user is logged in.
-                new_pwd = self.get_param('pwd')
-                self.api_update_pwd2(new_pwd, usr, src, tracker)
+                self.api_update_pwd(usr, old_pwd, new_pwd, src, tracker)
 
             elif cmd == "get_room_list":
                 self.api_get_room_list(usr, src, tracker)
@@ -175,6 +169,11 @@ class Cls_Chatroom():
                 user = self.get_param('user')
                 room_name = self.get_param('room_name')
                 self.api_kick(user, room_name, usr, src, tracker)
+
+            elif cmd == "max":
+                size = self.get_param('size')
+                room_name = self.get_param('room_name')
+                self.api_max(size, room_name, usr, src, tracker)
 
             elif cmd == "set_room_permission":
                 room_name = self.get_param('room_name')
@@ -688,6 +687,33 @@ class Cls_Chatroom():
         #self.broadcast_to_room(room_name, msg, src)
 
 
+    def api_max(self, size, room_name, usr, src, tracker):
+        """
+        Only room master can do this operation.
+        """
+        self.validate_active_user(src)
+        self.validate_active_room(room_name)
+
+        room = self.T_rooms[room_name]
+        if room.getMaster() != usr:
+            raise Exception('User ' + usr + ' has no permission on this operation')
+        if size < 0: 
+            size = 0
+
+        room.setMaxSize(size)
+
+        # information to send: size:room_master:room_name
+        info = size + ':' + usr + ':' + room_name
+
+        # send response message to sender/room master.
+        client = self.get_client(src)
+        self.send_c_response("ok", "max", info, usr, client, tracker)
+
+        # send event message to users in this room. well - no need.
+        msg = self.make_msg_c_event("max", info, tracker)
+        self.broadcast_to_room(room_name, msg, src)
+
+
     def api_set_room_permission(self, room_name, is_public, usr, src, tracker):
         """
         Only room master can do this operation.
@@ -723,8 +749,19 @@ class Cls_Chatroom():
         #    raise Exception("user '" + usr + \
         #          "' is already in room '" + room_name + "'")
 
-        if not self.T_rooms[room_name].getIsPublic() and not invited:
+        room = self.T_rooms[room_name];
+
+        if not room.getIsPublic() and not invited:
             raise Exception('Cannot join a private room. Invitation is needed.')
+
+        room_max_size = int( room.getMaxSize() )
+        room_size = int( room.getSize() )
+        #print 'max size = ' + str(room_max_size) + ', size = ' + str(room_size)
+  
+        # Note it's possible that a room'size is larger than max_size:
+        # e.g., a room's users reached 100, the master set room size to 50.
+        if room_max_size > 0 and room_max_size <= room_size:
+            raise Exception("Cannot join a full room (size is " + str(room_max_size) + ")")
 
         # If user was in another room, he needs to quit there first.
         # Ideally a user will call api_leave_room first before calling
@@ -908,18 +945,20 @@ class Cls_Chatroom():
         self.broadcast_to_room(room_name, msg, src)
 
  
-    def api_update_pwd(self, usr, old_pwd, new_pwd, new_pwd2, src, tracker):
+    def api_update_pwd(self, usr, old_pwd, new_pwd, src, tracker):
         """
         Only usr himself receives a response.
+        Note the use of 2 new passwords and compare equality is done in client,
+        on server side we only need 1 new password value.
         """
-        if (new_pwd != new_pwd2):
-            raise Exception("two new password do not match")
         if (len(new_pwd) < 8):
             raise Exception("new password length should >= 8")
         if not usr in self.T_users:
             raise Exception("this username does not exist")
         if old_pwd != self.T_users[usr]:
             raise Exception("old password does not match")
+        if old_pwd == new_pwd:
+            raise Exception("Please use a password different from the old one")
 
         self.T_users[usr] = new_pwd
 
@@ -927,27 +966,9 @@ class Cls_Chatroom():
             self.dump_db("T_users", self.T_users)
 
         # send response message to sender.
-        response_msg = "password of user '" + usr + "' is changed"
+        response_msg = usr
         client = self.get_client(src)
         self.send_c_response("ok", "update_pwd", response_msg, usr, client, tracker)
-
-    def api_update_pwd2(self, new_pwd, usr, src, tracker):
-        """
-        Used when user is logged in, so no need for old password.
-        """
-        if (len(new_pwd) < 8):
-            raise Exception("new password length should >= 8")
-        if not usr in self.T_users:
-            raise Exception("this username does not exist")
-        if new_pwd == self.T_users[usr]:
-            raise Exception("the new password should not be the same as the old")
-
-        self.T_users[usr] = new_pwd
-
-        # send response message to sender.
-        response_msg = "password of user '" + usr + "' is changed"
-        client = self.get_client(src)
-        self.send_c_response("ok", "update_pwd2", response_msg, usr, client, tracker)
 
 
     def api_register(self, usr, pwd, src, client, tracker):
@@ -1064,6 +1085,7 @@ class Cls_Room():
         self.user_src = {}   # entry: usr:src. Used by invite_reply only.
         self.master = ''     # room master
         self.is_public = is_public  # boolean value: room is public/private
+        self.max_size = 0    # max room users. 0 means infinite.
 
     def __str__(self):
         return "[room - name: " + self.room_name \
@@ -1072,6 +1094,15 @@ class Cls_Room():
         
     def __repr__(self):
         return self.__str__()
+
+    def getSize(self):
+        return len(self.user_list)
+
+    def getMaxSize(self):
+        return self.max_size
+
+    def setMaxSize(self, n):
+        self.max_size = n if n > 0 else 0
 
     def setIsPublic(self, is_public):
         self.is_public = is_public
