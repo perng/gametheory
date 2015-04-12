@@ -104,9 +104,15 @@ class Cls_Chatroom():
         Load default values from database. E.g., users, rooms.
         This is also good for testing purpose.
         """
-        #self.T_users['admin'] = 'password'
-        #self.T_users['a'] = '11111111'
-        #self.T_users['b'] = '11111111'
+
+        if not (os.path.exists(self.DB) and os.path.isfile(self.DB)):
+            print 'use default since self.DB not exists'
+            self.T_users['admin'] = 'password'
+            self.T_users['a'] = '11111111'
+            self.T_users['b'] = '11111111'
+            return 
+
+        print 'read from self.DB'
 
         """
         Read from storage file.
