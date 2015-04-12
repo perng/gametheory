@@ -28,9 +28,9 @@
          // be hidden, and when the page is loaded it'll automatically connect to 
          // server given by the value of AUTO_CONNECT.
          var AUTO_CONNECT = ''; 
-         AUTO_CONNECT = 'ws://127.0.0.1:9001';
+         //AUTO_CONNECT = 'ws://127.0.0.1:9001';
          //AUTO_CONNECT = 'ws://192.168.198.131:9001';
-         //AUTO_CONNECT = 'ws://homecox.com:9001';
+         AUTO_CONNECT = 'ws://homecox.com:9001';
 
          // If DEBUG is true, the debug console will be shown.
          var DEBUG = true;
@@ -1682,7 +1682,7 @@
                  'type': 'iframe'
              });
 
-             setChatroomBgImg();
+             setChatroomBgImg(true);
 
              doDisconnect(true); // initialize to clean state.
              if (AUTO_CONNECT != '') {
@@ -2004,6 +2004,7 @@
 
       #txtMsg {
           float:left; width:726px; height: 30px; white-space:pre; 
+          min-height: 30px;
           resize: none; 
           white-space:pre-wrap; word-wrap:break-word;
           padding: 5px;
@@ -2011,6 +2012,10 @@
           -webkit-border-radius:5px;
           -moz-border-radius:5px;
           border-radius:5px;
+      }
+
+      #btnSendTxt {
+          //position: absolute;
       }
 
       .txtReg {
@@ -2183,13 +2188,13 @@
 
       <div style="clear:both;"></div>
 
-      <div id="bottom_panel" style="text-align: left;">
-      <button style='display:none;' id='btnSendTxt' onclick='sendText();' class="btnSetting">Send Message</button>
+      </div><!-- end of container -->
+
+      <div id="bottom_panel" style="text-align: left; padding-top:3px;">
+      <button style='display:none;' id='btnSendTxt' onclick='sendText();' class="btnSetting" 
+              title="Send multiline message">Send Message</button>
       <button style='display:none;' id='btnSendBin' onclick='sendBinary();'>Send Binary Message</button>
       </div>
-
-
-      </div><!-- end of container -->
 
       <div id="debug_console" style="display:none; text-align:left;"><br/>
           <input type="checkbox" id="cbToggleDebug" title="Click to toggle debug console"/>
