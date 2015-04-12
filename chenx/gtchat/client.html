@@ -5,7 +5,13 @@
       <meta name="description" content="Chatroom">
       <meta name="keywords" content="websocket chatroom, websocket, chatroom">
       <script type="text/javascript" src="js/ajax/libs/jquery/1.4/jquery.min.js"></script>
+
+      <!-- fancybox 1.3.4 works with jquery 1.4, not jquery 1.10. -->
+      <script type="text/javascript" src="js/fancybox/fancybox/jquery.fancybox-1.3.4.pack.js"></script>
+      <link rel="stylesheet" type="text/css" href="js/fancybox/fancybox/jquery.fancybox-1.3.4.css" media="screen" />
+
       <script type="text/javascript" language="javascript" src="js/jquery.watermark.min.js"></script>
+
       <title>Websocket Chatroom</title>
       <script type="text/javascript">
          var socket = null;
@@ -16,6 +22,7 @@
          var current_room = ''; // keep track of current room.
          var is_room_master = false;  // Whether this user is room master.
          var request_src = ''; // used for command line requests @rooms, @users.
+         var bgImg_downloaded = false;
 
          // If this is not empty, the server textbox and connect button will
          // be hidden, and when the page is loaded it'll automatically connect to 
@@ -143,6 +150,7 @@
             document.getElementById('txtMsg').disabled = v;
             document.getElementById('cbSendMode').disabled = v;
             document.getElementById('btnLogout').disabled = v;
+            setChatroomBgImg(v);
             //document.getElementById('btnSendBin').disabled = v;
          }
          function sendText() {
@@ -179,7 +187,7 @@
                }
                else if (msg == '@help') {
                    appendChatroomInfo(msg + 
-": @rooms (list rooms), @who (list room users), @users (list logged in users), @create {room} (create and join a room), @join {room} (join a room), @leave (leave a room), @where (show current name), @public (set room as public), @private (set room as private), @master (assign another room user as master), @kick (kick a user out of current room), @max {max_size} (set room max size), @passwd {new password} (update password), @logout (logout)");
+": @rooms (list rooms), @who (list room users), @users (list logged in users), @create {room} (create and join a new room), @join {room} (join an existing room), @leave (leave a room), @where (show current room name), @public (set room as public), @private (set room as private), @master (assign another room user as master), @kick (kick a user out of current room), @max {max_size} (set room max size), @passwd {new password} (update password), @logout (logout)");
                }
                else if (msg == '@leave') {
                    doLeaveRoom();
@@ -1564,6 +1572,34 @@
              return dateTime;
          }
 
+
+         //
+         // If do_set is false, clear background image.
+         // otherwise, set background image.
+         // This gif is large. So first display a small static image,
+         // download this gif and then replace it.
+         //
+         function setChatroomBgImg(do_set) {
+             if (! do_set) {
+                 $('#chatroom').css('background-image', 'none');
+                 return;
+             }
+             
+             if (bgImg_downloaded) {
+                 $('#chatroom').css('background-image', 'url(images/matrix2.gif)');
+                 return;
+             }
+
+             var _images = ['images/matrix2.gif'];
+             $.each(_images, function (e) {
+                 $(new Image()).load(function () {
+                     //alert($(this).attr('src') + ' has loaded!');
+                     $('#chatroom').css('background-image', 'url(images/matrix2.gif)');
+                     bgImg_downloaded = true;
+                 }).attr('src', this);
+             });
+         }
+
          $(document).ready(function() {
              $('#txtNewRoom').keyup(function (e) {
                  if(e.which === 13) {
@@ -1636,6 +1672,18 @@
 
              toggleSendMode();
 
+
+             $(".fancybox").fancybox({
+                 'width': '75%',
+                 'height': '75%',
+                 'autoScale': false,
+                 'transitionIn': 'none',
+                 'transitionOut': 'none',
+                 'type': 'iframe'
+             });
+
+             setChatroomBgImg();
+
              doDisconnect(true); // initialize to clean state.
              if (AUTO_CONNECT != '') {
                  $('#div_server').hide();
@@ -1683,6 +1731,14 @@
         overflow-y: scroll;
         position: relative;
         bottom: 0;
+
+        background-image: url(images/matrix2.jpg);
+        background-repeat: repeat;
+        background-size: 50% 50%;
+
+        filter: alpha(opacity=80);
+        opacity: 0.8;
+        /*z-index: 10000;*/
 
         -webkit-border-radius:5px;
         -moz-border-radius:5px;
@@ -1937,6 +1993,10 @@
           /*background-image: url(images/sky.gif);
           background-size: 100% 100%;*/
 
+          background-image: url(images/bg.gif);
+          background-repeat: no-repeat;
+          /*background-size: 100% 100%;*/
+
           -webkit-border-radius:5px;
           -moz-border-radius:5px;
           border-radius:5px;
@@ -2000,16 +2060,15 @@
       <span id='div_logout' style="float:left;"></span>
       <span id="div_info" style="float:left;"></span>
 
-      <span id="div_about" style="float:right">
-      <a href="#">About</a> |
-      <a href="#">Help</a> |
-      <a href="#">Privacy</a>
+      <span id="div_about" style="float:right;">
+      <a href="about.html" class="fancybox">About</a> |
+      <a href="help.html" class="fancybox">Help</a> <!--|
+      <a href="privacy.html" class="fancybox">Privacy</a>-->
       </span>
 
       </div> <!-- end of header -->
 
       <div style="clear:both;"></div>
-
 
       <div id="container">
 
@@ -2105,6 +2164,21 @@
       <!-- <a href="#">About</a> | <a href="#">Help</a> | <a href="#">Privacy</a> -->
       <!--&nbsp;&nbsp;&nbsp;&nbsp;
       <img src="images/chat.png" style="height:38px; vertical-align: middle;"/>-->
+
+<!-- JiaThis Button BEGIN -->
+<div class="jiathis_style" style="width:190px; vertical-align:middle; float:right; position:relative; top:15px;">
+        <a class="jiathis_button_qzone" style="vertical-align:middle;"></a>
+        <a class="jiathis_button_tsina"></a>
+        <a class="jiathis_button_tqq"></a>
+        <a class="jiathis_button_weixin"></a>
+        <a class="jiathis_button_renren"></a>
+        <a class="jiathis_button_xiaoyou"></a>
+        <a href="http://www.jiathis.com/share" class="jiathis jiathis_txt jtico jtico_jiathis" target="_blank"></a>
+        <a class="jiathis_counter_style"></a>
+</div>
+<script type="text/javascript" src="http://v3.jiathis.com/code/jia.js" charset="utf-8"></script>
+<!-- JiaThis Button END -->
+
       </span>
 
       <div style="clear:both;"></div>
@@ -2113,6 +2187,7 @@
       <button style='display:none;' id='btnSendTxt' onclick='sendText();' class="btnSetting">Send Message</button>
       <button style='display:none;' id='btnSendBin' onclick='sendBinary();'>Send Binary Message</button>
       </div>
+
 
       </div><!-- end of container -->
 
