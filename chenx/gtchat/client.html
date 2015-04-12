@@ -21,8 +21,9 @@
          // be hidden, and when the page is loaded it'll automatically connect to 
          // server given by the value of AUTO_CONNECT.
          var AUTO_CONNECT = ''; 
-         //AUTO_CONNECT = 'ws://127.0.0.1:9000';
-         AUTO_CONNECT = 'ws://192.168.198.131:9000';
+         AUTO_CONNECT = 'ws://127.0.0.1:9001';
+         //AUTO_CONNECT = 'ws://192.168.198.131:9001';
+         //AUTO_CONNECT = 'ws://homecox.com:9001';
 
          // If DEBUG is true, the debug console will be shown.
          var DEBUG = true;
@@ -78,7 +79,9 @@
                current_cmd = '';
 
                if (AUTO_CONNECT != '') {
-                   dispConnectionStatus("Welcome to chatroom.");
+                   //dispConnectionStatus("Welcome to chatroom.");
+                   //dispConnectionStatus('<img src="images/people.png" style="height:40px; vertical-align:middle;">');
+                   dispConnectionStatus('');
                } else {
                    //dispConnectionStatus("<font color='green'>Connected!</font>");
                    dispConnectionStatus('');
@@ -114,10 +117,10 @@
                if (current_cmd == 'doConnect') {
                    dispConnectionStatus("<font color='red'>Server is not available.</font>");
                } else {
-                   handle_cr_logout('ok', 'connection reset by server', '0');
+                   handle_cr_logout('ok', 'connection closed by server', '0');
                    toggleButton(true);
                    cleanup_logout();
-                   dispConnectionStatus("<font color='red'>Connection reset by server.</font>");
+                   dispConnectionStatus("<font color='red'>Connection closed by server.</font>");
                }
             }
          };
@@ -139,6 +142,7 @@
             document.getElementById('btnSendTxt').disabled = v;
             document.getElementById('txtMsg').disabled = v;
             document.getElementById('cbSendMode').disabled = v;
+            document.getElementById('btnLogout').disabled = v;
             //document.getElementById('btnSendBin').disabled = v;
          }
          function sendText() {
@@ -207,16 +211,6 @@
                    doLogout();
                }
                else if (msg == '@passwd') {
-/*
-                   var pwd = msg.substr(8);
-                   if (pwd == '' || pwd.length < 8) {
-                       appendChatroomInfo('@passwd: password must be at least 8 characters in length');
-                   }
-                   else {
-                       //doUpdatePwd2(pwd);
-                       appendChatroomInfo('@passwd: changing password ..');
-                   }
-*/
                    showFormUpdatePwd();
                }
                // All commands below need a non-empty current_room.
@@ -318,12 +312,27 @@
                    send_data(data);
                    //console.log("Text message sent: " + msg);
                    msg = decodeNewLine(msg);
-                   appendChatroom('<font color="#99ff99">>> ' + msg + '</font>');
+                   //appendChatroom('<font color="#99ff99">>> ' + getTimeStamp() + '<br/>' + msg + '</font>');
+                   doSpeak(msg, current_user, true);
                }
             } else {
                //console.log("Connection not opened.")
                appendChatroom("<font color='red'>Connection not opened.</font>");
             }
+         }
+
+         function doSpeak(msg, usr, isMe) {
+             var t = getTimeStamp();
+             var color = isMe ? ' color="#99ff99"' : '';
+             var author = '>> ' + usr + ' ' + t;
+             if (isMe) {
+                 author = '<span style="font-size:10pt; color:#ccffcc;">' + author + '</span>';
+                 msg = '<span style="color: #99ff99;">' + msg + '</span>';
+             }
+             else {
+                 author = '<span style="font-size:10pt; color: #cccccc;">' + author + '</span>';
+             }
+             appendChatroom(author + '<br/>' + msg);
          }
 
          function isInt(value) {
@@ -737,7 +746,8 @@
              var tracker = jo.tracker;
              //dump(':speak: ' + msg + ',' + room_name + ',' + tracker);
              msg = strDecode(msg);
-             appendChatroom('>> ' + usr + ': ' + msg);
+             //appendChatroom('>> ' + usr + ': ' + getTimeStamp() + '<br/>' + msg);
+             doSpeak(msg, usr, false);
          }
          function handle_c_whisper(jo) {
              var msg = jo.msg;
@@ -962,7 +972,7 @@
                  // logs in with multple sessions.
                  current_user = msg;  // $('#login_name').val();
                  var msg_logout = ' [<a href="#" onclick="doLogout();">Logout</a>] ';
-                 $('#div_logout').html(msg_logout);
+                 //$('#div_logout').html(msg_logout);
 
                  $('#div_user').html('User: ' + current_user);
 
@@ -1497,11 +1507,61 @@
          }
 
          function formRegEnter(e) {
-             if(e.which === 13) { doRegister(); }
+             //if(e.which === 13) { doRegister(); }
          }
 
          function formLoginEnter(e) {
-             if(e.which === 13) { doLogin(); }
+             //if(e.which === 13) { doLogin(); }
+         }
+
+         function showSettings() {
+             $('#panel_settings').show();
+         }
+         function hideSettings(event, _this) {
+             var e = event.toElement || event.relatedTarget;
+             //alert(event + ':' + e + ':' + _this);
+             if (e != null && (e.parentNode == _this || e == _this)) {
+                 return;
+             }
+
+             $('#panel_settings').hide();
+         }
+
+         function getTimeStamp() {
+             return getDateTime(1);
+         }
+
+         function getDateTime(mode) {
+             var now= new Date(); 
+             var year    = now.getFullYear();
+             var month   = now.getMonth()+1; 
+             var day     = now.getDate();
+             var hour    = now.getHours();
+             var minute  = now.getMinutes();
+             var second  = now.getSeconds(); 
+             if(month.toString().length == 1) {
+                 var month = '0'+month;
+             }
+             if(day.toString().length == 1) {
+                 var day = '0'+day;
+             }   
+             if(hour.toString().length == 1) {
+                 var hour = '0'+hour;
+             }
+             if(minute.toString().length == 1) {
+                 var minute = '0'+minute;
+             }
+             if(second.toString().length == 1) {
+                 var second = '0'+second;
+             }   
+
+             var dateTime;
+             if (mode == 1) {
+                 dateTime = +hour+':'+minute+':'+second;
+             } else {
+                 dateTime = year+'/'+month+'/'+day+' '+hour+':'+minute+':'+second;   
+             }
+             return dateTime;
          }
 
          $(document).ready(function() {
@@ -1588,31 +1648,48 @@
       <style type="text/css">
       #container {
           position: relative;
+          width: 951px;
+          background-color: #eeeeff;
+          padding: 1px;
+
+          -webkit-border-radius:5px;
+          -moz-border-radius:5px;
+          border-radius:5px;
+
+          -webkit-box-shadow:0 1px 10px rgba(0,0,0,.5);
+          -moz-box-shadow:0 1px 10px rgba(0,0,0,.5);
+          box-shadow:0 1px 10px rgba(0,0,0,.5);
       }
       #chatroom_container {
-        position: relative; /* absolute;*/
+        position: relative; 
         float: left;
-/*display:none;*/
+        /*display:none;*/
 
         background-color: #bbccee;
         padding: 5px;
-        width: 724px;
+        width: 730px;
         -webkit-border-radius:5px;
         -moz-border-radius:5px;
         border-radius:5px;
       }
       #chatroom {
+        text-align: left;
         height: 450px;
         width: 720px;
-        padding: 2px;
+        padding: 5px;
         color: white;
         background-color: black;
         overflow:auto;
         overflow-y: scroll;
         position: relative;
         bottom: 0;
+
+        -webkit-border-radius:5px;
+        -moz-border-radius:5px;
+        border-radius:5px;
       }
       #console {
+        text-align: left;
         height: 180px;
         width: 720px;
         background-color: #eeeeff;
@@ -1622,7 +1699,7 @@
         bottom: 0;
       }
       #div_status {
-        width:722px; 
+        width:728px; 
         line-height:25px; 
         height:25px; 
         position: relative; 
@@ -1630,6 +1707,7 @@
         border: solid 1px #dddddd;
       }
       #div_user {
+        text-align: left;
         position: absolute;
         overflow:hidden;
         white-space: nowrap;
@@ -1643,8 +1721,9 @@
         border: solid 1px #cccccc;
       }
       #div_room {
+        text-align: left;
         position: absolute; 
-        left: 120px;
+        left: 123px; /*120*/
         overflow:hidden; 
         white-space: nowrap; 
         float:left; 
@@ -1652,16 +1731,28 @@
         padding-left: 5px;
         padding-right:5px; 
         height:23px; 
-        width:140px; 
+        width:137px; 
         color:#666; 
         border: solid 1px #cccccc;
       }
       #div_msg {
+        text-align: left;
         position: absolute; 
         padding-left:5px; 
-        left:272px; 
-        width:445px; 
+        left:273px;  /* 272 */
+        width:411px; /* 445 */
         height:23px; 
+        border: solid 1px #cccccc;
+        color: orange;
+      }
+      #div_setting {
+        text-align: center;
+        position: absolute;
+        padding-left:0px;
+        left:692px;
+        width:34px;
+        height:23px;
+        line-height: 23px;
         border: solid 1px #cccccc;
         color: orange;
       }
@@ -1675,13 +1766,24 @@
           padding: 5px;
       }
 
+      #panel_settings {
+          text-align: center;
+          position: absolute;
+          left: 598px;
+          top: 345px;
+          width: 134px;
+          height: 118px;
+          background-color: #eeeeee;
+          padding-top: 0px;
+          padding-bottom: 2px;
+      }
 
       #div_right_panel {
           float: left;
           position: absolute;
-          left: 740px;
+          left: 745px;
           width: 201px;
-          height: 490px;
+          height: 496px;
           background-color: #bbccff;
           padding-left: 2px;
           padding-right: 2px;
@@ -1692,6 +1794,7 @@
       }
 
       #div_RoomsList {
+          text-align: left;
           top: 0px;
           left: 740px;
           width: 200px;
@@ -1725,6 +1828,7 @@
       }
 
       #div_UsersList {
+          text-align: left;
           top: 200px;
           left: 740px;
           width: 200px;
@@ -1735,7 +1839,7 @@
           top: 200px;
           left: 740px;
           width: 200px;
-          height: 265px;
+          height: 271px;
           padding: 3px;
 
           /*border:0px;
@@ -1761,7 +1865,7 @@
           top: 200px;
           left: 740px;
           width: 200px;
-          height: 265px;
+          height: 271px;
           padding: 3px;
 
           /*border:0px;
@@ -1780,6 +1884,15 @@
           /*height: 18px;
           line-height: 18px;
           vertical-align: middle;*/
+      }
+
+
+      #span_about {
+          /*background-color:red; */
+          display:inline-block; 
+          width: 200px;
+          height: 40px;
+          line-height: 40px;
       }
 
       .span_placeholder {
@@ -1815,15 +1928,45 @@
 
 
       #span_register, #span_login, #span_updatepwd {
-          display:block; position:absolute; left:240px; top:140px; text-align:center; width:240px; height:135px; background-color:white; padding:10px; border: solid 0px red;
+          display:block; position:absolute; 
+          left:240px; top:140px; 
+          text-align:center; width:240px; height:135px; 
+          background-color:white; 
+          padding:10px; 
+          border: solid 0px red;
           /*background-image: url(images/sky.gif);
           background-size: 100% 100%;*/
+
+          -webkit-border-radius:5px;
+          -moz-border-radius:5px;
+          border-radius:5px;
+      }
+
+      #txtMsg {
+          float:left; width:726px; height: 30px; white-space:pre; 
+          resize: none; 
+          white-space:pre-wrap; word-wrap:break-word;
+          padding: 5px;
+
+          -webkit-border-radius:5px;
+          -moz-border-radius:5px;
+          border-radius:5px;
+      }
+
+      .txtReg {
+          width:150px;
       }
 
       .btnReg {
           width: 70px;
           /*color: white;
           background-color: green;*/
+      }
+
+      .btnSetting {
+          width: 130px;
+          height: 25px;
+          background-color: white;
       }
 
       .transparent {
@@ -1835,20 +1978,37 @@
       #debug_console {
           position: relative; 
       }
+
+      html {display:table; margin-left:auto; margin-right:auto; margin-top:20px; }
+      body {display:table-cell; text-align:center; background-color:#eeeeee; }
       </style>
    </head>
    <body>
-      <h1>Websocket Chatroom</h1>
+      <div id="div_header" style="width:930px; height:80px;line-height:80px; float:left;">
+
+      <span style="float: left; font-size:20px; font-weight:bold; padding-left: 20px; padding-right: 20px;">
+      <img src="images/chat2.png" style="vertical-align: middle; height:50px; padding-right:10px;"/>
+      Websocket Chatroom
+      </span>
 
       <span id='div_server'>
       Server: ws://<input type="text" id="ws" value="127.0.0.1:9000"/>
-      <input type='button' id='btnConnect' onclick='btnConnect_onclick(this);' value='Connect'></input>
+      <input type='button' id='btnConnect' onclick='btnConnect_onclick(this);' value='Connect'/>
+      </span>
+      
+      <span id='connection_status' style="float:left;"></span>&nbsp;&nbsp;
+      <span id='div_logout' style="float:left;"></span>
+      <span id="div_info" style="float:left;"></span>
+
+      <span id="div_about" style="float:right">
+      <a href="#">About</a> |
+      <a href="#">Help</a> |
+      <a href="#">Privacy</a>
       </span>
 
-      <span id='connection_status'></span>&nbsp;&nbsp;
-      <span id='div_logout'></span>
-      <span id="div_info"></span>
-      <br/><br/>
+      </div> <!-- end of header -->
+
+      <div style="clear:both;"></div>
 
 
       <div id="container">
@@ -1868,8 +2028,8 @@
       <div id="func_panel"> 
           <span id="span_login" style="display:block;">
           <div style="color:#6666ff; font-weight:bold; padding:5px;">Sign in</div>
-          <input id="login_name" onkeyup="javascript:formLoginEnter(event);"/><br/>
-          <input id="login_pwd" type="password" onkeyup="javascript:formLoginEnter(event);"/><br/>
+          <input id="login_name" class="txtReg" onkeyup="javascript:formLoginEnter(event);"/><br/>
+          <input id="login_pwd" class="txtReg" type="password" onkeyup="javascript:formLoginEnter(event);"/><br/>
           <span style="display:block; padding:7px;">
           <input type="button" class="btnReg" id="btnLogin" value="Login" onclick="javascript:doLogin();"/>
           </span>
@@ -1878,9 +2038,9 @@
 
           <span id="span_register" class="itransparent" style="display:none;">
           <div style="color:#6666ff; font-weight:bold; padding:5px;">Register an account</div>
-          <input id="reg_name" onkeyup="javascript:formRegEnter(event);"/><br/>
-          <input id="reg_pwd" type="password" onkeyup="javascript:formRegEnter(event);"/><br/>
-          <input id="reg_pwd2" type="password" onkeyup="javascript:formRegEnter(event);"/><br/>
+          <input id="reg_name" class="txtReg" onkeyup="javascript:formRegEnter(event);"/><br/>
+          <input id="reg_pwd" class="txtReg" type="password" onkeyup="javascript:formRegEnter(event);"/><br/>
+          <input id="reg_pwd2" class="txtReg" type="password" onkeyup="javascript:formRegEnter(event);"/><br/>
           <span style="display:block; padding:7px;">
           <input type="button" class="btnReg" id="reg_btnReg" value="Register" onclick="javascript:doRegister();"/><input type="button" class="btnReg" id="reg_btnCancel" value="Cancel" onclick="javascript:cancelFormReg();"/>
           </span>
@@ -1888,9 +2048,9 @@
 
           <span id="span_updatepwd" style="display:none;">
           <div style="color:#6666ff; font-weight:bold; padding:5px;">Update Password</div>
-          <input id="updatepwd_old" type="password" onkeyup="javascript:formUpdatePwdEnter(event);"/><br/>
-          <input id="updatepwd_new" type="password" onkeyup="javascript:formUpdatePwdEnter(event);"/><br/>
-          <input id="updatepwd_new2" type="password" onkeyup="javascript:formUpdatePwdEnter(event);"/><br/>
+          <input id="updatepwd_old" class="txtReg" type="password" onkeyup="javascript:formUpdatePwdEnter(event);"/><br/>
+          <input id="updatepwd_new" class="txtReg" type="password" onkeyup="javascript:formUpdatePwdEnter(event);"/><br/>
+          <input id="updatepwd_new2" class="txtReg" type="password" onkeyup="javascript:formUpdatePwdEnter(event);"/><br/>
           <span style="display:block; padding:5px;">
           <input type="button" class="btnReg" value="Update" onclick="javascript:doUpdatePwd();"/><input type="button" class="btnReg" value="Cancel" onclick="javascript:cancelUpdatePwd();"/>
           </span>
@@ -1898,12 +2058,21 @@
 
       </div> <!-- end of func_panel -->
 
+      <div id="panel_settings" style="display:none;" onmouseout="hideSettings(event, this);">
+          <span style="background-color:#bbccff; display:inline-block; padding:2px; width:96%; font-size: 12pt;">Settings</span><br/>
+          <input type="checkbox" id="cbSendMode" checked><span style="font-size:10pt;"> Send text on Enter</span><br/>
+          <input type="button" class="btnSetting" onclick="selectText('chatroom');" title="Select History To Copy" value="Select History"/><br/>
+          <input type="button" class="btnSetting" onclick='clearChatroom();' title="Clear Chat History" value="Clear History"/><br/>
+          <input type="button" id="btnLogout" class="btnSetting" onclick="doLogout();" value="Logout"/>
+      </div>
+
       <div id="div_status">
           <div id='div_user'>User: </div>
           <div id='div_room'>Room: </div>
           <div id='div_msg'>
               <span id='span_msg' style='color: orange;'></span>
           </div>
+          <div id='div_setting'><img src="images/setting.gif" style="vertical-align:middle;" onmouseover="javascript:showSettings();"></div>
       </div>
       </div> <!--end of chatroom_container-->
 
@@ -1927,24 +2096,33 @@
 
       </div> <!-- end of div_right_panel -->
 
-      </div><!-- end of container -->
 
       <div style="clear:both;"></div>
 
-      <input type="text" id="txtMsg2" onkeypress="checkEnter(event);" size="50" style="display:none;"/>
-      <textarea id="txtMsg" onkeypress="checkEnter(event);" style="width:728px; height: 30px; white-space:pre; resize: none; white-space:pre-wrap; word-wrap:break-word;"></textarea>
-      <br/><input id="cbSendMode" type="checkbox" checked/> Send on Enter
-      <button style='display:none;' id='btnSendTxt' onclick='sendText();'>Send Message</button>
+      <textarea id="txtMsg" onkeypress="checkEnter(event);"></textarea>
+
+      <span id="span_about">
+      <!-- <a href="#">About</a> | <a href="#">Help</a> | <a href="#">Privacy</a> -->
+      <!--&nbsp;&nbsp;&nbsp;&nbsp;
+      <img src="images/chat.png" style="height:38px; vertical-align: middle;"/>-->
+      </span>
+
+      <div style="clear:both;"></div>
+
+      <div id="bottom_panel" style="text-align: left;">
+      <button style='display:none;' id='btnSendTxt' onclick='sendText();' class="btnSetting">Send Message</button>
       <button style='display:none;' id='btnSendBin' onclick='sendBinary();'>Send Binary Message</button>
-      <button onclick='clearChatroom();' title='Clear chat history'>Clear History</button>
-      <button onclick="selectText('chatroom');" title='Select history for copy'>Select History</button>
+      </div>
 
+      </div><!-- end of container -->
 
-      <div id="debug_console" style="display:none;">
+      <div id="debug_console" style="display:none; text-align:left;"><br/>
           <input type="checkbox" id="cbToggleDebug" title="Click to toggle debug console"/>
           Debug console: <a href='#' id='btnClearConsole' style="display:none;">Clear console</a><br/>
           <div id="console" style="display:none;"></div>
       </div>
+
+      <p><br/></p>
 
    </body>
 </html>

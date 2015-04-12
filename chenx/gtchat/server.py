@@ -35,8 +35,12 @@
 # X.C. (3/18/2015 - 3/19/2015)
 # 
 
-import sys
+import sys, os
 import json, time, re
+#import signal
+from signal import *
+import datetime
+#import atexit
 
 from twisted.internet import reactor
 from twisted.python import log
@@ -71,6 +75,9 @@ class Cls_Chatroom():
         self.username_pattern = re.compile("^[a-zA-Z0-9_]+$")
         self.roomname_pattern = re.compile("^[a-zA-Z0-9_]+$")
 
+        self.DB = "/home2/cssauhco/gametheory/gtchat/db.txt";       # db file, for temp use.
+        self.DB_is_dirty = False
+
         """
         Use a default room Lobby, when user first logs in, he is in lobby.
         When a user leaves any room, he is back in Lobby.
@@ -97,9 +104,61 @@ class Cls_Chatroom():
         Load default values from database. E.g., users, rooms.
         This is also good for testing purpose.
         """
-        self.T_users['admin'] = 'password'
-        self.T_users['a'] = '11111111'
-        self.T_users['b'] = '11111111'
+        #self.T_users['admin'] = 'password'
+        #self.T_users['a'] = '11111111'
+        #self.T_users['b'] = '11111111'
+
+        """
+        Read from storage file.
+        """
+        fo = open(self.DB, "r")
+        lines = fo.read().splitlines()
+        fo.close()
+
+        for line in lines:
+            fields = line.split("\t");
+            #print 'line: ' + line + ', len=' + str( len(fields) ) 
+            # no need to trim since data is trimmed before save.
+            if len(fields) == 2:
+                name = fields[0]
+                pwd  = fields[1]
+                self.T_users[name] = pwd
+
+
+    def saveDB_T_users(self, usr, pwd):
+        """
+        For now this is called by both register and update_pwd for append.
+        When loadDB, all lines are read in sequence, so old pwd will be
+        overwritten by new pwd. This way, even if the flushDB is not called
+        when server exists, next time the user's login pwd will still be
+        correct.
+        """
+        fo = open(self.DB, "a")
+        fo.write(usr + "\t" + pwd + "\n")
+        fo.close()
+
+        self.DB_is_dirty = True
+
+
+    def flushDB(self):
+        """
+        Save database data in memory to disk before exit.
+        """
+        if not self.DB_is_dirty:
+            print "DB is not dirty, no need to flush DB."
+            return
+
+        print "flush to db before exit" 
+        newDB = self.DB + '.tmp'
+        fo = open(newDB, 'w')
+        for key, value in self.T_users.iteritems():
+            fo.write(key + "\t" + value + "\n")
+        fo.close()
+
+        ts = time.time()
+        st = datetime.datetime.fromtimestamp(ts).strftime('%Y-%m-%d-%H-%M-%S')
+        os.rename(self.DB, self.DB + '.' + st)
+        os.rename(newDB, self.DB)
 
 
     def handle(self, msg, client):
@@ -964,6 +1023,7 @@ class Cls_Chatroom():
             raise Exception("Please use a password different from the old one")
 
         self.T_users[usr] = new_pwd
+        self.saveDB_T_users(usr, new_pwd)
 
         if DEBUG: 
             self.dump_db("T_users", self.T_users)
@@ -991,6 +1051,7 @@ class Cls_Chatroom():
 
         # add new user to database.
         self.T_users[usr] = pwd
+        self.saveDB_T_users(usr, pwd)
 
         if DEBUG:
             self.dump_db("T_users", self.T_users)
@@ -1229,6 +1290,11 @@ class BroadcastPreparedServerFactory(BroadcastServerFactory):
             print("prepared message sent to {}".format(c.peer))
 
 
+def cleanup(*args):
+    factory.game_handler.flushDB()
+    reactor.stop()
+
+
 if __name__ == '__main__':
 
     if len(sys.argv) > 1 and sys.argv[1] == 'debug':
@@ -1240,7 +1306,7 @@ if __name__ == '__main__':
     ServerFactory = BroadcastServerFactory
     # ServerFactory = BroadcastPreparedServerFactory
 
-    factory = ServerFactory("ws://localhost:9000",
+    factory = ServerFactory("ws://localhost:9001",
                             debug=debug,
                             debugCodePaths=debug)
 
@@ -1252,5 +1318,11 @@ if __name__ == '__main__':
     webdir = File(".")
     web = Site(webdir)
     reactor.listenTCP(8080, web)
+
+    #atexit.register(factory.game_handler.flushDB)
+    #signal.signal(signal.SIGINT, cleanup)
+    #signal.signal(signal.SIGTERM, cleanup)
+    for sig in (SIGTERM, SIGINT):
+        signal(sig, cleanup)
 
     reactor.run()
