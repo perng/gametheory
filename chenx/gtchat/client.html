@@ -5,6 +5,13 @@
       <meta name="description" content="Chatroom">
       <meta name="keywords" content="websocket chatroom, websocket, chatroom">
       <script type="text/javascript" src="js/ajax/libs/jquery/1.4/jquery.min.js"></script>
+
+      <!-- fancybox 1.3.4 works with jquery 1.4, not jquery 1.10. -->
+      <script type="text/javascript" src="js/fancybox/fancybox/jquery.fancybox-1.3.4.pack.js"></script>
+      <link rel="stylesheet" type="text/css" href="js/fancybox/fancybox/jquery.fancybox-1.3.4.css" media="screen" />
+
+      <script type="text/javascript" language="javascript" src="js/jquery.watermark.min.js"></script>
+
       <title>Websocket Chatroom</title>
       <script type="text/javascript">
          var socket = null;
@@ -13,13 +20,17 @@
          var current_tid = '';  // keep track of current tracker id.
          var current_user = ''; // keep track of current logged in user.
          var current_room = ''; // keep track of current room.
+         var is_room_master = false;  // Whether this user is room master.
          var request_src = ''; // used for command line requests @rooms, @users.
+         var bgImg_downloaded = false;
 
          // If this is not empty, the server textbox and connect button will
          // be hidden, and when the page is loaded it'll automatically connect to 
          // server given by the value of AUTO_CONNECT.
          var AUTO_CONNECT = ''; 
-         //AUTO_CONNECT = 'ws://127.0.0.1:9000';
+         AUTO_CONNECT = 'ws://127.0.0.1:9001';
+         //AUTO_CONNECT = 'ws://192.168.198.131:9001';
+         //AUTO_CONNECT = 'ws://homecox.com:9001';
 
          // If DEBUG is true, the debug console will be shown.
          var DEBUG = true;
@@ -48,9 +59,13 @@
          function btnConnect_onclick(b) {
              if (b.value == 'Connect') {
                  b.disabled = true;
+                 current_cmd = 'doConnect';
                  doConnect();
              } else {
                  doDisconnect(false);
+                 setTimeout(function() { 
+                     dispConnectionStatus("<font color='green'>Connection is closed.</font>"); 
+                 }, 10);
              }
          }
          function doConnect() {
@@ -68,9 +83,12 @@
             socket.onopen = function() {
                //console.log("Connected!");
                isopen = true;
+               current_cmd = '';
 
                if (AUTO_CONNECT != '') {
-                   dispConnectionStatus("Welcome to chatroom.");
+                   //dispConnectionStatus("Welcome to chatroom.");
+                   //dispConnectionStatus('<img src="images/people.png" style="height:40px; vertical-align:middle;">');
+                   dispConnectionStatus('');
                } else {
                    //dispConnectionStatus("<font color='green'>Connected!</font>");
                    dispConnectionStatus('');
@@ -83,7 +101,7 @@
                 //appendConsole("<font color='red'>Connection not opened.</font>");
                 dispConnectionStatus("<font color='red'>Connection not opened.</font>")
                 document.getElementById('btnConnect').disabled = false;
-                updateInfo("Cannot open connection.", 'error');
+                //updateInfo("Cannot open connection.", 'error');
             }
             socket.onmessage = function(e) {
                if (typeof e.data == "string") {
@@ -102,6 +120,15 @@
                dispConnectionStatus("<font color='green'>Connection is closed.</font>")
                socket = null;
                isopen = false;
+
+               if (current_cmd == 'doConnect') {
+                   dispConnectionStatus("<font color='red'>Server is not available.</font>");
+               } else {
+                   handle_cr_logout('ok', 'connection closed by server', '0');
+                   toggleButton(true);
+                   cleanup_logout();
+                   dispConnectionStatus("<font color='red'>Connection closed by server.</font>");
+               }
             }
          };
          function decodeBinaryMsg(arr) {
@@ -115,23 +142,31 @@
             document.getElementById('btnConnect').disabled = false;
             document.getElementById('btnConnect').value = v ? 'Connect' : 'Disconnect';
             document.getElementById('ws').disabled = ! v;
-            document.getElementById('span_action').style.display = v ? 'none' : 'block';
+            if (v) $('#span_login').hide();
+            else $('#span_login').show();
          }
          function disableChatroom(v) {
             document.getElementById('btnSendTxt').disabled = v;
             document.getElementById('txtMsg').disabled = v;
-            if (v) document.getElementById('txtMsg').focus();
+            document.getElementById('cbSendMode').disabled = v;
+            document.getElementById('btnLogout').disabled = v;
+            setChatroomBgImg(v);
             //document.getElementById('btnSendBin').disabled = v;
          }
          function sendText() {
             if (isopen) {
                var msg = "Hello, world!";
                var o = document.getElementById('txtMsg');
-               if (o.value.trim() == '') { getInputFocus(); return; }
+               var v = o.value.trim();
+               //alert('[' + v + ']');
 
-               if (o && o.value != '') {
-                   msg = o.value;
-                   o.value = '';
+               o.value = '';
+
+               if (v == '') { 
+                   getInputFocus();
+                   return; 
+               } else {
+                   msg = v;
                }
 
                current_tid = make_tracker();
@@ -152,7 +187,7 @@
                }
                else if (msg == '@help') {
                    appendChatroomInfo(msg + 
-": @rooms (list rooms), @who (list room users), @users (list logged in users), @create {room} (create and join a room), @join {room} (join a room), @leave (leave a room), @where (show current name)");
+": @rooms (list rooms), @who (list room users), @users (list logged in users), @create {room} (create and join a new room), @join {room} (join an existing room), @leave (leave a room), @where (show current room name), @public (set room as public), @private (set room as private), @master (assign another room user as master), @kick (kick a user out of current room), @max {max_size} (set room max size), @passwd {new password} (update password), @logout (logout)");
                }
                else if (msg == '@leave') {
                    doLeaveRoom();
@@ -180,6 +215,12 @@
                    appendConsole('Now join room: ' + room_name);
                    doJoinRoom(room_name);
                }
+               else if (msg == '@logout') {
+                   doLogout();
+               }
+               else if (msg == '@passwd') {
+                   showFormUpdatePwd();
+               }
                // All commands below need a non-empty current_room.
                else if (current_room == '') {
                    //appendChatroomInfo('>> ' + msg);
@@ -188,6 +229,7 @@
                    appendConsole('Type message before join a room:' + msg);
                }
                else if (msg == '@who') {
+                   request_src = "console_who";
                    current_cmd = "get_room_user_list";
                    data = '{"cmd":"get_room_user_list", "room_name":"' + current_room + '", "tracker":"' + current_tid + '"}';
                    send_data(data);
@@ -199,6 +241,18 @@
                else if (msg == '@invite') {
                    appendChatroomInfo('@create: please provide a user name');
                }
+               else if (msg == '@private' || msg == '@public') { // Only room master can do this.
+                   if (! is_room_master) {
+                       appendChatroomInfo(msg + ': you have no permission for this operation');
+                   }   
+                   else {
+                       current_cmd = "set_room_permission";
+                       var is_public = (msg == '@public' ? 1 : 0);
+                       data = '{"cmd":"set_room_permission", "permission":"' + is_public + '", "room_name":"' + 
+                              current_room + '", "tracker":"' + current_tid + '"}';
+                       send_data(data);
+                   }
+               }
                else if (msg.startsWith('@invite ')) {
                    var user_name = $.trim( msg.substr(8) ); // after '@invite '
                    if (user_name == '') {
@@ -207,19 +261,110 @@
                    appendConsole('Now invite: ' + user_name);
                    doInvite(user_name);
                }
+               else if (msg == '@master') {
+                   appendChatroomInfo('@master: please provide a user name in this room');
+               }
+               else if (msg.startsWith('@master ')) {
+                   if (! is_room_master) {
+                       appendChatroomInfo('@master: you have no permission for this operation');
+                   }
+                   else {
+                       current_cmd = "master";
+                       var user_name = $.trim( msg.substr(8) ); // after '@master '
+                       data = '{"cmd":"master", "user":"' + user_name + '", "room_name":"' +
+                              current_room + '", "tracker":"' + current_tid + '"}';
+                       send_data(data);
+                   }
+               }
+               else if (msg == '@kick') {
+                   appendChatroomInfo('@kick: please provide a user name in this room');
+               }
+               else if (msg.startsWith('@kick ')) {
+                   if (! is_room_master) {
+                       appendChatroomInfo('@kick: you have no permission for this operation');
+                   }
+                   else {
+                       current_cmd = "kick";
+                       var user_name = $.trim( msg.substr(6) ); // after '@kick '
+                       data = '{"cmd":"kick", "user":"' + user_name + '", "room_name":"' +
+                              current_room + '", "tracker":"' + current_tid + '"}';
+                       send_data(data);
+                   }
+               }
+               else if (msg == '@max') {
+                   appendChatroomInfo('@max: please provide max room size (0 or positive integer)');
+               }
+               else if (msg.startsWith('@max ')) {
+                   if (! is_room_master) {
+                       appendChatroomInfo('@max: you have no permission for this operation');
+                   }
+                   else {
+                       current_cmd = "max";
+                       var max_size = $.trim( msg.substr(5) ); // after '@max '
+                       if (! isInt(max_size)) {
+                           appendChatroominfo('@max: ' + max_size + ' is not an integer.');
+                       }
+                       else {
+                           if (max_size < 0) max_size = 0;
+                           data = '{"cmd":"max", "size":"' + max_size + '", "room_name":"' +
+                                  current_room + '", "tracker":"' + current_tid + '"}';
+                           send_data(data);
+                       }
+                   }
+               }
                else {
                    current_cmd = "speak";
-                   data = '{"cmd":"speak", "room_name":"' + current_room + '", "msg":"' + msg + 
+                   //alert(msg);
+                   data = '{"cmd":"speak", "room_name":"' + current_room + '", "msg":"' + strEncode(msg) + 
                           '", "tracker":"' + current_tid + '"}';
                    send_data(data);
                    //console.log("Text message sent: " + msg);
-                   appendChatroom('<font color="green">>> ' + msg + '</font>');
+                   msg = decodeNewLine(msg);
+                   //appendChatroom('<font color="#99ff99">>> ' + getTimeStamp() + '<br/>' + msg + '</font>');
+                   doSpeak(msg, current_user, true);
                }
             } else {
                //console.log("Connection not opened.")
                appendChatroom("<font color='red'>Connection not opened.</font>");
             }
-         };
+         }
+
+         function doSpeak(msg, usr, isMe) {
+             var t = getTimeStamp();
+             var color = isMe ? ' color="#99ff99"' : '';
+             var author = '>> ' + usr + ' ' + t;
+             if (isMe) {
+                 author = '<span style="font-size:10pt; color:#ccffcc;">' + author + '</span>';
+                 msg = '<span style="color: #99ff99;">' + msg + '</span>';
+             }
+             else {
+                 author = '<span style="font-size:10pt; color: #cccccc;">' + author + '</span>';
+             }
+             appendChatroom(author + '<br/>' + msg);
+         }
+
+         function isInt(value) {
+             return !isNaN(value) && 
+                    parseInt(Number(value)) == value && 
+                    !isNaN(parseInt(value, 10));
+         }
+
+         // double quote need be encoded.
+         function strEncode(s) {
+             s = s.replace(/&/g, "&amp;");
+             s = s.replace(/"/g, '&quot;');
+             return s;
+         }
+         function strDecode(s) {
+             s = s.replace(/&quot;/g, '"');
+             s = s.replace(/&amp;/g, '&');
+             s = decodeNewLine(s);
+             return s;
+         }
+         function decodeNewLine(s) {
+             return s.replace(/\n/g, '<br/>').replace(/\r/g, '<br/>');
+         }
+
          // http://stackoverflow.com/questions/14430633/how-to-convert-text-to-binary-code-in-javascript
          function sendBinary() {
             if (isopen) {
@@ -263,13 +408,46 @@
          function appendChatroomInfo(msg) {
              appendChatroom('<font color="orange">' + msg + '</font>');
          }
+         function appendChatroomError(msg) {
+             appendChatroom('<font color="red">' + msg + '</font>');
+         }
+
+         function toggleSendMode() {
+             if ( sendTextOnEnter() ) {
+                 $('#btnSendTxt').hide();
+                 $('#txtMsg').css('resize', 'none');
+             }
+             else {
+                 $('#btnSendTxt').show();
+                 $('#txtMsg').css('resize', 'vertical');
+             }
+         }
+         function sendTextOnEnter() {
+             return document.getElementById("cbSendMode").checked;
+         }
          function checkEnter(e) {
+             if (! sendTextOnEnter()) return;
+
              // look for window.event in case event isn't passed in
              e = e || window.event;
-             if (e.keyCode == 13) { sendText(); }
+             if (e.keyCode == 13) { 
+                 // prevent new line from being entered.
+                 e.returnValue = false;
+                 if(e.preventDefault) {
+                     e.preventDefault();
+                 }
+
+                 // now send text to server.
+                 sendText(); 
+             }
          }
          function getInputFocus() {
-             document.getElementById('txtMsg').focus();
+             if (document.getElementById('span_login').style.display == 'block') {
+                 document.getElementById('login_name').focus();
+             } 
+             else {
+                 document.getElementById('txtMsg').focus();
+             }
          }
          /* Scroll down to always show most recent message at bottom. */
          function updateScroll(e) {
@@ -316,23 +494,46 @@
              return s.substr(0,1).toUpperCase() + s.substr(1);
          }
 
+         function showFormUpdatePwd() {
+             var h = getCenterPanelHeight(); 
+             $('#span_updatepwd').css('top', h + 'px');
+
+             $('#span_updatepwd').show();
+             $('#updatepwd_old').focus();
+         }
+
          function showFormReg() {
-             document.getElementById('form_reg').style.display='block';
-             document.getElementById('form_login').style.display='none';
-             document.getElementById('reg_name').focus();
+             $('#span_login').hide();
+             $('#span_register').show();
+             $('#reg_name').focus();
          }
          function cancelFormReg() {
-             document.getElementById('form_reg').style.display='none';
-             document.getElementById('form_login').style.display='block';
-             document.getElementById('login_name').focus();
              $('#div_info').html('');
+
+             $('#reg_name').val('');
+             $('#reg_pwd').val('');
+             $('#reg_pwd2').val('');
+
+             $('#span_register').hide();
+             $('#span_login').show();
+             $('#login_name').focus();
          }
          function doRegister() {
              var usr = document.getElementById('reg_name').value.trim();
              var pwd = document.getElementById('reg_pwd').value.trim();
+             var pwd2 = document.getElementById('reg_pwd2').value.trim();
              if (usr == '' || pwd == '') {
-                 updateInfo('Register failed: name and password cannot be empty.', 'error');
+                 msg = 'Register failed: name and password cannot be empty.';
+                 //updateInfo(msg, 'error');
+                 alert(msg);
                  document.getElementById('reg_name').focus();
+                 return;
+             }
+             else if (pwd != pwd2) {
+                 msg = 'Register failed: two passwords do not match.';
+                 //updateInfo(msg, 'error');
+                 alert(msg);
+                 document.getElementById('reg_pwd').focus();
                  return;
              }
              current_tid = make_tracker();
@@ -341,9 +542,55 @@
              current_cmd = 'register';
              send_data(msg);
          }
+
+         function doUpdatePwd() {
+             var pwd_old = document.getElementById('updatepwd_old').value.trim();
+             var pwd = document.getElementById('updatepwd_new').value.trim();
+             var pwd2 = document.getElementById('updatepwd_new2').value.trim();
+             if (pwd_old == '' || pwd == '' || pwd2 == '') {
+                 msg = 'Password cannot be empty.';
+                 alert(msg);
+                 if (pwd_old == '') $('#updatepwd_old').focus();
+                 else if (pwd == '') $('#updatepwd_new').focus();
+                 else $('#updatepwd_new2').focus();
+                 return;
+             }
+             else if (pwd != pwd2) {
+                 msg = 'Two passwords do not match.';
+                 alert(msg);
+                 $('#updatepwd_new').focus();
+                 return;
+             }
+             current_tid = make_tracker();
+             var msg = '{"cmd":"update_pwd","old_pwd":"' + pwd_old + '","new_pwd":"' + pwd + '","tracker":"' + current_tid + '"}';
+             //alert(msg);
+             current_cmd = 'update_pwd';
+             send_data(msg);
+         }
+         function cancelUpdatePwd() {
+             $('#updatepwd_old').val('');
+             $('#updatepwd_new').val('');
+             $('#updatepwd_new2').val('');
+             $('#span_updatepwd').hide();
+
+             document.getElementById('txtMsg').focus();
+         }
+         function formUpdatePwdEnter(e) {
+             //if(e.which === 13) { doUpdatePwd(); }
+         }
+
          function doLogin() {
-             var usr = document.getElementById('login_name').value;
-             var pwd = document.getElementById('login_pwd').value;
+             var usr = document.getElementById('login_name').value.trim();
+             var pwd = document.getElementById('login_pwd').value.trim();
+
+             if (usr == '' || pwd == '') {
+                 msg = 'Login failed: name and password cannot be empty.';
+                 alert(msg);
+                 if (usr == '') $('#login_name').focus();
+                 else $('#login_pwd').focus();
+                 return;
+             }
+
              current_tid = make_tracker();
              var msg = '{"cmd":"login","type":"reg","usr":"' + usr + '","pwd":"' + 
                         pwd + '","tracker":"' + current_tid + '"}';
@@ -357,26 +604,49 @@
              // should logout locally no matter what happen on server side.
              // if disconnected before sending logout msg, will not get any
              // response anyways. So do UI logout display here.
-             //$('#div_logout').html('');
+             $('#div_logout').html('');
              //updateInfo('You are logging out.', 'info');
-             //document.getElementById('span_action').style.display = 'block';
-             //cleanup_logout();
+             cleanup_logout();
+
+             var h = getCenterPanelHeight();
+             $('#span_login').css('top', h + 'px');
+             $('#span_register').css('top', h + 'px');
+
+             //cancelFormReg();
+             $('#span_login').show();
+             getInputFocus();
 
              var msg = '{"cmd":"logout"}';
              send_data(msg);
          }
+         function getCenterPanelHeight() {
+             return 140;
+             /*
+             // Do below if signin/reg/update_pwd spans are inside
+             // div chatroom. But now since they are moved outside 
+             // div chatroom, this is no longer needed.
+             var h = document.getElementById('chatroom').scrollHeight;
+             h = h - 454 + 120 + 30; // h - chatroom height + init top + 30
+             return h;
+             */
+         }
          function doCreateRoom(room) {
+             current_tid = make_tracker();
              var room_name = $.trim(room);
              if (room_name == '') {
                  updateInfo("Please enter a room name.", 'error');
                  if (request_src != 'concole') $('#txtNewRoom').focus();
                  return;
              }
-             var msg = '{"cmd":"create_room","room_name":"' + room_name + '"}';
+             var msg = '{"cmd":"create_room","room_name":"' + room_name + 
+                       '", "tracker":"' + current_tid + '"}';
              send_data(msg);
          }
          function doLeaveRoom() {
-             if (current_room == '') return;
+             if (current_room == '') {
+                 appendChatroomInfo('@leave You are not in any room yet.');
+                 return;
+             }
 
              current_tid = make_tracker();
              current_cmd = "leave_room";
@@ -465,6 +735,10 @@
              else if (last_cmd == 'create_room') { handle_cr_create_room(status, msg, tracker); }
              else if (last_cmd == 'invite')      { handle_cr_invite(status, msg, tracker); }
              else if (last_cmd == 'invite_reply')      { handle_cr_invite_reply(status, msg, tracker); }
+             else if (last_cmd == 'master')      { handle_cr_master(status, msg, tracker); }
+             else if (last_cmd == 'kick')      { handle_cr_kick(status, msg, tracker); }
+             else if (last_cmd == 'max')      { handle_cr_max(status, msg, tracker); }
+             else if (last_cmd == 'set_room_permission') { handle_cr_set_room_permission(status, msg, tracker); }
              else if (last_cmd == 'join_room')   { handle_cr_join_room(status, msg, tracker); }
              else if (last_cmd == 'leave_room')  { handle_cr_leave_room(status, msg, tracker); }
              else if (last_cmd == 'speak')       { handle_cr_speak(status, msg, tracker); }
@@ -479,7 +753,9 @@
              var room_name = jo.room_name;
              var tracker = jo.tracker;
              //dump(':speak: ' + msg + ',' + room_name + ',' + tracker);
-             appendChatroom('>> ' + usr + ': ' + msg);
+             msg = strDecode(msg);
+             //appendChatroom('>> ' + usr + ': ' + getTimeStamp() + '<br/>' + msg);
+             doSpeak(msg, usr, false);
          }
          function handle_c_whisper(jo) {
              var msg = jo.msg;
@@ -540,19 +816,21 @@
                  if (current_room != '') {
                      msg = 'User "' + usr + '" entered room.';
                      appendChatroomInfo(msg);
+                     appendToSelectList('selectRoomUsersList', usr);
                  }
              }
              else if (type == 'leave_room') {
                  if (current_room != '') {
                      msg = 'User "' + usr + '" left room.';
                      appendChatroomInfo(msg);
+                     removeFromSelectList('selectRoomUsersList', usr);
                  }
              }
              else if (type == 'room_created') {
                  var v = usr.split(':');
                  if (v.length == 2 && v[1] != '') {
                      var room_name = v[1];
-                     addRoom(room_name);
+                     addRoomsList(room_name);
                      $('#span_msg').html('New room ' + room_name + ' is created.');
                      $('#span_msg').show().delay(5000).fadeOut();
                  }
@@ -564,7 +842,7 @@
                  var v = usr.split(':');
                  if (v.length == 2 && v[1] != '') {
                      var room_name = v[1];
-                     removeRoom(room_name);
+                     removeFromSelectList('selectRoomsList', room_name);
                      $('#span_msg').html('Room ' + room_name + ' is gone.');
                      $('#span_msg').show().delay(5000).fadeOut();
                  }
@@ -572,26 +850,90 @@
                      dump('Event room_created wrong parameter (no room): ' + usr);
                  }
              }
+             else if (type == 'set_room_permission') {
+                 var v = usr.split(':');
+                 if (v.length == 3 && v[1] != '') {
+                     var room_name = v[1];
+                     var is_public = (v[2] == '1') ? true : false;
+                     //$('#span_msg').html('Room ' + room_name + ' is gone.');
+                     //$('#span_msg').show().delay(5000).fadeOut();
+                     setRoomPermission(room_name, is_public);
+                 }
+                 else if (DEBUG) {
+                     dump('Event room_created wrong parameter (no room): ' + usr);
+                 }
+             }
              else if (type == 'login') {
-                 $('#span_msg').html('User ' + ucFirst(usr) + ' logs in.');
+                 appendToSelectList('selectUsersList', usr);
+                 $('#span_msg').html('User ' + usr + ' logs in.');
                  $('#span_msg').show().delay(5000).fadeOut();
              }
              else if (type == 'logout') {
-                 var action = (tracker == '' ? ' is disconnected.' : 'logs out.');
-                 $('#span_msg').html('User ' + ucFirst(usr) + action);
+                 removeUsersList(usr);
+                 removeFromSelectList('selectRoomUsersList', usr);
+                 var action = (tracker == '' ? ' is disconnected.' : ' logs out.');
+                 $('#span_msg').html('User ' + usr + action);
                  $('#span_msg').show().delay(5000).fadeOut();
              }
-
+             else if (type == 'master') {
+                 var v = usr.split(':'); // new_master:room_name 
+                 if (v.length == 3) {
+                     var new_master = v[0];
+                     var old_master = v[1];
+                     var room_name = v[2];
+                     //$('#span_msg').html('Room ' + room_name + ' is gone.');
+                     //$('#span_msg').show().delay(5000).fadeOut();
+                     setRoomMaster(new_master, old_master, room_name);
+                     if (new_master == current_user) {
+                         is_room_master = true;
+                         appendChatroomInfo(old_master + ' appointed you as the new room master.');
+                     }
+                 }
+                 else if (DEBUG) {
+                     dump('Event master wrong parameter (no new master): ' + usr);
+                 }
+             }
+             else if (type == 'kicked') {
+                 var v = usr.split(':');  // kicked_user:room_master:room_name
+                 var room = v[2];
+                 appendChatroomInfo('You are kicked out of the room ' + room);
+             }
+             else if (type == 'kick') {
+                 var v = usr.split(':');  // kicked_user:room_master:room_name
+                 var user = v[0];
+                 appendChatroomInfo('user ' + user + ' is kicked out');
+             }
+             else if (type == 'max') {
+                 var v = usr.split(':');  // max_size:room_master:room_name
+                 var size = v[0];
+                 appendChatroomInfo('Room max size is changed to ' + size + '.');
+             }
          }
 
-         function addRoom(room_name) {
-             $('#selectRoomList').append($('<option>', {
-                 value: room_name,
-                 text: room_name
-             }));
+         function setRoomMaster(new_master, old_master, room_name) {
+             //appendChatroomInfo('::Room ' + room_name + ' new master is ' + new_master);
+             setRoomMasterIcon(old_master, false);
+             setRoomMasterIcon(new_master, true);
          }
-         function removeRoom(room_name) {
-             $('#selectRoomList option[value=' + room_name + ']').remove();
+
+         function setRoomPermission(room_name, is_public) {
+             //appendChatroomInfo('::Room ' + room_name + ' is public is ' + is_public);
+
+             var bgImg = is_public ? 'url(images/home.png)' : 'url(images/lock.png)';
+             $('#selectRoomsList option[value=' + room_name + ']').css(
+                 'background-image', bgImg
+             );
+         }
+
+         function addRoomsList(room_name) {
+             appendToSelectList('selectRoomsList', room_name);
+             if (room_name == current_room) {
+                 setSelectOptionBgColor('selectRoomsList', room_name, '#ccddff');
+             }
+         }
+
+         function removeUsersList(user_name) {
+             $('#selectUsersList option[value=' + user_name + ']').remove();
          }
 
          function dump(msg) {
@@ -611,12 +953,16 @@
                  return;
              }
              if (status == 'ok') {
-                 //document.getElementById('span_action').style.display = 'none';
                  document.getElementById('reg_pwd').value = ''; // clear password.
-                 updateInfo("You are registered. Now you can log in.");
+                 msg = "You are registered. Now you can log in.";
+                 //appendChatroomInfo(msg);
+                 alert(msg);
                  cancelFormReg();
              } else {
-                 updateInfo('Register failed: ' + msg + '.', 'error');
+                 msg = 'Register failed: ' + msg + '.';
+                 //updateInfo('Register failed: ' + msg + '.', 'error');
+                 //appendChatroomError(msg, 'error');
+                 alert(msg);
                  document.getElementById('reg_name').focus();
              }
          }
@@ -628,17 +974,18 @@
                  return;
              }
              if (status == 'ok') {
-                 document.getElementById('span_action').style.display = 'none';
+                 $('#span_login').hide();
                  document.getElementById('login_pwd').value = ''; // clear password.
-                 //updateInfo("You are logged in. <a href='#' onclick='doLogout();'>Log out</a>");
-
-                 current_user = $('#login_name').val();
-                 var msg = ' [<a href="#" onclick="doLogout();">Logout</a>] ';
-                 $('#div_logout').html(msg);
+                 // msg is username plus sequence number when the user 
+                 // logs in with multple sessions.
+                 current_user = msg;  // $('#login_name').val();
+                 var msg_logout = ' [<a href="#" onclick="doLogout();">Logout</a>] ';
+                 //$('#div_logout').html(msg_logout);
 
                  $('#div_user').html('User: ' + current_user);
 
                  client_get_room_list();
+                 client_get_user_list();
 
                  // enable chatroom once logged in, so user can
                  // use command interface too, instead of must use 
@@ -647,12 +994,21 @@
                  appendChatroomInfo('You are logged in.');
                  appendChatroomInfo('Type @rooms for room list, @create {room} to create room, @join {room} to join a room, @help for more.');
              } else {
-                 updateInfo('Invalid login name or password.', 'error');
+                 alert('Invalid login name or password.', 'error');
                  document.getElementById('login_name').focus();
              }
          }
          function handle_cr_update_pwd(status, msg, tracker) {
+             if (status != 'ok') {
+                 //appendChatroomInfo('Error: ' + msg);
+                 alert('Error: ' + msg);
+                 $('#updatepwd_new').focus();
+                 return;
+             }
 
+             //appendChatroomInfo(msg);
+             alert('Your password is updated.');
+             cancelUpdatePwd();
          }
 
          function handle_cr_get_room_list_console(status, msg, tracker) {
@@ -661,7 +1017,14 @@
                  return;
              }
 
-             msg = msg.split(',').sort().join(', ');
+             //msg = msg.split(',').sort().join(', ');
+             var arr = msg.split(',');
+
+             // remove room permission (:1 or :0).
+             //arr = arr.map(function(x){ return x.substr(0, x.length - 2); });
+             arr = arr.map(function(x){ return /:0$/.test(x) ? 
+                 x.substr(0, x.length - 2) + ' (private)' : x.substr(0, x.length - 2); });
+             msg = arr.sort().join(', ');
              appendChatroomInfo("@rooms: " + msg);
          }
          function handle_cr_get_room_list(status, msg, tracker) {
@@ -673,30 +1036,83 @@
 
              //appendConsole('now populate room list: ' + msg);
              if (status == 'ok') {
-                 var o = $('#selectRoomList');
-
-                 // clear all entries and insert first option.
-                 o.children().remove();
-                 o.append($('<option>', {
-                         value: '',
-                         text: '-- select room --'
-                 }));
-
-                 if (msg != '') {
-                     var rooms = msg.split(',');
-                     rooms.forEach(function(room_name) {
-                         o.append($('<option>', {
-                             value: room_name,
-                             text: room_name
-                         }));
-                     });
-                 }
+                 // add to selectRoomsList
+                 addToSelectRoomsList('selectRoomsList', '', msg);
+                 setSelectOptionBgColor('selectRoomsList', current_room, '#ccddff');
              }
              else {
                  updateInfo('Error when get room list:' + msg + '.', 'error');
-                 document.getElementById('login_name').focus();
              }
-             document.getElementById('form_room').style.display = 'block';
+         }
+
+         function addToSelectRoomsList(listName, empty_option, listItems) {
+             var o = $('#' + listName);
+
+             // clear all entries and insert empty option if any.
+             o.children().remove();
+
+             if (empty_option != '') {
+                 o.append($('<option>', {
+                     value: '',
+                     text: empty_option
+                 }));
+             }
+
+             if (listItems != '') {
+                 var items = listItems.split(',').sort();
+                 items.forEach(function(item_name) {
+                     var leng = item_name.length;
+                     var room = item_name.substr(0, leng - 2);
+                     var is_public = item_name.substr(leng - 1, 1);
+                     var bgImg = is_public == '1' ? 'url(images/home.png)' : 'url(images/lock.png)'
+
+                     o.append($('<option>', {
+                         value: room,
+                         text: room
+                     }).css('background-image', bgImg));
+                 });
+             }
+         }
+
+         function addToSelectList(listName, empty_option, listItems) {
+             var o = $('#' + listName);
+
+             // clear all entries and insert empty option if any.
+             o.children().remove();
+
+             if (empty_option != '') {
+                 o.append($('<option>', {
+                     value: '',
+                     text: empty_option
+                 }));
+             }
+
+             if (listItems != '') {
+                 var items = listItems.split(',').sort();
+                 items.forEach(function(item_name) {
+                     o.append($('<option>', {
+                         value: item_name,
+                         text: item_name
+                     }));
+                 });
+             }
+         }
+         function appendToSelectList(listName, item_name) {
+             var o = $('#' + listName);
+             o.append($('<option>', {
+                 value: item_name,
+                 text: item_name
+             }));
+         }
+         function removeFromSelectList(listName, item_name) {
+             $('#' + listName + ' option[value=' + item_name + ']').remove();
+         }
+         function setSelectOptionBgColor(listName, item_name, color) {
+             if (color == '') { color = 'transparent'; }
+
+             $('#' + listName + ' option[value=' + item_name + ']').css(
+                 'background-color', color
+             );
          }
 
          function handle_cr_get_user_list_console(status, msg, tracker) {
@@ -715,6 +1131,23 @@
                  return;
              }
 
+             //appendConsole('now populate user list: ' + msg);
+             if (status == 'ok') {
+                 // add to selectUsersList
+                 addToSelectList('selectUsersList', '', msg);
+             }
+             else {
+                 updateInfo('Error when get user list:' + msg + '.', 'error');
+             }
+         }
+
+         function setRoomMasterIcon(user, isMaster) {
+             var bgImg = isMaster ? 'url(images/master.gif)' : 'url(images/person.png)';
+             var title = isMaster ? 'Room master' : '';
+
+             $('#selectRoomUsersList option[value=' + user + ']').css(
+                 'background-image', bgImg
+             ).attr('title', title);
          }
 
          function handle_cr_get_room_user_list(status, msg, tracker) {
@@ -723,14 +1156,30 @@
                  return;
              }
 
-             msg = msg.split(',').sort().join(', ');
-             appendChatroomInfo("@who: current room peers: " + msg);
+             var v = msg.split(':');
+             var room_name = v[0];
+             var room_master = v[1];
+             var users = v[2];
+
+             if (request_src == 'console_who') {
+                 users = users.split(',').sort().join(', ');
+                 appendChatroomInfo("@who: current room users: " + users);
+             }
+             else if (request_src == 'showRoomUsers') {
+                 addToSelectList('selectRoomUsersList', '', users);
+                 setRoomMasterIcon(room_master, true);
+             }
+             else {
+                 users = users.split(',').sort().join(', ');
+                 appendChatroomInfo("room '" + room_name + "' users: " + users);
+             }
+             request_src = '';
          }
          function handle_cr_create_room(status, msg, tracker) {
              request_src = '';
              if (status != 'ok') {
-                 updateInfo(msg, 'error');
-                 appendChatroomInfo(msg);
+                 //updateInfo(msg, 'error');
+                 appendChatroomError('@create failed: ' +msg);
                  return;
              }
 
@@ -738,24 +1187,22 @@
              //appendConsole("handle create room: " + v[0] + ", " + v[1]);
              var room_name = v[1];
 
-             $('#selectRoomList').append($('<option>', {
-                 value: room_name,
-                 text: room_name
-             }));
-             $('#selectRoomList').val(room_name); // set as current option.
-             $('#selectRoomList').attr('disabled', 'disabled');
-             $('#btnJoinRoom').val('Leave room');
              $('#spanCreateRoom').hide();
 
              if (current_room != '') {
                  appendChatroomInfo('You left room ' + current_room);
+                 // clear background color of previous current_room.
+                 setSelectOptionBgColor('selectRoomsList', current_room, '');
              }
              current_room = room_name;
+             is_room_master = true;
              //disableChatroom(false);
             
              $('#div_room').html('Room: ' + room_name);
              appendChatroomInfo('You created and entered room ' + room_name + '.');
              appendConsole('You created and joined room: ' + room_name);
+
+             showRoomUsers(room_name);
          }
          function handle_cr_invite(status, msg, tracker) {
              if (status != 'ok') {
@@ -803,10 +1250,93 @@
                  msg = 'invalid invite reply message.';
              }
              appendChatroomInfo(msg);
+         }
 
-             if (reply == 'Y') {
-                 doJoinRoom(room);
+         function handle_cr_master(status, msg, tracker) {
+             if (status != 'ok') {
+                 appendChatroomInfo(msg);
+                 return;
              }
+             if (tracker != current_tid) {
+                 if (DEBUG) {
+                     msg = 'master message with wrong tracker.';
+                     //updateInfo(msg, 'error');
+                     appendChatroomInfo('Error: ' + msg);
+                 }
+                 return;
+             }
+
+             var v = msg.split(':');
+             var new_master = v[0];
+             var old_master = v[1];
+             var room_name = v[2]; // should be the same as current_room.
+
+             msg = "You set room master to " + msg + '.';
+             appendChatroomInfo(msg);
+             setRoomMaster(new_master, old_master, room_name);
+             is_room_master = false; // current_user is no longer room master.
+         }
+
+         function handle_cr_kick(status, msg, tracker) {
+             if (status != 'ok') {
+                 appendChatroomInfo(msg);
+                 return;
+             }
+             if (tracker != current_tid) {
+                 if (DEBUG) {
+                     msg = 'kick message with wrong tracker.';
+                     //updateInfo(msg, 'error');
+                     appendChatroomInfo('Error: ' + msg);
+                 }
+                 return;
+             }
+
+             var v = msg.split(':'); // kicked_user:room_master:room_name
+             var user = v[0];
+             var room_name = v[2]; // should be the same as current_room.
+
+             msg = 'User ' + user + ' is kicked out of this room.';
+             appendChatroomInfo(msg);
+         }
+
+         function handle_cr_max(status, msg, tracker) {
+             if (status != 'ok') {
+                 appendChatroomInfo(msg);
+                 return;
+             }
+             if (tracker != current_tid) {
+                 if (DEBUG) {
+                     msg = 'max message with wrong tracker.';
+                     //updateInfo(msg, 'error');
+                     appendChatroomInfo('Error: ' + msg);
+                 }
+                 return;
+             }
+
+             var v = msg.split(':'); // max_size:room_master:room_name
+             var size = v[0];
+             var room_name = v[2]; // should be the same as current_room.
+
+             msg = 'You set the max size of this room to ' + size + '.';
+             appendChatroomInfo(msg);
+         }
+
+         function handle_cr_set_room_permission(status, msg, tracker) {
+             if (status != 'ok') {
+                 appendChatroomInfo(msg);
+                 return;
+             }
+             if (tracker != current_tid) {
+                 if (DEBUG) {
+                     msg = 'set room permission message with wrong tracker.';
+                     //updateInfo(msg, 'error');
+                     appendChatroomInfo('Error: ' + msg);
+                 }
+                 return;
+             }
+
+             msg = "You set this room to " + (msg == '1' ? 'public' : 'private') + '.';
+             appendChatroomInfo(msg);
          }
 
          function handle_cr_join_room(status, msg, tracker) {
@@ -815,10 +1345,10 @@
                  appendChatroomInfo(msg);
                  return;
              }
-             if (tracker != current_tid) {
-                 if (DEUBG) {
+             if (tracker != current_tid && tracker != 0) { // 0 - from server.
+                 if (DEBUG) {
                      msg = 'join room message with wrong tracker.';
-                     updateInfo(msg, 'error');
+                     //updateInfo(msg, 'error');
                      appendChatroomInfo('Error: ' + msg);
                  }
                  return;
@@ -831,45 +1361,46 @@
              }
              var room_name = v[1];
 
-             //room_name = $('#selectRoomList').val();
-             $('#selectRoomList').val(room_name); // set as current option.
-             $('#selectRoomList').attr('disabled', 'disabled');
-             $('#btnJoinRoom').val('Leave room');
              $('#spanCreateRoom').hide();
+
+             if (current_room != '') {
+                 setSelectOptionBgColor('selectRoomsList', current_room, '');
+             }
              current_room = room_name;
+             setSelectOptionBgColor('selectRoomsList', room_name, '#ccddff');
+             is_room_master = false;
              //disableChatroom(false);
 
              $('#div_room').html('Room: ' + room_name);
              appendChatroomInfo('You entered room ' + room_name + '.');
              appendConsole('You joined room: ' + room_name);
+
+             showRoomUsers(room_name);
          }
          function handle_cr_leave_room(status, msg, tracker) {
              if (status != 'ok') {
-                 updateInfo(msg, 'error');
+                 appendChatroomInfo(msg);
                  return;
              }
-             if (tracker != current_tid) {
+             if (tracker != current_tid && tracker != 0) { // 0 - from server.
                  if (DEBUG) {
                      msg = 'leave room message with wrong tracker.';
-                     updateInfo(msg, 'error');
+                     appendConsole(msg, 'error');
                  }
-                 updateInfo(msg, 'error');
+                 appendChatroomInfo(msg);
                  return;
              }
 
              $('#div_room').html('Room: ');
              appendChatroomInfo('You left room ' + current_room + '.');
 
-             var fields = msg.split(':');
-             var room_is_gone = (fields.length >= 3 && fields[2] == '0');
-             if (room_is_gone) {
-                 $('#selectRoomList').find('option:selected').remove();
-             }
-
-             $('#selectRoomList').removeAttr('disabled');
-             $('#btnJoinRoom').val('Join Room');
              $('#spanCreateRoom').show();
+
+             setSelectOptionBgColor('selectRoomsList', current_room, '');
+             hideRoomUsers();
+
              current_room = '';
+             is_room_master = false;
              //disableChatroom(true);
          }
          function handle_cr_speak(status, msg, tracker) {
@@ -901,24 +1432,28 @@
 
          }
          function handle_cr_logout(status, msg, tracker) {
+             // basically, won't get this.
              if (status == 'ok') {
                  $('#div_logout').html('');
-                 updateInfo('You are logged out.', 'info');
-                 document.getElementById('span_action').style.display = 'block';
-                 cleanup_logout();
+                 appendChatroomInfo('You are logged out.', 'info');
+                 //$('#span_login').show();
+                 //cleanup_logout();
+                 getInputFocus();
              }
              else {
                  updateInfo(msg);
-                 cleanup_logout(); // should do cleanup no matter what.
+                 //cleanup_logout(); // should do cleanup no matter what.
              }
          }
          function cleanup_logout() {
-             document.getElementById('form_room').style.display = 'none';
-
              // clean up the select room list.
-             $('#selectRoomList').children().remove();
-             $('#selectRoomList').removeAttr('disabled');
-             $('#btnJoinRoom').val('Join Room');
+             $('#selectRoomsList').children().remove();
+             $('#selectUsersList').children().remove();
+
+             showAllUsersPanel();
+             $('#selectRoomUsersList').children().remove();
+             $('#span_room_users').hide();
+
              $('#spanCreateRoom').show();
              current_user = '';
              current_room = '';
@@ -941,6 +1476,130 @@
              send_data(msg);
          }
 
+         function showAllUsersPanel() {
+             $('#selectUsersList').show();
+             $('#selectRoomUsersList').hide();
+
+             $('#span_all_users').css('background-color', '#ccddff');
+             $('#span_room_users').css('background-color', '#99bbff');
+
+             $('#span_all_users').css('color', 'black');
+             $('#span_room_users').css('color', '#eeeeff');
+         }
+
+         function showRoomUsersPanel() {
+             $('#selectUsersList').hide();
+             $('#selectRoomUsersList').show();
+
+             $('#span_all_users').css('background-color', '#99bbff');
+             $('#span_room_users').css('background-color', '#ccddff');
+
+             $('#span_all_users').css('color', '#eeeeff');
+             $('#span_room_users').css('color', 'black');
+         }
+
+         function showRoomUsers(room_name) {
+             $('#span_room_users').show();
+             showRoomUsersPanel();
+
+             request_src = "showRoomUsers";
+             current_cmd = "get_room_user_list";
+             data = '{"cmd":"get_room_user_list", "room_name":"' + 
+                    room_name + '", "tracker":"' + current_tid + '"}';
+             send_data(data);
+         }
+
+         function hideRoomUsers() {
+             $('#span_room_users').hide();
+             showAllUsersPanel();
+         }
+
+         function formRegEnter(e) {
+             //if(e.which === 13) { doRegister(); }
+         }
+
+         function formLoginEnter(e) {
+             //if(e.which === 13) { doLogin(); }
+         }
+
+         function showSettings() {
+             $('#panel_settings').show();
+         }
+         function hideSettings(event, _this) {
+             var e = event.toElement || event.relatedTarget;
+             //alert(event + ':' + e + ':' + _this);
+             if (e != null && (e.parentNode == _this || e == _this)) {
+                 return;
+             }
+
+             $('#panel_settings').hide();
+         }
+
+         function getTimeStamp() {
+             return getDateTime(1);
+         }
+
+         function getDateTime(mode) {
+             var now= new Date(); 
+             var year    = now.getFullYear();
+             var month   = now.getMonth()+1; 
+             var day     = now.getDate();
+             var hour    = now.getHours();
+             var minute  = now.getMinutes();
+             var second  = now.getSeconds(); 
+             if(month.toString().length == 1) {
+                 var month = '0'+month;
+             }
+             if(day.toString().length == 1) {
+                 var day = '0'+day;
+             }   
+             if(hour.toString().length == 1) {
+                 var hour = '0'+hour;
+             }
+             if(minute.toString().length == 1) {
+                 var minute = '0'+minute;
+             }
+             if(second.toString().length == 1) {
+                 var second = '0'+second;
+             }   
+
+             var dateTime;
+             if (mode == 1) {
+                 dateTime = +hour+':'+minute+':'+second;
+             } else {
+                 dateTime = year+'/'+month+'/'+day+' '+hour+':'+minute+':'+second;   
+             }
+             return dateTime;
+         }
+
+
+         //
+         // If do_set is false, clear background image.
+         // otherwise, set background image.
+         // This gif is large. So first display a small static image,
+         // download this gif and then replace it.
+         //
+         function setChatroomBgImg(do_set) {
+             if (! do_set) {
+                 $('#chatroom').css('background-image', 'none');
+                 return;
+             }
+             
+             if (bgImg_downloaded) {
+                 $('#chatroom').css('background-image', 'url(images/matrix2.gif)');
+                 return;
+             }
+
+             var _images = ['images/matrix2.gif'];
+             $.each(_images, function (e) {
+                 $(new Image()).load(function () {
+                     //alert($(this).attr('src') + ' has loaded!');
+                     $('#chatroom').css('background-image', 'url(images/matrix2.gif)');
+                     bgImg_downloaded = true;
+                 }).attr('src', this);
+             });
+         }
+
          $(document).ready(function() {
              $('#txtNewRoom').keyup(function (e) {
                  if(e.which === 13) {
@@ -950,14 +1609,6 @@
 
              $('#btnClearConsole').click(function() {
                  $('#console').html('');
-             });
-
-             $('#btnJoinRoom').click(function() {
-                 if ($(this).val() == 'Leave room') {
-                     doLeaveRoom();
-                 } else {
-                     doJoinRoom( $('#selectRoomList').val() );
-                 }
              });
 
              getInputFocus();
@@ -976,25 +1627,125 @@
                  }
              });
 
+
+             $('#selectRoomsList').dblclick(function () {
+                 $("#selectRoomsList option:selected").each(function () {
+                     //alert('hi: ' + $(this).val());
+                     if ($(this).val() == current_room) {
+                         appendChatroomInfo('You are already in room ' + current_room);
+                     } else {
+                         doJoinRoom($(this).val());
+                     }
+                 });
+             });
+
+             $('#selectRoomsList').blur(function() {
+                 // de-select all rows.
+                 document.getElementById('selectRoomsList').selectedIndex = -1;
+             });
+ 
+             $('#selectUsersList').blur(function() {
+                 // de-select all rows.
+                 document.getElementById('selectUsersList').selectedIndex = -1;
+             });
+
+             $('#span_all_users').click(function() {
+                 showAllUsersPanel();
+             });
+
+             $('#span_room_users').click(function() {
+                 showRoomUsersPanel();
+             });
+
+
+             $('#reg_name').watermark('Username');
+             $('#reg_pwd').watermark('Password');
+             $('#reg_pwd2').watermark('Password (repeat)');
+
+             $('#login_name').watermark('Username');
+             $('#login_pwd').watermark('Password');
+
+             $('#cbSendMode').click(function() {
+                 toggleSendMode();
+                 getInputFocus();
+             });
+
+             toggleSendMode();
+
+
+             $(".fancybox").fancybox({
+                 'width': '75%',
+                 'height': '75%',
+                 'autoScale': false,
+                 'transitionIn': 'none',
+                 'transitionOut': 'none',
+                 'type': 'iframe'
+             });
+
+             setChatroomBgImg();
+
              doDisconnect(true); // initialize to clean state.
              if (AUTO_CONNECT != '') {
                  $('#div_server').hide();
+                 current_cmd = 'doConnect';
                  doConnect();
              }
          });
       </script>
 
       <style type="text/css">
+      #container {
+          position: relative;
+          width: 951px;
+          background-color: #eeeeff;
+          padding: 1px;
+
+          -webkit-border-radius:5px;
+          -moz-border-radius:5px;
+          border-radius:5px;
+
+          -webkit-box-shadow:0 1px 10px rgba(0,0,0,.5);
+          -moz-box-shadow:0 1px 10px rgba(0,0,0,.5);
+          box-shadow:0 1px 10px rgba(0,0,0,.5);
+      }
+      #chatroom_container {
+        position: relative; 
+        float: left;
+        /*display:none;*/
+
+        background-color: #bbccee;
+        padding: 5px;
+        width: 730px;
+        -webkit-border-radius:5px;
+        -moz-border-radius:5px;
+        border-radius:5px;
+      }
       #chatroom {
-        height: 300px;
+        text-align: left;
+        height: 450px;
         width: 720px;
-        background-color: #eeeeff;
+        padding: 5px;
+        color: white;
+        background-color: black;
         overflow:auto;
         overflow-y: scroll;
         position: relative;
         bottom: 0;
+
+        background-image: url(images/matrix2.jpg);
+        background-repeat: repeat;
+        background-size: 50% 50%;
+
+        filter: alpha(opacity=80);
+        opacity: 0.8;
+        /*z-index: 10000;*/
+
+        -webkit-border-radius:5px;
+        -moz-border-radius:5px;
+        border-radius:5px;
       }
       #console {
+        text-align: left;
         height: 180px;
         width: 720px;
         background-color: #eeeeff;
@@ -1004,7 +1755,7 @@
         bottom: 0;
       }
       #div_status {
-        width:718px; 
+        width:728px; 
         line-height:25px; 
         height:25px; 
         position: relative; 
@@ -1012,10 +1763,12 @@
         border: solid 1px #dddddd;
       }
       #div_user {
+        text-align: left;
         position: absolute;
         overflow:hidden;
         white-space: nowrap;
-        float:left; line-height:25px;
+        float:left; 
+        line-height:25px;
         padding-left: 5px;
         padding-right:5px;
         height:23px;
@@ -1024,88 +1777,302 @@
         border: solid 1px #cccccc;
       }
       #div_room {
+        text-align: left;
         position: absolute; 
-        left: 120px;
+        left: 123px; /*120*/
         overflow:hidden; 
         white-space: nowrap; 
-        float:left; line-height:25px; 
+        float:left; 
+        line-height:25px; 
         padding-left: 5px;
         padding-right:5px; 
         height:23px; 
-        width:140px; 
+        width:137px; 
         color:#666; 
         border: solid 1px #cccccc;
       }
       #div_msg {
+        text-align: left;
         position: absolute; 
         padding-left:5px; 
-        left:270px; 
-        width:441px; 
+        left:273px;  /* 272 */
+        width:411px; /* 445 */
         height:23px; 
         border: solid 1px #cccccc;
         color: orange;
       }
+      #div_setting {
+        text-align: center;
+        position: absolute;
+        padding-left:0px;
+        left:692px;
+        width:34px;
+        height:23px;
+        line-height: 23px;
+        border: solid 1px #cccccc;
+        color: orange;
+      }
       #span_invite {
-          background-color: #ccffcc;
+          color: black;
+          background-color: #ddffdd;
           border: solid 1px #99cc99;
           position: absolute;
-          top: 130px;
+          top: 210px; /* half chatroom is 225. */
           left: 150px;
           padding: 5px;
       }
+
+      #panel_settings {
+          text-align: center;
+          position: absolute;
+          left: 598px;
+          top: 345px;
+          width: 134px;
+          height: 118px;
+          background-color: #eeeeee;
+          padding-top: 0px;
+          padding-bottom: 2px;
+      }
+
+      #div_right_panel {
+          float: left;
+          position: absolute;
+          left: 745px;
+          width: 201px;
+          height: 496px;
+          background-color: #bbccff;
+          padding-left: 2px;
+          padding-right: 2px;
+
+          -webkit-border-radius:5px;
+          -moz-border-radius:5px;
+          border-radius:5px;
+      }
+
+      #div_RoomsList {
+          text-align: left;
+          top: 0px;
+          left: 740px;
+          width: 200px;
+          height: 200px;
+          padding: 0px;
+      }
+      #selectRoomsList {
+          float: left;
+          top: 0px;
+          left: 740px;
+          width: 200px;
+          height: 180px;
+          padding: 3px;
+
+          /*border:0px;
+          outline:0px;*/
+
+          -webkit-border-radius:5px;
+          -moz-border-radius:5px;
+          border-radius:5px;
+      }
+      #selectRoomsList option {
+          background-image:url(images/home.png);
+          background-size: 15px 15px;
+          background-repeat: no-repeat;
+          padding-left: 20px;
+
+          /*height: 18px;
+          line-height: 18px;
+          vertical-align: middle;*/
+      }
+
+      #div_UsersList {
+          text-align: left;
+          top: 200px;
+          left: 740px;
+          width: 200px;
+          height: 270px;
+          padding: 0px;
+      }
+      #selectUsersList {
+          top: 200px;
+          left: 740px;
+          width: 200px;
+          height: 271px;
+          padding: 3px;
+
+          /*border:0px;
+          outline:0px;*/
+
+          -webkit-border-radius:5px;
+          -moz-border-radius:5px;
+          border-radius:5px;
+      }
+      #selectUsersList option {
+          background-image:url(images/person.png);
+          background-size: 15px 15px;
+          background-repeat: no-repeat;
+          padding-left: 20px;
+
+          /*height: 18px;
+          line-height: 18px;
+          vertical-align: middle;*/
+      }
+
+      #selectRoomUsersList {
+          display:none;
+          top: 200px;
+          left: 740px;
+          width: 200px;
+          height: 271px;
+          padding: 3px;
+
+          /*border:0px;
+          outline:0px;*/
+
+          -webkit-border-radius:5px;
+          -moz-border-radius:5px;
+          border-radius:5px;
+      }
+      #selectRoomUsersList option {
+          background-image:url(images/person.png);
+          background-size: 15px 15px;
+          background-repeat: no-repeat;
+          padding-left: 20px;
+
+          /*height: 18px;
+          line-height: 18px;
+          vertical-align: middle;*/
+      }
+
+
+      #span_about {
+          /*background-color:red; */
+          display:inline-block; 
+          width: 200px;
+          height: 40px;
+          line-height: 40px;
+      }
+
+      .span_placeholder {
+          width: 1px;
+          display: inline-block;
+      }
+      .div_title {
+          -webkit-border-top-left-radius: 5px;
+          -webkit-border-top-right-radius: 5px;
+          -moz-border-radius-topleft: 5px;
+          -moz-border-radius-topright: 5px;
+          border-top-left-radius: 5px;
+          border-top-right-radius: 5px;
+
+          height: 18px;
+          line-height: 18px;
+
+          text-align: center;
+          display: inline-block;
+          padding-left: 5px;
+          padding-right: 5px;
+          background-color: #99bbff;
+          color: #eeeeff;
+
+          box-shadow: 6px 0 4px  -4px #222 , -6px 0 4px  -4px #222;   
+          -moz-box-shadow: 6px 0 4px  -4px #222, -6px 0 4px  -4px #222;   
+          -webkit-box-shadow: 6px 0 4px  -4px #222, -6px 0 4px  -4px #222;   
+      }
+
+
+      option:nth-child(odd) { background: white; }
+      option:nth-child(even) { background: #eeeeee; }
+
+
+      #span_register, #span_login, #span_updatepwd {
+          display:block; position:absolute; 
+          left:240px; top:140px; 
+          text-align:center; width:240px; height:135px; 
+          background-color:white; 
+          padding:10px; 
+          border: solid 0px red;
+          /*background-image: url(images/sky.gif);
+          background-size: 100% 100%;*/
+
+          background-image: url(images/bg.gif);
+          background-repeat: no-repeat;
+          /*background-size: 100% 100%;*/
+
+          -webkit-border-radius:5px;
+          -moz-border-radius:5px;
+          border-radius:5px;
+      }
+
+      #txtMsg {
+          float:left; width:726px; height: 30px; white-space:pre; 
+          resize: none; 
+          white-space:pre-wrap; word-wrap:break-word;
+          padding: 5px;
+
+          -webkit-border-radius:5px;
+          -moz-border-radius:5px;
+          border-radius:5px;
+      }
+
+      .txtReg {
+          width:150px;
+      }
+
+      .btnReg {
+          width: 70px;
+          /*color: white;
+          background-color: green;*/
+      }
+
+      .btnSetting {
+          width: 130px;
+          height: 25px;
+          background-color: white;
+      }
+
+      .transparent {
+          filter:alpha(opacity=90); 
+          -moz-opacity: 0.9; 
+          opacity: 0.9;
+      }
+
+      #debug_console {
+          position: relative; 
+      }
+
+      html {display:table; margin-left:auto; margin-right:auto; margin-top:20px; }
+      body {display:table-cell; text-align:center; background-color:#eeeeee; }
       </style>
    </head>
    <body>
-      <h1>Websocket Chatroom</h1>
+      <div id="div_header" style="width:930px; height:80px;line-height:80px; float:left;">
+
+      <span style="float: left; font-size:20px; font-weight:bold; padding-left: 20px; padding-right: 20px;">
+      <img src="images/chat2.png" style="vertical-align: middle; height:50px; padding-right:10px;"/>
+      Websocket Chatroom
+      </span>
 
       <span id='div_server'>
       Server: ws://<input type="text" id="ws" value="127.0.0.1:9000"/>
-      <input type='button' id='btnConnect' onclick='btnConnect_onclick(this);' value='Connect'></input>
+      <input type='button' id='btnConnect' onclick='btnConnect_onclick(this);' value='Connect'/>
+      </span>
+      
+      <span id='connection_status' style="float:left;"></span>&nbsp;&nbsp;
+      <span id='div_logout' style="float:left;"></span>
+      <span id="div_info" style="float:left;"></span>
+
+      <span id="div_about" style="float:right;">
+      <a href="about.html" class="fancybox">About</a> |
+      <a href="help.html" class="fancybox">Help</a> <!--|
+      <a href="privacy.html" class="fancybox">Privacy</a>-->
       </span>
 
-      <span id='connection_status'></span>&nbsp;&nbsp;
-      <span id='div_logout'></span>
-      <span id="div_info"></span>
-      <br/><br/>
+      </div> <!-- end of header -->
 
-      <span id='span_action' style='display:none;'>
-      <span id='form_reg' style='display:none;'>
-      name: <input type='txt' id='reg_name'/>
-      password: <input type='password' id='reg_pwd'/>
-      <input type='button' value='Register' onclick='doRegister();'></input>
-      &nbsp;&nbsp;<a href='#' onclick="cancelFormReg();">Cancel</a>
-      <br/><br/>
-      </span>
+      <div style="clear:both;"></div>
 
-      <span id='form_login' style='display:inline-block;'>
-      name: <input type='txt' id='login_name'/>
-      password: <input type='password' id='login_pwd'/>
-      <input type='button' value='Login' onclick='doLogin();'></input>
-      &nbsp;&nbsp;<a href='#' onclick="showFormReg();">Register</a>
-      <br/><br/>
-      </span>
-      </span>
+      <div id="container">
 
-      <div id='form_room' style='display:none;'>
-      <input id="btnJoinRoom" type="button" value="Join Room" onclicki="doJoinRoom( $('#selectRoomList').val() );"/>
-      <select id="selectRoomList"><option value="">-- select room --</option></select>
-
-      <span id='spanCreateRoom'>
-      or
-      <!--input id="btnCreateRoom" type="button" value="Create Room" onclick='doCreateRoom();'/-->
-      Create Room: <input type="text" id="txtNewRoom"/>
-      </span>
-      <br/><br/>
-      </div>
-
-      <input type="text" id="txtMsg" onkeypress="checkEnter(event);" size="50"/>
-      <button style='display:none;' id='btnSendTxt' onclick='sendText();'>Send Text Message</button>
-      <button style='display:none;' id='btnSendBin' onclick='sendBinary();'>Send Binary Message</button>
-      <button onclick='clearChatroom();' title='Clear chat history'>Clear History</button>
-      <button onclick="selectText('chatroom');" title='Select history for copy'>Select History</button>
-
-      <br/><br/>
-
+      <div id="chatroom_container">
       <div id="chatroom">
           <span id='span_invite' style='display:none;'>
           <span id='invite_msg'></span>
@@ -1114,6 +2081,49 @@
           <span id='inviter_room' style='display:none;'></span>
           </span>
       </div>
+      <!-- end of chatroom -->
+
+      <!-- login/reg/update_pwd -->
+      <div id="func_panel"> 
+          <span id="span_login" style="display:block;">
+          <div style="color:#6666ff; font-weight:bold; padding:5px;">Sign in</div>
+          <input id="login_name" class="txtReg" onkeyup="javascript:formLoginEnter(event);"/><br/>
+          <input id="login_pwd" class="txtReg" type="password" onkeyup="javascript:formLoginEnter(event);"/><br/>
+          <span style="display:block; padding:7px;">
+          <input type="button" class="btnReg" id="btnLogin" value="Login" onclick="javascript:doLogin();"/>
+          </span>
+          <a id="link_reg" href='#' style="font-size:10pt;" onclick="javascript:showFormReg();">Register</a>
+          </span>
+
+          <span id="span_register" class="itransparent" style="display:none;">
+          <div style="color:#6666ff; font-weight:bold; padding:5px;">Register an account</div>
+          <input id="reg_name" class="txtReg" onkeyup="javascript:formRegEnter(event);"/><br/>
+          <input id="reg_pwd" class="txtReg" type="password" onkeyup="javascript:formRegEnter(event);"/><br/>
+          <input id="reg_pwd2" class="txtReg" type="password" onkeyup="javascript:formRegEnter(event);"/><br/>
+          <span style="display:block; padding:7px;">
+          <input type="button" class="btnReg" id="reg_btnReg" value="Register" onclick="javascript:doRegister();"/><input type="button" class="btnReg" id="reg_btnCancel" value="Cancel" onclick="javascript:cancelFormReg();"/>
+          </span>
+          </span>
+
+          <span id="span_updatepwd" style="display:none;">
+          <div style="color:#6666ff; font-weight:bold; padding:5px;">Update Password</div>
+          <input id="updatepwd_old" class="txtReg" type="password" onkeyup="javascript:formUpdatePwdEnter(event);"/><br/>
+          <input id="updatepwd_new" class="txtReg" type="password" onkeyup="javascript:formUpdatePwdEnter(event);"/><br/>
+          <input id="updatepwd_new2" class="txtReg" type="password" onkeyup="javascript:formUpdatePwdEnter(event);"/><br/>
+          <span style="display:block; padding:5px;">
+          <input type="button" class="btnReg" value="Update" onclick="javascript:doUpdatePwd();"/><input type="button" class="btnReg" value="Cancel" onclick="javascript:cancelUpdatePwd();"/>
+          </span>
+          </span>
+
+      </div> <!-- end of func_panel -->
+
+      <div id="panel_settings" style="display:none;" onmouseout="hideSettings(event, this);">
+          <span style="background-color:#bbccff; display:inline-block; padding:2px; width:96%; font-size: 12pt;">Settings</span><br/>
+          <input type="checkbox" id="cbSendMode" checked><span style="font-size:10pt;"> Send text on Enter</span><br/>
+          <input type="button" class="btnSetting" onclick="selectText('chatroom');" title="Select History To Copy" value="Select History"/><br/>
+          <input type="button" class="btnSetting" onclick='clearChatroom();' title="Clear Chat History" value="Clear History"/><br/>
+          <input type="button" id="btnLogout" class="btnSetting" onclick="doLogout();" value="Logout"/>
+      </div>
 
       <div id="div_status">
           <div id='div_user'>User: </div>
@@ -1121,14 +2131,73 @@
           <div id='div_msg'>
               <span id='span_msg' style='color: orange;'></span>
           </div>
+          <div id='div_setting'><img src="images/setting.gif" style="vertical-align:middle;" onmouseover="javascript:showSettings();"></div>
       </div>
-      <br/>
- 
-      <div id="debug_console" style="display:none;">
+      </div> <!--end of chatroom_container-->
+
+      <div id="div_right_panel">
+
+      <div id="div_RoomsList">
+      <span class="span_placeholder"></span>
+      <span class="div_title" style="width:50px; color:black; background-color:#ccddff;">Rooms</span>
+      <select id='selectRoomsList' size="5" 
+              title='Double click to enter a room'>
+      </select>
+      </div>
+
+      <div id="div_UsersList">
+      <span class="span_placeholder"></span>
+      <span id="span_all_users" class="div_title" style="width:50px; color:black; background-color:#ccddff;">Users</span>
+      <span id="span_room_users" class="div_title" style="width:100px; display:none;">Room users</span>
+      <select id='selectUsersList' size="5"></select>
+      <select id='selectRoomUsersList' size="5"></select>
+      </div>
+
+      </div> <!-- end of div_right_panel -->
+
+
+      <div style="clear:both;"></div>
+
+      <textarea id="txtMsg" onkeypress="checkEnter(event);"></textarea>
+
+      <span id="span_about">
+      <!-- <a href="#">About</a> | <a href="#">Help</a> | <a href="#">Privacy</a> -->
+      <!--&nbsp;&nbsp;&nbsp;&nbsp;
+      <img src="images/chat.png" style="height:38px; vertical-align: middle;"/>-->
+
+<!-- JiaThis Button BEGIN -->
+<div class="jiathis_style" style="width:190px; vertical-align:middle; float:right; position:relative; top:15px;">
+        <a class="jiathis_button_qzone" style="vertical-align:middle;"></a>
+        <a class="jiathis_button_tsina"></a>
+        <a class="jiathis_button_tqq"></a>
+        <a class="jiathis_button_weixin"></a>
+        <a class="jiathis_button_renren"></a>
+        <a class="jiathis_button_xiaoyou"></a>
+        <a href="http://www.jiathis.com/share" class="jiathis jiathis_txt jtico jtico_jiathis" target="_blank"></a>
+        <a class="jiathis_counter_style"></a>
+</div>
+<script type="text/javascript" src="http://v3.jiathis.com/code/jia.js" charset="utf-8"></script>
+<!-- JiaThis Button END -->
+
+      </span>
+
+      <div style="clear:both;"></div>
+
+      <div id="bottom_panel" style="text-align: left;">
+      <button style='display:none;' id='btnSendTxt' onclick='sendText();' class="btnSetting">Send Message</button>
+      <button style='display:none;' id='btnSendBin' onclick='sendBinary();'>Send Binary Message</button>
+      </div>
+
+
+      </div><!-- end of container -->
+
+      <div id="debug_console" style="display:none; text-align:left;"><br/>
           <input type="checkbox" id="cbToggleDebug" title="Click to toggle debug console"/>
           Debug console: <a href='#' id='btnClearConsole' style="display:none;">Clear console</a><br/>
           <div id="console" style="display:none;"></div>
       </div>
+
+      <p><br/></p>
 
    </body>
 </html>
