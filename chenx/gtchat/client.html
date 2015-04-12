@@ -36,6 +36,13 @@
          var DEBUG = true;
          //DEBUG = false;
 
+         if (typeof String.prototype.startsWith != 'function') {
+             String.prototype.startsWith = function (str){
+                 //return this.indexOf(str) === 0; // O(n)
+                 return this.slice(0, str.length) == str; // O(1)
+             };
+         }
+
          function send_data(data) {
              appendConsole('==> Send: ' + data);
              socket.send(data);
