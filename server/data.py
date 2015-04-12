@@ -77,7 +77,7 @@ class GameTable:
         if player.id in self.players:
             result = ALREADY_JOINED
         else:
-            self.players[player.id] = player
+            self.players.append(player)
             result = JOIN_SUCCEED
             msg = {'cmd':'player_joined', 'player_id': player.id }
             BroadCast(player.id, [p.socket for p in self.players], msg)
