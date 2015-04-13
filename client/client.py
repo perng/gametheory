@@ -156,9 +156,11 @@ def setup_actions(factory):
                        out_attrs=['game_name']))
 
     # register_by_password
-    action = Action('register_by_password', settings={'password': 'bababa', 'player_name': "Thomas Jefferson" })
+    username = factory.args.username if factory.args.username else 'Charles Perng'
+
+    action = Action('register_by_password', settings={'password': 'bababa', 'player_name': username })
     actions.add(action)
-    action = Action('login_by_password', settings={'password': 'bababa', 'player_name': "Thomas Jefferson" })
+    action = Action('login_by_password', settings={'password': 'bababa', 'player_name': username })
     actions.add(action)
 
     # register_by_uuid
@@ -203,7 +205,6 @@ if __name__ == '__main__':
     factory.protocol = MyClientProtocol
     factory.args = args
 
-    print factory.args.username, factory.args.uuid
 
     factory.actions = setup_actions(factory)
 

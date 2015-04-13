@@ -69,7 +69,9 @@ def sit_for_auto_match_game(socket, params):
         return JsonResponse(socket, params, {}, ERROR, "game room doesn't exist")
 
     table = socket.factory.datastore.sit_to_play_auto_match(socket.player, room)
-    return JsonResponse(socket, params, {'table_id': table.id, 'game_status': table.status}, OK, '')
+    return JsonResponse(socket, params, {'table_id': table.id, 'game_status': table.status,
+                                         'players': table.players_info()},
+                        OK, '')
 
 @login_required
 @required_params('table_id')
@@ -89,7 +91,7 @@ def leave_table(socket, params):
 def broadcast_in_table(socket, params):
     try:
         table = socket.factory.datastore.gametables[int(params['table_id'])]
-        table.broadcast(socket.player.id, {'message': params['message'], 'cmd': 'peer_message'})
+        table.broadcast(socket.player.id, {'message': params['message'], 'sys_cmd': 'peer_message'})
         return JsonResponse(socket, params, {}, OK, '')
     except Exception as inst:
         print inst

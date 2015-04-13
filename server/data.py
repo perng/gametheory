@@ -9,11 +9,11 @@ PLAYING = 'PLAYING'
 WAITING = 'WAITING'
 
 # join table result
-JOIN_SUCCEED = 0
-LEAVE_SUCCEED = 0
-ALREADY_JOINED = 1
-TABLE_FULL = 2
-NOT_IN_TABLE = 3
+JOIN_SUCCEED = 'JOIN_SUCCEED'
+LEAVE_SUCCEED = 'LEAVE_SUCCEED'
+ALREADY_JOINED = 'ALREADY_JOINED'
+TABLE_FULL = 'TABLE_FULL'
+NOT_IN_TABLE = 'NOT_IN_TABLE'
 
 
 class GameTable:
@@ -79,15 +79,18 @@ class GameTable:
         else:
             self.players.append(player)
             result = JOIN_SUCCEED
-            msg = {'cmd':'player_joined', 'player_id': player.id }
-            BroadCast(player.id, [p.socket for p in self.players], msg)
+            msg = {'sys_cmd':'player_joined', 'player_id': player.id, 'player_name': player.player_name }
+            print "*** Broadcast to ", self.players
+            BroadCast(player.id, [p.socket for p in self.players], msg, attach_sender_id=False)
         self.lock.release()
 
         # Game start if enough players, TODO: time-based game-start
         if self.num_players()>= self.game_room.gamespec.num_players_min:
             game = self.game_room.gamespec
-            msg = {'table_id': self.id, 'cmd': 'game_start',
-                   'players': [p.id for p in self.players]}
+            msg = {'table_id': self.id, 'sys_cmd': 'game_start',
+                   'player_id': player.id, 'player_name': player.player_name,
+                   'players': self.players_info()}
+
             self.status = PLAYING
             BroadCast(player.id, [p.socket for p in self.players], msg)
         player.gametables[self.id] = self
@@ -98,7 +101,7 @@ class GameTable:
             return NOT_IN_TABLE
         self.delete_player(player)
         del player.gametables[self.id]
-        msg = {'cmd':'player_left', 'player_id': player.id }
+        msg = {'sys_cmd':'player_left', 'player_id': player.id }
         BroadCast(player.id, [p.socket for p in self.players], msg)
         if self.num_players() < self.game_room.gamespec.num_players_min:
             self.status = WAITING
@@ -113,6 +116,9 @@ class GameTable:
 
     def get_players(self):
         return self.players
+
+    def players_info(self):
+        return [{'player_id':p.id, 'player_name':p.player_name} for p in self.players]
 
 
 class RunTimeDataStore:
