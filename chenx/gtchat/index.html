@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html>
+   <head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+      <meta name="description" content="Chatroom">
+      <meta name="keywords" content="websocket chatroom, websocket, chatroom">
+      <script type="text/javascript" src="js/ajax/libs/jquery/1.4/jquery.min.js"></script>
+
+      <!-- fancybox 1.3.4 works with jquery 1.4, not jquery 1.10. -->
+      <script type="text/javascript" src="js/fancybox/fancybox/jquery.fancybox-1.3.4.pack.js"></script>
+      <link rel="stylesheet" type="text/css" href="js/fancybox/fancybox/jquery.fancybox-1.3.4.css" media="screen" />
+
+      <script type="text/javascript" language="javascript" src="js/jquery.watermark.min.js"></script>
+
+      <script type="text/javascript" src="js/chatroom.js"></script>
+      <link rel="stylesheet" type="text/css" href="chatroom.css" media="screen" />
+
+      <title>Websocket Chatroom</title>
+   </head>
+   <body>
+      <div id="div_header" style="width:930px; height:80px;line-height:80px; float:left;">
+
+      <span style="float: left; font-size:20px; font-weight:bold; padding-left: 20px; padding-right: 20px;">
+      <img src="images/chat2.png" style="vertical-align: middle; height:50px; padding-right:10px;"/>
+      Websocket Chatroom
+      </span>
+
+      <span id='div_server'>
+      Server: ws://<input type="text" id="ws" value="127.0.0.1:9000"/>
+      <input type='button' id='btnConnect' onclick='btnConnect_onclick(this);' value='Connect'/>
+      </span>
+      
+      <span id='connection_status' style="float:left;"></span>&nbsp;&nbsp;
+      <span id='div_logout' style="float:left;"></span>
+      <span id="div_info" style="float:left;"></span>
+
+      <span id="div_about" style="float:right;">
+      <a href="about.html" class="fancybox">About</a> |
+      <a href="help.html" class="fancybox">Help</a> <!--|
+      <a href="privacy.html" class="fancybox">Privacy</a>-->
+      </span>
+
+      </div> <!-- end of header -->
+
+      <div style="clear:both;"></div>
+
+      <div id="container">
+
+      <div id="chatroom_container">
+      <div id="chatroom">
+          <span id='span_invite' style='display:none;'>
+          <span id='invite_msg'></span>
+          <input type='text' id='txtInviteReply' onkeypress="doInviteReply(event, this.value);" style="width: 100px;"/>
+          <span id='inviter' style='display:none;'></span>
+          <span id='inviter_room' style='display:none;'></span>
+          </span>
+      </div>
+      <!-- end of chatroom -->
+
+      <!-- login/reg/update_pwd -->
+      <div id="func_panel"> 
+          <span id="span_login" style="display:block;">
+          <div style="color:#6666ff; font-weight:bold; padding:5px;">Sign in</div>
+          <input id="login_name" class="txtReg" onkeyup="javascript:formLoginEnter(event);"/><br/>
+          <input id="login_pwd" class="txtReg" type="password" onkeyup="javascript:formLoginEnter(event);"/><br/>
+          <span style="display:block; padding:7px;">
+          <input type="button" class="btnReg" id="btnLogin" value="Login" onclick="javascript:doLogin();"/>
+          </span>
+          <a id="link_reg" href='#' style="font-size:10pt;" onclick="javascript:showFormReg();">Register</a>
+          </span>
+
+          <span id="span_register" class="itransparent" style="display:none;">
+          <div style="color:#6666ff; font-weight:bold; padding:5px;">Register an account</div>
+          <input id="reg_name" class="txtReg" onkeyup="javascript:formRegEnter(event);"/><br/>
+          <input id="reg_pwd" class="txtReg" type="password" onkeyup="javascript:formRegEnter(event);"/><br/>
+          <input id="reg_pwd2" class="txtReg" type="password" onkeyup="javascript:formRegEnter(event);"/><br/>
+          <span style="display:block; padding:7px;">
+          <input type="button" class="btnReg" id="reg_btnReg" value="Register" onclick="javascript:doRegister();"/><input type="button" class="btnReg" id="reg_btnCancel" value="Cancel" onclick="javascript:cancelFormReg();"/>
+          </span>
+          </span>
+
+          <span id="span_updatepwd" style="display:none;">
+          <div style="color:#6666ff; font-weight:bold; padding:5px;">Update Password</div>
+          <input id="updatepwd_old" class="txtReg" type="password" onkeyup="javascript:formUpdatePwdEnter(event);"/><br/>
+          <input id="updatepwd_new" class="txtReg" type="password" onkeyup="javascript:formUpdatePwdEnter(event);"/><br/>
+          <input id="updatepwd_new2" class="txtReg" type="password" onkeyup="javascript:formUpdatePwdEnter(event);"/><br/>
+          <span style="display:block; padding:5px;">
+          <input type="button" class="btnReg" value="Update" onclick="javascript:doUpdatePwd();"/><input type="button" class="btnReg" value="Cancel" onclick="javascript:cancelUpdatePwd();"/>
+          </span>
+          </span>
+
+      </div> <!-- end of func_panel -->
+
+      <div id="panel_settings" style="display:none;" onmouseout="hideSettings(event, this);">
+          <span style="background-color:#bbccff; display:inline-block; padding:2px; width:96%; font-size: 12pt;">Settings</span><br/>
+          <input type="checkbox" id="cbSendMode" checked><span> Send text on Enter</span><br/>
+
+          <span style="padding-top: 5px; padding-bottom: 5px; iborder-bottom:solid 2px #999999; iborder-top:solid 2px #999999; display:inline-block; width:130px;">
+          Background<br/>
+          <select id="selectBgImg" style="width:130px;">
+              <option value="0">Blank</option>
+              <option value="1">Matrix</option>
+              <option value="2">Universe</option>
+              <option value="3">Beach</option>
+              <option value="4">Great Wall</option>
+          </select>
+          </span><br/>
+
+          <input type="button" class="btnSetting" onclick="selectText('chatroom');" title="Select History To Copy" value="Select History"/><br/>
+          <input type="button" class="btnSetting" onclick='clearChatroom();' title="Clear Chat History" value="Clear History"/><br/>
+          <input type="button" id="btnLogout" class="btnSetting" onclick="doLogout();" value="Logout"/>
+      </div>
+
+      <div id="div_status">
+          <div id='div_user'>User: </div>
+          <div id='div_room'>Room: </div>
+          <div id='div_msg'>
+              <span id='span_msg' style='color: orange;'></span>
+          </div>
+          <div id='div_setting'><img src="images/setting.gif" style="vertical-align:middle;" onmouseover="javascript:showSettings();"></div>
+      </div>
+      </div> <!--end of chatroom_container-->
+
+      <div id="div_right_panel">
+
+      <div id="div_RoomsList">
+      <span class="span_placeholder"></span>
+      <span class="div_title" style="width:50px; color:black; background-color:#ccddff;">Rooms</span>
+      <select id='selectRoomsList' size="5" 
+              title='Double click to enter a room'>
+      </select>
+      </div>
+
+      <div id="div_UsersList">
+      <span class="span_placeholder"></span>
+      <span id="span_all_users" class="div_title" style="width:50px; color:black; background-color:#ccddff;">Users</span>
+      <span id="span_room_users" class="div_title" style="width:100px; display:none;">Room users</span>
+      <select id='selectUsersList' size="5"></select>
+      <select id='selectRoomUsersList' size="5"></select>
+      </div>
+
+      </div> <!-- end of div_right_panel -->
+
+
+      <div style="clear:both;"></div>
+
+      <textarea id="txtMsg" onkeypress="checkEnter(event);"></textarea>
+
+      <span id="span_about">
+      <!-- <a href="#">About</a> | <a href="#">Help</a> | <a href="#">Privacy</a> -->
+      <!--&nbsp;&nbsp;&nbsp;&nbsp;
+      <img src="images/chat.png" style="height:38px; vertical-align: middle;"/>-->
+
+<!-- JiaThis Button BEGIN -->
+<div class="jiathis_style" style="width:190px; vertical-align:middle; float:right; position:relative; top:15px;">
+        <a class="jiathis_button_qzone" style="vertical-align:middle;"></a>
+        <a class="jiathis_button_tsina"></a>
+        <a class="jiathis_button_tqq"></a>
+        <a class="jiathis_button_weixin"></a>
+        <a class="jiathis_button_renren"></a>
+        <a class="jiathis_button_xiaoyou"></a>
+        <a href="http://www.jiathis.com/share" class="jiathis jiathis_txt jtico jtico_jiathis" target="_blank"></a>
+        <a class="jiathis_counter_style"></a>
+</div>
+<script type="text/javascript" src="http://v3.jiathis.com/code/jia.js" charset="utf-8"></script>
+<!-- JiaThis Button END -->
+
+      </span>
+
+      <div style="clear:both;"></div>
+
+      </div><!-- end of container -->
+
+      <div id="bottom_panel" style="text-align: left; padding-top:3px;">
+      <button style='display:none;' id='btnSendTxt' onclick='sendText();' class="btnSetting" 
+              title="Send multiline message">Send Message</button>
+      <button style='display:none;' id='btnSendBin' onclick='sendBinary();'>Send Binary Message</button>
+      </div>
+
+      <div id="debug_console" style="display:none; text-align:left;"><br/>
+          <input type="checkbox" id="cbToggleDebug" title="Click to toggle debug console"/>
+          Debug console: <a href='#' id='btnClearConsole' style="display:none;">Clear console</a><br/>
+          <div id="console" style="display:none;"></div>
+      </div>
+
+      <p><br/></p>
+
+   </body>
+</html>

@@ -1,0 +1,368 @@
+/**
+ * Javascript for chatroom.
+ * @author: X. C.
+ * @since: April, 2015
+ */
+
+      #container {
+          position: relative;
+          width: 951px;
+          background-color: #eeeeff;
+          padding: 1px;
+
+          -webkit-border-radius:5px;
+          -moz-border-radius:5px;
+          border-radius:5px;
+
+          -webkit-box-shadow:0 1px 10px rgba(0,0,0,.5);
+          -moz-box-shadow:0 1px 10px rgba(0,0,0,.5);
+          box-shadow:0 1px 10px rgba(0,0,0,.5);
+      }
+      #chatroom_container {
+        position: relative; 
+        float: left;
+        /*display:none;*/
+
+        background-color: #bbccee;
+        padding: 5px;
+        width: 730px;
+        -webkit-border-radius:5px;
+        -moz-border-radius:5px;
+        border-radius:5px;
+      }
+      #chatroom {
+        text-align: left;
+        height: 450px;
+        width: 720px;
+        padding: 5px;
+        color: white;
+        background-color: black;
+        overflow:auto;
+        overflow-y: scroll;
+        position: relative;
+        bottom: 0;
+
+        background-image: url(images/matrix300.gif);
+        background-repeat: repeat;
+        background-size: 50% 50%;
+
+        /*filter: alpha(opacity=80);
+        opacity: 0.8;*/
+        /*z-index: 10000;*/
+
+        -webkit-border-radius:5px;
+        -moz-border-radius:5px;
+        border-radius:5px;
+      }
+      #console {
+        text-align: left;
+        height: 180px;
+        width: 720px;
+        background-color: #eeeeff;
+        overflow:auto;
+        overflow-y: scroll;
+        position: relative;
+        bottom: 0;
+      }
+      #div_status {
+        width:728px; 
+        line-height:25px; 
+        height:25px; 
+        position: relative; 
+        background-color:#eeeeee; 
+        border: solid 1px #dddddd;
+      }
+      #div_user {
+        text-align: left;
+        position: absolute;
+        overflow:hidden;
+        white-space: nowrap;
+        float:left; 
+        line-height:25px;
+        padding-left: 5px;
+        padding-right:5px;
+        height:23px;
+        width:110px;
+        color:#666;
+        border: solid 1px #cccccc;
+      }
+      #div_room {
+        text-align: left;
+        position: absolute; 
+        left: 123px; /*120*/
+        overflow:hidden; 
+        white-space: nowrap; 
+        float:left; 
+        line-height:25px; 
+        padding-left: 5px;
+        padding-right:5px; 
+        height:23px; 
+        width:137px; 
+        color:#666; 
+        border: solid 1px #cccccc;
+      }
+      #div_msg {
+        text-align: left;
+        position: absolute; 
+        padding-left:5px; 
+        left:273px;  /* 272 */
+        width:411px; /* 445 */
+        height:23px; 
+        border: solid 1px #cccccc;
+        color: orange;
+      }
+      #div_setting {
+        text-align: center;
+        position: absolute;
+        padding-left:0px;
+        left:692px;
+        width:34px;
+        height:23px;
+        line-height: 23px;
+        border: solid 1px #cccccc;
+        color: orange;
+      }
+      #span_invite {
+          color: black;
+          background-color: #eeeeff;
+          border: solid 1px #99cc99;
+          position: absolute;
+          top: 210px; /* half chatroom is 225. */
+          left: 150px;
+          padding: 10px;
+
+          -webkit-border-radius:5px;
+          -moz-border-radius:5px;
+          border-radius:5px;
+      }
+
+      #panel_settings {
+          text-align: center;
+          position: absolute;
+          left: 598px;
+          width: 134px;
+          top: 300px;
+          height: 163px;
+          /*top: 345px;
+          height: 118px;*/
+          background-color: #eeeeee;
+          padding-top: 0px;
+          padding-bottom: 2px;
+
+          font-size:10pt;
+      }
+
+      #div_right_panel {
+          float: left;
+          position: absolute;
+          left: 745px;
+          width: 201px;
+          height: 496px;
+          background-color: #bbccff;
+          padding-left: 2px;
+          padding-right: 2px;
+
+          -webkit-border-radius:5px;
+          -moz-border-radius:5px;
+          border-radius:5px;
+      }
+
+      #div_RoomsList {
+          text-align: left;
+          top: 0px;
+          left: 740px;
+          width: 200px;
+          height: 200px;
+          padding: 0px;
+      }
+      #selectRoomsList {
+          float: left;
+          top: 0px;
+          left: 740px;
+          width: 200px;
+          height: 180px;
+          padding: 3px;
+
+          /*border:0px;
+          outline:0px;*/
+
+          -webkit-border-radius:5px;
+          -moz-border-radius:5px;
+          border-radius:5px;
+      }
+      #selectRoomsList option {
+          background-image:url(images/home.png);
+          background-size: 15px 15px;
+          background-repeat: no-repeat;
+          padding-left: 20px;
+
+          /*height: 18px;
+          line-height: 18px;
+          vertical-align: middle;*/
+      }
+
+      #div_UsersList {
+          text-align: left;
+          top: 200px;
+          left: 740px;
+          width: 200px;
+          height: 270px;
+          padding: 0px;
+      }
+      #selectUsersList {
+          top: 200px;
+          left: 740px;
+          width: 200px;
+          height: 271px;
+          padding: 3px;
+
+          /*border:0px;
+          outline:0px;*/
+
+          -webkit-border-radius:5px;
+          -moz-border-radius:5px;
+          border-radius:5px;
+      }
+      #selectUsersList option {
+          background-image:url(images/person.png);
+          background-size: 15px 15px;
+          background-repeat: no-repeat;
+          padding-left: 20px;
+
+          /*height: 18px;
+          line-height: 18px;
+          vertical-align: middle;*/
+      }
+
+      #selectRoomUsersList {
+          display:none;
+          top: 200px;
+          left: 740px;
+          width: 200px;
+          height: 271px;
+          padding: 3px;
+
+          /*border:0px;
+          outline:0px;*/
+
+          -webkit-border-radius:5px;
+          -moz-border-radius:5px;
+          border-radius:5px;
+      }
+      #selectRoomUsersList option {
+          background-image:url(images/person.png);
+          background-size: 15px 15px;
+          background-repeat: no-repeat;
+          padding-left: 20px;
+
+          /*height: 18px;
+          line-height: 18px;
+          vertical-align: middle;*/
+      }
+
+
+      #span_about {
+          /*background-color:red; */
+          display:inline-block; 
+          width: 200px;
+          height: 40px;
+          line-height: 40px;
+      }
+
+      .span_placeholder {
+          width: 1px;
+          display: inline-block;
+      }
+      .div_title {
+          -webkit-border-top-left-radius: 5px;
+          -webkit-border-top-right-radius: 5px;
+          -moz-border-radius-topleft: 5px;
+          -moz-border-radius-topright: 5px;
+          border-top-left-radius: 5px;
+          border-top-right-radius: 5px;
+
+          height: 18px;
+          line-height: 18px;
+
+          text-align: center;
+          display: inline-block;
+          padding-left: 5px;
+          padding-right: 5px;
+          background-color: #99bbff;
+          color: #eeeeff;
+
+          box-shadow: 6px 0 4px  -4px #222 , -6px 0 4px  -4px #222;   
+          -moz-box-shadow: 6px 0 4px  -4px #222, -6px 0 4px  -4px #222;   
+          -webkit-box-shadow: 6px 0 4px  -4px #222, -6px 0 4px  -4px #222;   
+      }
+
+
+      option:nth-child(odd) { background: white; }
+      option:nth-child(even) { background: #eeeeee; }
+
+
+      #span_register, #span_login, #span_updatepwd {
+          display:block; position:absolute; 
+          left:240px; top:140px; 
+          text-align:center; width:240px; height:135px; 
+          background-color:white; 
+          padding:10px; 
+          border: solid 0px red;
+          /*background-image: url(images/sky.gif);
+          background-size: 100% 100%;*/
+
+          background-image: url(images/bg.gif);
+          background-repeat: no-repeat;
+          /*background-size: 100% 100%;*/
+
+          font-size: 12pt;
+
+          -webkit-border-radius:5px;
+          -moz-border-radius:5px;
+          border-radius:5px;
+      }
+
+      #txtMsg {
+          float:left; width:726px; height: 30px; white-space:pre; 
+          min-height: 30px;
+          resize: none; 
+          white-space:pre-wrap; word-wrap:break-word;
+          padding: 5px;
+
+          -webkit-border-radius:5px;
+          -moz-border-radius:5px;
+          border-radius:5px;
+      }
+
+      #btnSendTxt {
+          //position: absolute;
+      }
+
+      .txtReg {
+          width:150px;
+      }
+
+      .btnReg {
+          width: 70px;
+          /*color: white;
+          background-color: green;*/
+      }
+
+      .btnSetting {
+          width: 130px;
+          height: 25px;
+          background-color: white;
+      }
+
+      .transparent {
+          filter:alpha(opacity=90); 
+          -moz-opacity: 0.9; 
+          opacity: 0.9;
+      }
+
+      #debug_console {
+          position: relative; 
+      }
+
+      html {display:table; margin-left:auto; margin-right:auto; margin-top:20px; }
+      body {display:table-cell; text-align:center; background-color:#eeeeee; font-size: 11pt; }

@@ -34,7 +34,7 @@ hr {
 
 <h2>User Interface Introduction</h2>
 
-The user interface includes:
+The user interface includes (see Fig. 1):
 
 <ul>
 <li>The chatroom screen with black background is at the center.
@@ -46,6 +46,11 @@ The user interface includes:
 <br/>Users panel shows all logged in users. 
 <br/>Room Users panel shows all users in the current room.
 </ul>
+
+<img src="images/chatroom.png" width="800">
+<center>
+Figure 1. Chatroom screenshot.
+</center>
 
 <h2>Register</h2>
 
@@ -65,7 +70,7 @@ This will bring up the update-password panel.
 There are two ways to log out:<br/><br/>
 
 1) A user logs out by enter command '@logout'.<br/>
-2) A second way is to go to "Setting" at the bottom left corner of chatroom, and click on button "logout".
+2) A second way is to go to "Setting" at the bottom right corner of chatroom, and click on button "logout".
 
 <h2>Chatroom commands</h2>
 
@@ -79,6 +84,7 @@ There are two ways to log out:<br/><br/>
 <li>@join {room}  - join an existing room 
 <li>@leave  - leave a room 
 <li>@where  - show current room name 
+<li>@passwd  - update password
 <li>@logout  - logout
 </ul>
 
@@ -89,8 +95,7 @@ There are two ways to log out:<br/><br/>
 <li>@private  - set room as private. Only invited user can enter a private room.
 <li>@master  - assign another room user as master. There is only one room master at a time.
 <li>@kick  - kick a user out of current room 
-<li>@max {max_size}  - set room max size. 0 or negative means infinite. 
-<li>@passwd  - update password. This will bring up the update-password panel. 
+<li>@max {max_size}  - set room max size. 0 or negative means no limit. 
 </ul>
 
 
@@ -102,6 +107,8 @@ corner of the chatroom. The choices include:
 <ul>
 <li>Send text on Enter - if checked, the message is sent when the user presses Enter key; 
 <br/>otherwise, a "Send Message" button should be clicked to send a message.
+<br/>The first way sends one line at a time. The second way can send multiple lines at a time.
+<li>Set background image.
 <li>Select History - select all chatroom contents. 
 <br/>This is useful when the user wants to copy and paste the chatroom contents.
 <li>Clear History - clear chatroom contents.

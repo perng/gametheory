@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html>
+<head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+      <meta name="description" content="Chatroom">
+      <meta name="keywords" content="websocket chatroom, websocket, chatroom">
+      <title>使用帮助</title>
+<style type="text/css">
+body {
+    padding: 30px;
+}
+
+hr {
+    color: #eeeeee;
+}  
+
+#footer {
+    padding-top: 30px;
+    padding-bottom: 20px;
+}
+</style>
+</head>
+<body>
+
+      <div id="div_header" style="height:80px;line-height:80px; float:left;">
+      <span style="float: left; font-size:32px; font-weight:bold; padding-left: 20px; padding-right: 20px;">
+      <img src="images/chat2.png" style="vertical-align: middle; height:50px; padding-right:10px;"/>
+      我说聊天室使用说明
+      </span>
+      </div>
+      <div style="clear:both;"></div>
+
+<hr/>
+
+<h2>用户界面简介</h2>
+
+用户界面截屏(见图一)包括：
+
+<ul>
+<li>聊天室处于屏幕中心，缺省为黑色背景。
+<li>聊天室下面是状态栏，显示当前用户，当前房间，即时消息，喝设置按钮。
+<li>状态栏下面，屏幕底部是消息输入框。
+<li>右上方为房间显示栏，显示当前所有房间。
+<li>右下方为用户显示栏和当前房间用户显示栏。
+<br/>用户显示栏显示所有当前登录用户。
+<br/>当前房间用户显示栏显示当前房间的所有用户。
+</ul>
+
+<img src="images/chatroom.png" width="800">
+<center>
+图1. 聊天室用户界面截屏
+</center>
+
+<h2>注册</h2>
+
+用户注册需要提供帐号和密码。
+
+<h2>登录</h2>
+
+用户登录需要提供帐号和密码。
+
+<h2>更新密码</h2>
+
+用户登录后可以更新密码，在消息输入栏键入命令：@passwd<br/>
+密码更新框将出现。
+
+<h2>退出登录</h2>
+
+退出登录有两种方法：<br/><br/>
+
+1) 在消息输入栏键入命令：@logout<br/>
+2) 移动鼠标到聊天室右下角设置按钮，在设置里点击“退出登录”。
+
+<h2>聊天室命令</h2>
+
+<p>所有用户均可使用以下命令：</p>
+
+<ul>
+<li>@rooms  - 列出当前所有房间
+<li>@who  - 列出当前房间用户
+<li>@users  - 列出当前所有登录用户 
+<li>@create {room}  - 创建并进入新聊天室（创建者是房间管理员，新聊天室缺省为公开聊天室） 
+<li>@join {room}  - 进入已经存在的聊天室
+<li>@leave  - 离开当前聊天室
+<li>@where  - 显示当前聊天室名 
+<li>@passwd  - 更新密码
+<li>@logout  - 退出登录
+</ul>
+
+<p>房间管理员专用命令：</p>
+
+<ul>
+<li>@public  - 设置当前房间为公开聊天室
+<li>@private  - 设置当前房间为私人聊天室，只有被私人聊天室内的用户邀请才能加入。
+<li>@master  - 转移管理员权限给房间内另一个用户。每个房间任何时候只有一个管理员。
+<li>@kick  - 把一个用户提出当前聊天室
+<li>@max {max_size}  - 设置房间最大容量。0或负数表示没有上限。
+</ul>
+
+
+<h2>设置</h2>
+
+把鼠标放到聊天室右下角的设置按钮上将显示设置框。有以下选择：
+
+<ul>
+<li>按回车键发送 － 如果选中，用户按回车键时发送消息；
+<br/>否则，点击“发送消息”按钮发送消息。
+<br/>第一种情形每次发送一行消息，第二种情形用于发送多行消息。
+<li>设置聊天室背景。
+<li>选中聊天历史 － 选中聊天历史，以便复制和粘贴聊天室内容。
+<li>清除聊天历史 － 清除聊天室信息。
+<li>退出登录 － 退出当前登录。
+</ul>
+
+
+<div id="footer">
+<hr/>
+<p style="font-size:10pt;">版权所有 &copy; 2015 星辰工作室</p>
+</div>
+
+</body>
+</html>
