@@ -1710,6 +1710,10 @@
              $('#login_name').watermark('Username');
              $('#login_pwd').watermark('Password');
 
+             $('#updatepwd_old').watermark('Old Password');
+             $('#updatepwd_new').watermark('New Password');
+             $('#updatepwd_new2').watermark('New Password (repeat)');
+
              $('#cbSendMode').click(function() {
                  toggleSendMode();
                  getInputFocus();
