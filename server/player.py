@@ -64,11 +64,8 @@ def register_by_uuid(socket, params):
         player.uuid = params['uuid']
         player.uuid_type = params['uuid_type']
     else:
-        if player.uuid == params['uuid'] and player.uuid_type == params['uuid_type']:
-            msg = "Already registered. No effect."
-        else:
-            msg = "player_name " + params['player_name'] + ' already exists. UUID mismatch.'
-            return JsonResponse(socket, params, {}, ERROR, msg)
+        msg = "player_name " + params['player_name'] + ' already exists.'
+        return JsonResponse(socket, params, {}, ERROR, msg)
 
 
     ip = socket.ip
@@ -93,11 +90,8 @@ def register_by_password(socket, params):
         msg = "New user registered"
         player.password = params['password']
     else:
-        if player.password == params['password']:
-            msg = "Already registered. No effect."
-        else:
-            msg = "player_name " + params['player_name'] + ' already exists. Password mismatch.'
-            return JsonResponse(socket, params, {}, ERROR, msg)
+        msg = "player_name " + params['player_name'] + ' already exists. '
+        return JsonResponse(socket, params, {}, ERROR, msg)
 
     ip = socket.ip
     player.ip_address = ip

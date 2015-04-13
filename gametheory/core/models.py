@@ -100,7 +100,7 @@ class Player(models.Model):
 
 
     def __str__(self):
-        return self.player_name+':'+self.player_uuid
+        return self.player_name
 
 admin.site.register(Player)
 
