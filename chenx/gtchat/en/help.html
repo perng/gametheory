@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html>
+<head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+      <meta name="description" content="Chatroom">
+      <meta name="keywords" content="websocket chatroom, websocket, chatroom">
+      <title>Help</title>
+<style type="text/css">
+body {
+    padding: 30px;
+}
+
+hr {
+    color: #eeeeee;
+}  
+
+#footer {
+    padding-top: 30px;
+    padding-bottom: 20px;
+}
+</style>
+</head>
+<body>
+
+      <div id="div_header" style="height:80px;line-height:80px; float:left;">
+      <span style="float: left; font-size:32px; font-weight:bold; padding-left: 20px; padding-right: 20px;">
+      <img src="images/chat2.png" style="vertical-align: middle; height:50px; padding-right:10px;"/>
+      Websocket Chatroom Help
+      </span>
+      </div>
+      <div style="clear:both;"></div>
+
+<hr/>
+
+<h2>User Interface Introduction</h2>
+
+The user interface includes (see Fig. 1):
+
+<ul>
+<li>The chatroom screen with black background is at the center.
+<li>The status bar under the chatroom screen shows current user, room, 
+    any instant information, and a Settings button.
+<li>The textbox to enter texts is under the chatroom.
+<li>Upper right is Rooms panel, which shows all current active rooms.
+<li>Lower right is Users and Room Users panel. 
+<br/>Users panel shows all logged in users. 
+<br/>Room Users panel shows all users in the current room.
+</ul>
+
+<img src="images/chatroom.png" width="800">
+<center>
+Figure 1. Chatroom screenshot.
+</center>
+
+<h2>Register</h2>
+
+A user needs to provide a username and a password to register.
+
+<h2>Login</h2>
+
+A user needs to provide a username and a password to log in.
+
+<h2>Update Password</h2>
+
+A user can update password when he logs in, and enter command '@passwd'. 
+This will bring up the update-password panel.
+
+<h2>Logout</h2>
+
+There are two ways to log out:<br/><br/>
+
+1) A user logs out by enter command '@logout'.<br/>
+2) A second way is to go to "Setting" at the bottom right corner of chatroom, and click on button "logout".
+
+<h2>Chatroom commands</h2>
+
+<p>Commands available to all the users:</p>
+
+<ul>
+<li>@rooms  - list rooms 
+<li>@who  - list room users 
+<li>@users  - list logged in users 
+<li>@create {room}  - create and join a new room 
+<li>@join {room}  - join an existing room 
+<li>@leave  - leave a room 
+<li>@where  - show current room name 
+<li>@passwd  - update password
+<li>@logout  - logout
+</ul>
+
+<p>Commands available only to room master:</p>
+
+<ul>
+<li>@public  - set room as public 
+<li>@private  - set room as private. Only invited user can enter a private room.
+<li>@master  - assign another room user as master. There is only one room master at a time.
+<li>@kick  - kick a user out of current room 
+<li>@max {max_size}  - set room max size. 0 or negative means no limit. 
+</ul>
+
+
+<h2>Settings</h2>
+
+The settings panel can be opened by moving mouse over the settings icon at bottom right
+corner of the chatroom. The choices include: 
+
+<ul>
+<li>Send text on Enter - if checked, the message is sent when the user presses Enter key; 
+<br/>otherwise, a "Send Message" button should be clicked to send a message.
+<br/>The first way sends one line at a time. The second way can send multiple lines at a time.
+<li>Set background image.
+<li>Select History - select all chatroom contents. 
+<br/>This is useful when the user wants to copy and paste the chatroom contents.
+<li>Clear History - clear chatroom contents.
+<li>Logout - logout from chatroom.
+</ul>
+
+
+<div id="footer">
+<hr/>
+<p style="font-size:10pt;">Copyright &copy; 2015 by X.C.</p>
+</div>
+
+</body>
+</html>

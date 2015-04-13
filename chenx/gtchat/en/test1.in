@@ -1,0 +1,117 @@
+#
+# Single user test. 
+# Note: server should be restarted to be in clean state.
+#
+
+# blank
+#
+# test register
+#
+{"cmd":"register","usr":"user1","pwd":"pwd1abcd", "tracker":"1"}
+out: {"status": "ok", "last_cmd": "register", "cmd": "c_response", "tracker": "1", "msg": "user 'user1' is registerd"}
+
+{"cmd":"register","usr":"user1","pwd":"pwd1abcd", "tracker":"2"}
+out: {"status": "error", "last_cmd": "register", "cmd": "c_response", "tracker": "2", "msg": "this username is not available"}
+
+{"cmd":"register","usr":"user2","pwd":"pwd1abcd", "tracker":"3"}
+out: {"status": "ok", "last_cmd": "register", "cmd": "c_response", "tracker": "3", "msg": "user 'user2' is registerd"}
+
+{"cmd":"register","usr":"user3","pwd":"pwd1abcd", "tracker":"4"}
+out: {"status": "ok", "last_cmd": "register", "cmd": "c_response", "tracker": "4", "msg": "user 'user3' is registerd"}
+
+# blank
+#
+# test login
+#
+{"cmd":"login", "type":"reg", "usr":"user1", "pwd":"pwd1abcd"}
+out: {"status": "ok", "last_cmd": "login", "cmd": "c_response", "tracker": "0", "msg": "user 'user1' is logged in"}
+
+{"cmd":"login", "type":"reg", "usr":"user1", "pwd":"pwd1abcd"}
+out: {"status": "error", "last_cmd": "login", "cmd": "c_response", "tracker": "0", "msg": "user user1 already logged in from this connection"}
+
+# blank
+# user2 will kick out user1 since this is from the same connection.
+{"cmd":"login", "type":"reg", "usr":"user2", "pwd":"pwd1abcd"}
+out: {"status": "ok", "last_cmd": "login", "cmd": "c_response", "tracker": "0", "msg": "user 'user2' is logged in"}
+
+{"cmd":"admin_show_table", "table":"T_users_active"}
+out: {"status": "ok", "last_cmd": "admin_show_table", "cmd": "c_response", "tracker": "0", "msg": "{\"content\": [\"user2\"], \"table\": \"T_users_active\"}"}
+
+{"cmd":"login", "type":"tmp", "usr":"anonymous1"}
+out: {"status": "ok", "last_cmd": "login", "cmd": "c_response", "tracker": "0", "msg": "user 'anonymous1' is logged in"}
+
+{"cmd":"login", "type":"tmp", "usr":"anonymous2"}
+out: {"status": "ok", "last_cmd": "login", "cmd": "c_response", "tracker": "0", "msg": "user 'anonymous2' is logged in"}
+
+{"cmd":"login", "type":"tmp", "usr":"anonymous1"}
+out: {"status": "ok", "last_cmd": "login", "cmd": "c_response", "tracker": "0", "msg": "user 'anonymous1' is logged in"}
+
+# blank
+#
+# Check current database status
+#
+{"cmd":"admin_show_table", "table":"T_users"}
+out: {"status": "ok", "last_cmd": "admin_show_table", "cmd": "c_response", "tracker": "0", "msg": "{\"content\": {\"user2\": \"pwd1abcd\", \"user3\": \"pwd1abcd\", \"user1\": \"pwd1abcd\"}, \"table\": \"T_users\"}"}
+
+{"cmd":"admin_show_table", "table":"T_users_active"}
+out: {"status": "ok", "last_cmd": "admin_show_table", "cmd": "c_response", "tracker": "0", "msg": "{\"content\": [\"anonymous1\"], \"table\": \"T_users_active\"}"}
+
+{"cmd":"admin_show_table", "table":"T_rooms"}
+out: {"status": "ok", "last_cmd": "admin_show_table", "cmd": "c_response", "tracker": "0", "msg": "{\"content\": [], \"table\": \"T_rooms\"}"}
+
+# blank
+# Test whisper. should fail since cannot whisper to oneself.
+{"cmd":"whisper", "target_user":"anonymous1", "msg":"I'm whispering ..."}
+out: {"status": "error", "last_cmd": "whisper", "cmd": "c_response", "tracker": "0", "msg": "a user cannot whisper to self"} 
+
+# blank
+# Test whisper. should fail since cannot whisper to non-existing user.
+{"cmd":"whisper", "target_user":"user2", "msg":"I'm whispering ..."}
+out: {"status": "error", "last_cmd": "whisper", "cmd": "c_response", "tracker": "0", "msg": "Invalid user name 'user2'"}
+
+# blank
+# Test broadcast
+{"cmd":"broadcast", "msg":"this is a broadcast ..."}
+out: {"status": "ok", "last_cmd": "broadcast", "cmd": "c_response", "tracker": "0", "msg": "message is broadcasted"}
+
+# blank
+# Test create_room
+{"cmd":"create_room", "room_name":"room1"}
+out: {"status": "ok", "last_cmd": "create_room", "cmd": "c_response", "tracker": "0", "msg": "user 'anonymous1' has created room 'room1'"}
+
+# blank
+# Test invite people. should fail since the other user does not exist.
+{"cmd":"invite", "room_name":"room1", "invitee":"user2"}
+out: {"status": "error", "last_cmd": "invite", "cmd": "c_response", "tracker": "0", "msg": "Invalid user name 'user2'"}
+
+# blank
+# Test invest self. should fail since cannot invite self.
+{"cmd":"invite", "room_name":"room1", "invitee":"anonymous1"}
+out: {"status": "error", "last_cmd": "invite", "cmd": "c_response", "tracker": "0", "msg": "invitee 'anonymous1' is already in room 'room1'"}
+
+# blank
+# Test join room. should fail since already in room.
+{"cmd":"join_room", "room_name":"room1"}
+out: {"status": "error", "last_cmd": "join_room", "cmd": "c_response", "tracker": "0", "msg": "user 'anonymous1' is already in room 'room1'"}
+
+# blank
+# Test join non-existing room. should fail.
+{"cmd":"join_room", "room_name":"room2"}
+out: {"status": "error", "last_cmd": "join_room", "cmd": "c_response", "tracker": "0", "msg": "Room 'room2' does not exist"}
+
+# blank
+# Test speak. should get server response.
+{"cmd":"speak", "room_name":"room1", "msg":"to room1 only"}
+out: {"status": "ok", "last_cmd": "speak", "cmd": "c_response", "tracker": "0", "msg": "message is sent"}
+
+# blank
+# Test leave room
+{"cmd":"leave_room", "room_name":"room1"}
+out: {"status": "ok", "last_cmd": "leave_room", "cmd": "c_response", "tracker": "0", "msg": "user 'anonymous1' left room 'room1'"}
+
+# blank
+# Test logout 
+{"cmd":"logout"}
+out: {"status": "ok", "last_cmd": "logout", "cmd": "c_response", "tracker": "0", "msg": "user 'anonymous1' logout"}
+
+

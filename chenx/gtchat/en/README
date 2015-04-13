@@ -1,0 +1,527 @@
+
+=== GTChat - Chatroom based on Websocket ===
+
+By: X. Chen
+Created on: 3/18/2015
+Last modified: 4/8/2015
+
+
+== About ==
+
+This package is a chatroom implemented using using python/autobahn/twisted websocket. 
+
+This is extended from the previous broadcastdemo package, and will be a testing client for the gametheory server. 
+The concept is to build a simplified and specific server, and a fully functioning client based on this. The client
+can can be used to test the more complex and generic gametheory server.
+
+Basically, it's a chatroom: when server is started, a client can connect to the server and join a room,
+then send message to all other clients. 
+
+This can be easily extended to other multi-user games, from 2 players to any number of players.
+
+
+== Server API ==
+
+Communication is done in Json. 
+
+No persistence is used at this time, user data is cached in memory.
+
+API commands: 
+register, login, update_pwd, 
+get_room_list, get_user_list, get_room_user_list
+create_room, invite, invite_reply, join_room, leave_room, 
+speak, whisper, broadcast, logout
+admin_show_table
+
+-- register
+{"cmd":"register","usr":"username","pwd":"password"}
+
+Password should be at least 8 chars in length.
+
+In case of mobile user, usr/pwd can be replaced by uuid. 
+But often the user also will pick up a nickname (which servers as usr here).
+
+-- login
+# server expects to receive:
+For regisered user:
+{"cmd":"login", "type":"reg", "usr":"user1","pwd":"password"}
+
+For unregistered temporary user:
+{"cmd":"login", "type":"tmp", "usr":"user2"}
+
+# server will send to this client:
+ok(session_id, user list, room list)/fail
+# server also will send this event notification to all active users.
+
+-- update_pwd
+# only a logged in user can change his/her password.
+# server expects to receive:
+{"cmd":"update_pwd", "pwd":"old_pwd", "new_pwd":"pwd", "new_pwd2":"pwd"}
+
+# server will send to this client:
+ok/fail
+
+-- api_get_room_list
+# get list of all active rooms.
+# server expects to receive:
+{"cmd":"get_room_list"}
+
+-- api_get_user_list
+# get list of all active users.
+# server expects to receive:
+{"cmd":"get_user_list"}
+
+-- api_get_room_user_list
+# get list of users in a room.
+# server expects to receive:
+{"cmd":"get_room_user_list", "room_name":"room1"}
+
+-- create_room
+# server expects to receive:
+{"cmd":"create_room", "room_name":"room1"}
+
+# server will send to this client:
+ok (the client should add user to this new chatroom)/fail
+# server will send to all clients:
+new room created.
+
+-- invite
+# server expects to receive:
+{"cmd":"invite", "room_name":"room1", "invitee":"user2"}
+# conditions: usr is in room, invitee is not.
+
+# server will send to invitee:
+{"cmd":"c_invited", "msg":msg, "room_name":room_name, "usr":usr}
+# c_invited is a client side API call, that client should handle for properly display.
+
+-- invite_reply
+# server expects to receive:
+{"cmd":"invite_reply", "inviter":"user", "room_name":"room1", "reply":reply}
+# reply code can one of Y (yes), N (no) , L (later).
+
+# server will send to inviter:
+{"cmd":"c_invite_reply", "msg":reply, "usr":usr}
+# c_invited_reply is a client side API call, that client should handle for properly display.
+# for chatroom, c_invited_reply also will redirect user to the invited room, if reply is yes.
+
+-- join_room
+# server expects to receive:
+{"cmd":"join_room", "room_name":"room1"}
+# condition: usr is not in the room yet.
+
+# server will send to this client:
+ok (room information: users in room, the client then will put this user to the room)/fail
+# server will send to all clients in this room:
+new client in room
+
+-- leave_room
+# server expects to receive:
+{"cmd":"leave_room", "room_name":"room1"}
+# condition: usr is in the room.
+
+# server will send to this client:
+ok (the client will remove the user from the room)/fail (optional)
+# server will send to all clients in this room:
+new client in room
+
+-- speak
+# server expects to receive:
+{"cmd":"speak", "room_name":"room1", "msg":"to room1 only"}
+
+# server will send to this client:
+ok/fail (optional)
+# server will send to all other clients in this room:
+{"cmd":"c_speak", "msg":msg, "usr":usr, "room_name":room_name}
+c_speak is a client side API call, that should be handled by client for proper display.
+
+-- whisper
+# this is to send private message to a singler person anywhere, not tied to a room.
+# server expects to receive:
+{"cmd":"whisper", "target_user":usr, "msg":"message"}
+
+-- broadcast 
+# this should be available only to users with broadcast permission, such as admin.
+# server expects to receive:
+{"cmd":"broadcast", "msg":"message"}
+
+# server will send to all clients
+message.
+
+-- admin_show_table
+# this should be available only to admin, for admin/testing purposes.
+# server expects to receive:
+{"cmd":"admin_show_table", "table":"table_name"}
+
+-- logout
+# server expects to receive:
+{"cmd":"logout"}
+
+# For a proper exit, the user should be removed from chat room if any, 
+# and also clear its entry in storage.
+
+# server will send this update to clients in the room
+user exit from room.
+# server will send this update to all clients.
+
+
+-- Optional server API field: tracker --
+
+In all the server API calls defined above, they can also include an optional "tracker" field,
+which can be any string, usually can be a label or a sequence number.
+
+This is used by the client to recognize server's reply message to his request. The client can
+include a "tracker" field in his request, the same tracker will be included in the reply
+message from the server.
+
+If the client does not include a "tracker" field, server will take it as "0" and always
+send "0" as the value of tracker in response messages.
+
+
+-- Examples --
+
+>>> General test.
+
+{"cmd":"register","usr":"user1","pwd":"pwd1abcd"}
+{"cmd":"register","usr":"user2","pwd":"pwd1efgh"}
+{"cmd":"update_pwd", "pwd":"pwd1abcd", "new_pwd":"12345678", "new_pwd2":"12345678"}
+{"cmd":"login", "type":"reg", "usr":"user2","pwd":"pwd1efgh"}
+{"cmd":"login", "type":"tmp", "usr":"user2"}
+
+{"cmd":"create_room", "room_name":"nerdhaus"}
+
+{"cmd":"login", "type":"tmp", "usr":"anonymous"}
+{"cmd":"join_room", "room_name":"nerdhaus"}
+{"cmd":"leave_room", "room_name":"nerdhaus"}
+
+{"cmd":"speak", "room_name":"nerdhaus", "msg":"to nerdhaus"}
+
+>>> test chatroom boardcast
+
+# client 1
+{"cmd":"register","usr":"user1","pwd":"pwd1abcd"}
+{"cmd":"login", "type":"reg", "usr":"user1", "pwd":"pwd1abcd"}
+{"cmd":"create_room", "room_name":"nerdhaus"}
+
+# client 2
+{"cmd":"register","usr":"user2","pwd":"pwd1abcd"}
+{"cmd":"login", "type":"reg", "usr":"user2", "pwd":"pwd1abcd"}
+{"cmd":"join_room", "room_name":"nerdhaus"}
+
+# client 3
+{"cmd":"register","usr":"user3","pwd":"pwd1abcd"}
+{"cmd":"login", "type":"reg", "usr":"user3", "pwd":"pwd1abcd"}
+
+# only client 2 should receive this. (client 1 sent this himself)
+{"cmd":"speak", "room_name":"nerdhaus", "msg":"to nerdhaus only"}
+
+# only client 3 should receive this, since he is the one being invited.
+{"cmd":"invite", "room_name":"nerdhaus", "invitee":"user3"}
+
+>>> test invite
+
+client 1:
+{"cmd":"register","usr":"user1","pwd":"pwd1abcd"}
+{"cmd":"login", "type":"reg", "usr":"user1", "pwd":"pwd1abcd"}
+{"cmd":"create_room", "room_name":"nerdhaus"}
+
+client 2:
+{"cmd":"register","usr":"user2","pwd":"pwd1abcd"}
+{"cmd":"login", "type":"reg", "usr":"user2", "pwd":"pwd1abcd"}
+
+client 3:
+{"cmd":"register","usr":"user3","pwd":"pwd1abcd"}
+{"cmd":"login", "type":"reg", "usr":"user3", "pwd":"pwd1abcd"}
+
+client 1:
+{"cmd":"invite", "invitee":"user2", "room_name":"nerdhaus"}
+# only client2 should receive this.
+
+client 2:
+{"cmd":"join_room", "room_name":"nerdhaus"}
+{"cmd":"speak", "room_name":"nerdhaus", "msg":"to nerdhaus"}
+
+>>> test api_whisper: 
+{"cmd":"whisper","target_user":"user2","msg":"I'm whispering .. "}
+      
+>>> api_broadcast: 
+{"cmd":"broadcast", "msg":"I'm broadcasting .. "}
+      
+>>> api_admin_show_table: 
+# for the purpose of returning table contents to client, for admin/testing purpose only.
+{"cmd":"admin_show_table", "table":"table_name"}
+{"cmd":"admin_show_table", "table":"T_users"}
+{"cmd":"admin_show_table", "table":"T_users_active"}
+{"cmd":"admin_show_table", "table":"T_users_src"}
+{"cmd":"admin_show_table", "table":"T_rooms"}
+
+
+== Security Issues ==
+
+# Right now there is this problem: multiple-login: a user login multiple times.
+# Ideally it should be solved this way: if a user login from a new location,
+# the previous one should be kicked out.
+#
+# Also for user valication, each time should validate his src also:
+# i.e., only when both usr and src match, it's valid. This prevents
+# identity spoofing.
+#
+# Basically:
+# - from one src there can be only one active user
+# - one active user can be from only one src, or alternatively can be logged in from multiple places.
+
+#
+# Considerations
+#
+
+(usr, src) is a pair that should match for a single user.
+
+1) If from the same src come 2 or more different usrs, that can be identity spoofing.
+
+In this case, the second usr's messages should be dropped, and a warning returned 
+(or nothing returned at all, to save bandwidth).
+
+2) If from the same usr comes from different srcs, the user may be logged in from different locations.
+
+In this case, one can either:
+a) not allow it, auto logout from the first src,
+b) allow it, and maybe attach a seq_no to the latter connections.
+
+Well, ideally, a person should be able to log in multiple sessions, like in QQ and gtalk, 
+so he can be in multiple rooms at the same time. So, maybe should use src as index key, not usr.  
+If a user log in with different session, he will have different src (port number).
+
+Then in T_users_active, use src as key, username becomes a field value. Can assign a session_id to be used.
+
+So for every request from the same src, use the associated username for all requests; 
+unless it's a login request with different username, then it may be a spoof, 
+just either 1) drop new login request, or 2) terminate old session. 
+Guess will go with the 2nd case, since it's always possible a user have different accounts, 
+but a previous account may not be shutdown due to networking issues.  
+For case 2), also there is no need to unregister the client, just flush and replace 
+the user's information in T_users_active, and kick the previous user out from all chatrooms if any.
+
+The only issue with this, is that if the invited person has multiple login sessions, 
+which one to invite? A easy answer is: any one of the active sessions.
+A probable good answer is: the last logged in session, since it may be the most active.
+So can use a hash of usr=>src for this, which only needs to keep src of the user's lastest session.
+
+
+#
+# Summary on the final design: (this design has been fully implemented)
+#
+ * Allow a user to have multiple login sessions
+ * Each session is identified by the connection src (i.e., src == client.peer == tcp4:ip:port).
+   This essentially means that the connection src (tcp4:ip:port) is used as a session_id that cannot be spoofed.
+ * Only 'register' and 'login' requests provide user name, all other requests will obtain user name from src.
+ * This way, one cannot spoof the identity of another user by attaching the user name in request as in previous design.
+ * If a second 'login' request comes in an active connection src, then:
+   1) if user name is the same, then abort the login request, since the user is already logged in.
+   2) if user name is different, this probably is the same user is logging in with a different account, 
+      and didn't properly shutdown the previous session. In this case, clean up the previous session
+      (drop the previous account from chatroom, and clean up relevant storage), and initialize the new session.
+
+
+== Client API ==
+
+Client API is the format of requests that a client receives from the server.
+
+These types are defined: c_response
+
+-- c_response
+# response message the server replies to client's request
+# client expects to receive:
+{"cmd":"c_response", "status":status, "last_cmd":last_cmd, "msg":msg, "tracker":tracker}
+# status = ok|error, 
+# last_cmd is the cmd of client's request, can be any one defined in server API.
+
+-- c_speak
+# in a room, a user speaks, the server gets the speak message and then broadcast to other users in the room
+# this broadcast message in the room uses the c_speak command.
+# client expects to receive:
+{"cmd":"c_speak", "msg":msg, "usr":usr, "room_name":room_name, "tracker":tracker}
+
+-- c_whisper
+# a user can send a private message to another user any time, not limited to user in the same room
+# the client will decide how to display this to the receiver.
+# client expects to receive:
+{"cmd":"c_whisper", "msg":msg, "usr":usr, "tracker":tracker}
+
+-- c_broadcast
+# this is a broadcast message sent to all users currently online, not limited to users in a room
+# the client will decide how to display this to the receiver.
+# client expects to receive:
+{"cmd":"c_broadcast", "msg":msg, "usr":usr, "tracker":tracker}
+
+-- c_invited
+# a user invites another user into a room by 'invite' command. 
+# the server, after receives such a request, send a c_invited message to the invited user.
+# the client expects to receive:
+{"cmd":"c_invited", "msg":msg, "room_name":room_name, "usr":usr, "tracker":tracker}
+
+-- c_event
+# For message to be sent certain group of users that user usr has done something defined by type:
+# 1) join_room - send to all users in the room
+# 2) leave_room - send to all users in the room
+# 3) room_created - sent to all users
+# 4) room_gone - sent to all users
+# 5) login - send to all users 
+# 6) logout - send to all users
+# the client expects to receive:
+{"cmd":"c_event", "type":type, "user":usr, "tracker":tracker}
+
+-- the optional field "tracker" --
+
+A client can include an optional "tracker" field in his requests to the server (see server API),
+the server will include the same value as "tracker" when sending back response to the client.
+
+
+== Code ==
+
+client.py and server.py are from:
+[1] https://github.com/tavendo/AutobahnPython/tree/master/examples/twisted/websocket/broadcast
+[2] http://autobahn.ws/python/websocket/examples.html
+
+client.html is from:
+[3] https://github.com/tavendo/AutobahnPython/blob/master/examples/twisted/websocket/echo/client.html
+
+Modified client.py to add the function of getting console stdio input from user.
+Modified server.py to avoid sending to self when broadcast, and added class API_Chatroom.
+Modified client.html to add the textbox for user input, and modified output format.
+
+
+== testing ==
+
+Testing can be done with test.py, which creates process(es) of client.py, and sends requests to server.
+It compares returned output and expected output to make testing judgement. 
+
+usage: test.py {test_filename} [-v|-f]
+
+test_filename is mandatory.
+option switches are: 
+ -v: verbose, print all test cases.
+ -f: verbose subcategory, print failed test cases only.
+
+This script reads from given test file.
+The test file contains a series of test cases.
+
+The lines in the test file are defined as:
+- Blank lines are ignored.
+- If a line starts with "#", then it's a comment line, and will be printed as is.
+- If a line starts with "#" and then only "blank" after this, it will print
+  an empty line. There can be spaces between "#" and "blank".
+- If a line starts with "out:", then it's a test case expected output.
+- Otherwise, it is a test case input to be sent to server as a command.
+- The number of test cases input and output must equal.
+
+The command lines will be sent to server as test cases, response will be read, 
+and compared to expected output. In the end, a summary will be printed about
+the testing.
+
+
+== Usage ==
+
+To start server:
+$ ./s.sh
+
+To start client:
+$ ./c.sh
+
+To exit server or client from console, press Ctrl-C.
+
+To start client.html in a browser:
+open client.html in a browser.
+
+
+== TO DO ==
+
+- testing framework:
+  - provide suites of test cases (in progress)
+  - multiple clients test
+- api call update_pwd
+- api call whisper
+- api call broadcast
+- api call to get active users list (done)
+- api call to query status of a sepecific user.
+- api call to get active room list (done)
+- api call to query status of a sepecific room.
+- keep session status when user refresh web page client.html.
+- client.html (in progress)
+- client.py (optional)
+
+
+== Change Log ==
+
+-- 4/9/2015 --
+
+* improve UI;
+* added RoomUserList;
+* allow multiple login; allow multiple login into one room;
+
+-- 4/8/2015 --
+
+* room creator is not master.
+  * when he exits from room, room master is set back to empty.
+* added @passwd command, and api_update_pwd2 in server.
+* client detect server reset connection and logout user.
+* added rooms/users panel on right side;
+* encode double quote and decode;
+
+-- 3/24/2015 --
+
+* Finished create/leave/join in command line
+* Finished invite/invite_reply
+* UI update.
+
+-- 3/23/2015 --
+
+* UI functions:
+  - display room users (done in console)
+  - display all users (done in console)
+  - display all rooms (done in console)
+  - when a user logs in/out, show msg in status bar. (done)
+* added event login/logout to push to users; 
+* improved client.html: updated UI, and miscellaneous.
+
+-- 3/22/2015 --
+
+* added server api_get_room_list.
+* added server api_get_user_list.
+* fixed a bug: when unregister a client, should also do logout for that user.
+  otherwise that user's session lingers on.
+  from another point of view, this can be a way of continuing persistent connection
+  when a user refreshes his page. Such that when a user lost connection, still
+  keep his sessions, when he reconnects, recover the session. This will need
+  server side remember the user's information such as current room, and on
+  client side remembers user status in local_storage.
+* added room_created and room_gone to client side API c_event.
+* html client is working for most part: create_room, join_room, leave_room,
+  speak.
+* now have a console to output debug message. Separate console from chatroom.
+
+-- 3/21/2015 --
+
+* added c_event client api call. 
+* change server api_exit to api_logout, to correspond to api_login.
+* change test.py, to allow different levels of verbose: all/none/fail
+* added test cases to test1.in, and fixed bugs found by test1.in
+* started working on html client. Almost done with register/login/logout.
+
+-- 3/20/2015 --
+* fixed identity spoofing problem (done)
+* added api calls:
+  - api_whisper: (done)
+  - api_broadcast: (done)
+  - api_admin_show_table: (done)
+* added tracker to each request msg. (done)
+* added response message c_response to each server API call, to send back to client. (done)
+* added unit testing utility test.py.
+
+-- 3/19/2015 --
+* Finished change to use src to index T_users_active instead of username, to avoid identity spoofing.
+* As a consequence, now only commands 'register' and 'login' need to provide user name.
+* Also added api_exit API call. 
+
+-- 3/18/2015 --
+Creation.
+
+
