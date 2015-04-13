@@ -454,7 +454,7 @@
              e.scrollTop = e.scrollHeight;
          }
          function clearChatroom() {
-             if (! confirm('Are you sure to clear chat history?')) { return; }
+             if (! confirm(C_MSG['87'])) { return; }
              document.getElementById("chatroom").innerHTML = '';
          }
          function selectText(containerid) {
