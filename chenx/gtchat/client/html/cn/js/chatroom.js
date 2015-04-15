@@ -7,13 +7,15 @@
          var socket = null;
          var isopen = false;
          var current_cmd = '';  // keep track of current status.
+         var current_msg = '';  // keep track of current message.
+         var arrow_mode = false; // to flip input by arrow keys.
          var current_tid = '';  // keep track of current tracker id.
          var current_user = ''; // keep track of current logged in user.
          var current_room = ''; // keep track of current room.
          var is_room_master = false;  // Whether this user is room master.
          var request_src = ''; // used for command line requests @rooms, @users.
          var bgImg_downloaded = false;
-         var bgImgID = 0;
+         var bgImgID = 2;
 
          // If this is not empty, the server textbox and connect button will
          // be hidden, and when the page is loaded it'll automatically connect to 
@@ -37,6 +39,29 @@
          function send_data(data) {
              appendConsole('==> Send: ' + data);
              socket.send(data);
+         }
+
+         // if server message contains a message code, get it.
+         // note: indexOf() returns -1 if not exist.
+         // but here if server message contains '|', its position always > 0.
+         function getJoMsg(v) {
+             var code;
+             var msg;
+             //return {'code' : '', 'msg' : v};
+
+             if (v.indexOf('|') > 0) {
+                 v = v.split('|');
+                 code = v[0];
+                 msg = (typeof S_MSG[code] == 'undefined') ? v[1] : S_MSG[code];
+             } else {
+                 code = ''; // code does not exist.
+                 msg = v;
+             }
+
+             return {
+                 'code' : code,
+                 'msg'  : msg
+             };
          }
 
          function doDisconnect(startup) {
@@ -168,6 +193,7 @@
                    msg = v;
                }
 
+               current_msg = msg;
                current_tid = make_tracker();
 
                if (msg == '@rooms') {
@@ -425,10 +451,29 @@
              return document.getElementById("cbSendMode").checked;
          }
          function checkEnter(e) {
-             if (! sendTextOnEnter()) return;
-
              // look for window.event in case event isn't passed in
              e = e || window.event;
+
+             // If current txtMsg is empty, press arrow keys to flip
+             // in/out the last input for convenience.
+             if ($('#txtMsg').val() == '' && (e.keyCode == 38 || e.keyCode == 37)) {
+                 // 38: up arrow, 37: left arrow.
+                 $('#txtMsg').val(current_msg);
+                 arrow_mode = true;
+                 return;
+             }
+             else if (arrow_mode == true && (e.keyCode == 40 || e.keyCode == 39)) {
+                 // 40: down array, 39: right arrow.
+                 $('#txtMsg').val('');
+                 arrow_mode = false;
+                 return;
+             }
+
+             // Do not send text on Enter when either:
+             // 1) not in sendTextOnEnter mode or 2) Shift key is pressed.
+             // Shift-Enter is a convention for not sending text, e.g., in gtalk.
+             if (! sendTextOnEnter() || e.shiftKey) return;
+
              if (e.keyCode == 13) { 
                  // prevent new line from being entered.
                  e.returnValue = false;
@@ -720,35 +765,42 @@
          function handle_c_response(jo) {
              var status = jo.status;
              var last_cmd = jo.last_cmd;
-             var msg = jo.msg;
+             //var msg = jo.msg;
+             var jo_msg = getJoMsg(jo.msg);
+             var code = jo_msg.code;
+             var msg = jo_msg.msg;
              var tracker = jo.tracker;
              //dump(':response: ' + status + ', ' + last_cmd + ', ' + msg + ',' + tracker);
 
              if (status == 'ok') { updateInfo(''); }
 
-             if (last_cmd == 'register')         { handle_cr_register(status, msg, tracker); }
-             else if (last_cmd == 'login')       { handle_cr_login(status, msg, tracker); }
-             else if (last_cmd == 'update_pwd')  { handle_cr_update_pwd(status, msg, tracker); }
-             else if (last_cmd == 'get_room_list')  { handle_cr_get_room_list(status, msg, tracker); }
-             else if (last_cmd == 'get_user_list')  { handle_cr_get_user_list(status, msg, tracker); }
-             else if (last_cmd == 'get_room_user_list')  { handle_cr_get_room_user_list(status, msg, tracker); }
-             else if (last_cmd == 'create_room') { handle_cr_create_room(status, msg, tracker); }
-             else if (last_cmd == 'invite')      { handle_cr_invite(status, msg, tracker); }
-             else if (last_cmd == 'invite_reply')      { handle_cr_invite_reply(status, msg, tracker); }
-             else if (last_cmd == 'master')      { handle_cr_master(status, msg, tracker); }
-             else if (last_cmd == 'kick')      { handle_cr_kick(status, msg, tracker); }
-             else if (last_cmd == 'max')      { handle_cr_max(status, msg, tracker); }
-             else if (last_cmd == 'set_room_permission') { handle_cr_set_room_permission(status, msg, tracker); }
-             else if (last_cmd == 'join_room')   { handle_cr_join_room(status, msg, tracker); }
-             else if (last_cmd == 'leave_room')  { handle_cr_leave_room(status, msg, tracker); }
-             else if (last_cmd == 'speak')       { handle_cr_speak(status, msg, tracker); }
-             else if (last_cmd == 'whisper')     { handle_cr_whisper(status, msg, tracker); }
-             else if (last_cmd == 'broadcast')   { handle_cr_broadcast(status, msg, tracker); }
-             else if (last_cmd == 'admin_show_table') { handle_cr_admin_show_table(status, msg, tracker); }
-             else if (last_cmd == 'logout')      { handle_cr_logout(status, msg, tracker); }
+             if (last_cmd == 'register')         { handle_cr_register(status, msg, code, tracker); }
+             else if (last_cmd == 'login')       { handle_cr_login(status, msg, code, tracker); }
+             else if (last_cmd == 'update_pwd')  { handle_cr_update_pwd(status, msg, code, tracker); }
+             else if (last_cmd == 'update_pref')  { handle_cr_update_pref(status, msg, code, tracker); }
+             else if (last_cmd == 'get_room_list')  { handle_cr_get_room_list(status, msg, code, tracker); }
+             else if (last_cmd == 'get_user_list')  { handle_cr_get_user_list(status, msg, code, tracker); }
+             else if (last_cmd == 'get_room_user_list')  { handle_cr_get_room_user_list(status, msg, code, tracker); }
+             else if (last_cmd == 'create_room') { handle_cr_create_room(status, msg, code, tracker); }
+             else if (last_cmd == 'invite')      { handle_cr_invite(status, msg, code, tracker); }
+             else if (last_cmd == 'invite_reply')      { handle_cr_invite_reply(status, msg, code, tracker); }
+             else if (last_cmd == 'master')      { handle_cr_master(status, msg, code, tracker); }
+             else if (last_cmd == 'kick')      { handle_cr_kick(status, msg, code, tracker); }
+             else if (last_cmd == 'max')      { handle_cr_max(status, msg, code, tracker); }
+             else if (last_cmd == 'set_room_permission') { handle_cr_set_room_permission(status, msg, code, tracker); }
+             else if (last_cmd == 'join_room')   { handle_cr_join_room(status, msg, code, tracker); }
+             else if (last_cmd == 'leave_room')  { handle_cr_leave_room(status, msg, code, tracker); }
+             else if (last_cmd == 'speak')       { handle_cr_speak(status, msg, code, tracker); }
+             else if (last_cmd == 'whisper')     { handle_cr_whisper(status, msg, code, tracker); }
+             else if (last_cmd == 'broadcast')   { handle_cr_broadcast(status, msg, code, tracker); }
+             else if (last_cmd == 'admin_show_table') { handle_cr_admin_show_table(status, msg, code, tracker); }
+             else if (last_cmd == 'logout')      { handle_cr_logout(status, msg, code, tracker); }
          }
          function handle_c_speak(jo) {
-             var msg = jo.msg;
+             //var msg = jo.msg;
+             var jo_msg = getJoMsg(jo.msg);
+             var code = jo_msg.code;
+             var msg = jo_msg.msg;
              var usr = jo.usr;
              var room_name = jo.room_name;
              var tracker = jo.tracker;
@@ -758,19 +810,28 @@
              doSpeak(msg, usr, false);
          }
          function handle_c_whisper(jo) {
-             var msg = jo.msg;
+             //var msg = jo.msg;
+             var jo_msg = getJoMsg(jo.msg);
+             var code = jo_msg.code;
+             var msg = jo_msg.msg;
              var usr = jo.usr;
              var tracker = jo.tracker;
              dump(':whisper: ' + msg + ',' + usr + ',' + tracker);
          }
          function handle_c_broadcast(jo) {
-             var msg = jo.msg;
+             //var msg = jo.msg;
+             var jo_msg = getJoMsg(jo.msg);
+             var code = jo_msg.code;
+             var msg = jo_msg.msg;
              var usr = jo.usr;
              var tracker = jo.tracker;
              dump(':boradcast: ' + msg + ',' + usr + ',' + tracker);
          }
          function handle_c_invited(jo) {
-             var msg = jo.msg;
+             //var msg = jo.msg;
+             var jo_msg = getJoMsg(jo.msg);
+             var code = jo_msg.code;
+             var msg = jo_msg.msg;
              var usr = jo.usr;
              var room_name = jo.room_name;
              var tracker = jo.tracker;
@@ -787,7 +848,10 @@
              $('#txtInviteReply').focus();
          }
          function handle_c_invite_reply(jo) {
-             var msg = jo.msg;
+             //var msg = jo.msg;
+             var jo_msg = getJoMsg(jo.msg);
+             var code = jo_msg.code;
+             var msg = jo_msg.msg;
              var usr = jo.usr;
              var tracker = jo.tracker;
              dump(':invited: ' + msg + ',' + usr + ',' + tracker);
@@ -946,7 +1010,7 @@
          }
 
          /* handle response messages. */
-         function handle_cr_register(status, msg, tracker) {
+         function handle_cr_register(status, msg, code, tracker) {
              if (current_cmd != "register" || current_tid != tracker) {
                  dump(C_MSG['45']);
                  dump('cur_cmd = ' + current_cmd + ', cur_tid = ' + current_tid);
@@ -959,14 +1023,14 @@
                  alert(msg);
                  cancelFormReg();
              } else {
-                 msg = C_MSG['47'] + msg + '.';
+                 msg = C_MSG['47'] + ': ' + msg + '.';
                  //updateInfo('Register failed: ' + msg + '.', 'error');
                  //appendChatroomError(msg, 'error');
                  alert(msg);
                  document.getElementById('reg_name').focus();
              }
          }
-         function handle_cr_login(status, msg, tracker) {
+         function handle_cr_login(status, msg, code, tracker) {
              //alert('get in. status = ' + status);
              if (current_cmd != "login" || current_tid != tracker) {
                  dump(C_MSG['48']);
@@ -978,7 +1042,14 @@
                  document.getElementById('login_pwd').value = ''; // clear password.
                  // msg is username plus sequence number when the user 
                  // logs in with multple sessions.
-                 current_user = msg;  // $('#login_name').val();
+
+                 var v = msg.split(':');  // msg: user:preference
+                 current_user = v[0];     // $('#login_name').val();
+                 bgImgID = v[1];
+
+                 // set background image dropdown list selected value.
+                 $('#selectBgImg').val(bgImgID);
+
                  var msg_logout = ' [<a href="#" onclick="doLogout();">Logout</a>] ';
                  //$('#div_logout').html(msg_logout);
 
@@ -998,11 +1069,13 @@
                  document.getElementById('login_name').focus();
              }
          }
-         function handle_cr_update_pwd(status, msg, tracker) {
+         function handle_cr_update_pwd(status, msg, code, tracker) {
              if (status != 'ok') {
                  //appendChatroomInfo('Error: ' + msg);
                  alert(C_MSG['52'] + msg);
-                 $('#updatepwd_new').focus();
+
+                 if (code == 30) $('#updatepwd_old').focus(); 
+                 else $('#updatepwd_new').focus(); 
                  return;
              }
 
@@ -1010,8 +1083,17 @@
              alert(C_MSG['53']);
              cancelUpdatePwd();
          }
+         function handle_cr_update_pref(status, msg, code, tracker) {
+             if (status != 'ok') {
+                 appendChatroomInfo('Error: ' + msg);
+                 //alert(C_MSG['52'] + msg); // be silent on this.
+                 return;
+             }
 
-         function handle_cr_get_room_list_console(status, msg, tracker) {
+             appendChatroomInfo(msg);
+         }
+
+         function handle_cr_get_room_list_console(status, msg, code, tracker) {
              if (status != 'ok') {
                  updateInfo(msg, 'error');
                  return;
@@ -1027,9 +1109,9 @@
              msg = arr.sort().join(', ');
              appendChatroomInfo("@rooms: " + msg);
          }
-         function handle_cr_get_room_list(status, msg, tracker) {
+         function handle_cr_get_room_list(status, msg, code, tracker) {
              if (request_src == 'console') {
-                 handle_cr_get_room_list_console(status, msg, tracker);
+                 handle_cr_get_room_list_console(status, msg, code, tracker);
                  request_src = '';
                  return;
              }
@@ -1115,7 +1197,7 @@
              );
          }
 
-         function handle_cr_get_user_list_console(status, msg, tracker) {
+         function handle_cr_get_user_list_console(status, msg, code, tracker) {
              if (status != 'ok') {
                  updateInfo(msg, 'error');
                  return;
@@ -1124,9 +1206,9 @@
              msg = msg.split(',').sort().join(', ');
              appendChatroomInfo("@users: " + msg);
          }
-         function handle_cr_get_user_list(status, msg, tracker) {
+         function handle_cr_get_user_list(status, msg, code, tracker) {
              if (request_src == 'console') {
-                 handle_cr_get_user_list_console(status, msg, tracker);
+                 handle_cr_get_user_list_console(status, msg, code, tracker);
                  request_src = '';
                  return;
              }
@@ -1150,7 +1232,7 @@
              ).attr('title', title);
          }
 
-         function handle_cr_get_room_user_list(status, msg, tracker) {
+         function handle_cr_get_room_user_list(status, msg, code, tracker) {
              if (status != 'ok') {
                  updateInfo(msg, 'error');
                  return;
@@ -1175,7 +1257,7 @@
              }
              request_src = '';
          }
-         function handle_cr_create_room(status, msg, tracker) {
+         function handle_cr_create_room(status, msg, code, tracker) {
              request_src = '';
              if (status != 'ok') {
                  //updateInfo(msg, 'error');
@@ -1199,14 +1281,14 @@
              //disableChatroom(false);
             
              $('#div_room').html(C_MSG['60'] + room_name);
-             appendChatroomInfo(C_MSG['61'] + room_name + '.');
+             appendChatroomInfo(C_MSG['61'] + room_name);
              appendConsole('You created and joined room: ' + room_name);
 
              showRoomUsers(room_name);
          }
-         function handle_cr_invite(status, msg, tracker) {
+         function handle_cr_invite(status, msg, code, tracker) {
              if (status != 'ok') {
-                 appendChatroomInfo(msg);
+                 appendChatroomInfo(current_msg + ': ' + msg);
                  return;
              }
              var v = msg.split(':');
@@ -1219,7 +1301,7 @@
              var invitee = v[0];
              appendChatroomInfo(C_MSG['63'] + invitee + C_MSG['64']);
          }
-         function handle_cr_invite_reply(status, msg, tracker) {
+         function handle_cr_invite_reply(status, msg, code, tracker) {
              if (status != 'ok') {
                  appendChatroomInfo(msg);
                  return;
@@ -1237,11 +1319,11 @@
 
              if (reply == 'Y') {
                  msg = C_MSG['65'] +
-                       inviter + C_MSG['66'] + room + '.';
+                       inviter + C_MSG['66'] + room;
              }
              else if (reply == 'N') {
                  msg = C_MSG['67'] +
-                       inviter + C_MSG['66'] + room + '.';
+                       inviter + C_MSG['66'] + room;
              }
              else if (reply == 'L') {
                  msg = C_MSG['68'] +
@@ -1252,9 +1334,9 @@
              appendChatroomInfo(msg);
          }
 
-         function handle_cr_master(status, msg, tracker) {
+         function handle_cr_master(status, msg, code, tracker) {
              if (status != 'ok') {
-                 appendChatroomInfo(msg);
+                 appendChatroomInfo(current_msg + ': ' + msg);
                  return;
              }
              if (tracker != current_tid) {
@@ -1271,15 +1353,15 @@
              var old_master = v[1];
              var room_name = v[2]; // should be the same as current_room.
 
-             msg = C_MSG['71'] + msg + '.';
+             msg = C_MSG['71'] + msg;
              appendChatroomInfo(msg);
              setRoomMaster(new_master, old_master, room_name);
              is_room_master = false; // current_user is no longer room master.
          }
 
-         function handle_cr_kick(status, msg, tracker) {
+         function handle_cr_kick(status, msg, code, tracker) {
              if (status != 'ok') {
-                 appendChatroomInfo(msg);
+                 appendChatroomInfo(current_msg + ': ' + msg);
                  return;
              }
              if (tracker != current_tid) {
@@ -1299,9 +1381,9 @@
              appendChatroomInfo(msg);
          }
 
-         function handle_cr_max(status, msg, tracker) {
+         function handle_cr_max(status, msg, code, tracker) {
              if (status != 'ok') {
-                 appendChatroomInfo(msg);
+                 appendChatroomInfo(current_msg + ': ' + msg);
                  return;
              }
              if (tracker != current_tid) {
@@ -1317,13 +1399,13 @@
              var size = v[0];
              var room_name = v[2]; // should be the same as current_room.
 
-             msg = C_MSG['72'] + size + '.';
+             msg = C_MSG['72'] + size;
              appendChatroomInfo(msg);
          }
 
-         function handle_cr_set_room_permission(status, msg, tracker) {
+         function handle_cr_set_room_permission(status, msg, code, tracker) {
              if (status != 'ok') {
-                 appendChatroomInfo(msg);
+                 appendChatroomInfo(current_msg + ': ' + msg);
                  return;
              }
              if (tracker != current_tid) {
@@ -1335,14 +1417,14 @@
                  return;
              }
 
-             msg = C_MSG['73'] + (msg == '1' ? C_MSG['74'] : C_MSG['75']) + '.';
+             msg = C_MSG['73'] + (msg == '1' ? C_MSG['74'] : C_MSG['75']);
              appendChatroomInfo(msg);
          }
 
-         function handle_cr_join_room(status, msg, tracker) {
+         function handle_cr_join_room(status, msg, code, tracker) {
              if (status != 'ok') {
                  //updateInfo(msg, 'error');
-                 appendChatroomInfo(msg);
+                 appendChatroomInfo(current_msg + ': ' + msg);
                  return;
              }
              if (tracker != current_tid && tracker != 0) { // 0 - from server.
@@ -1372,14 +1454,14 @@
              //disableChatroom(false);
 
              $('#div_room').html(C_MSG['60'] + room_name);
-             appendChatroomInfo(C_MSG['77'] + room_name + '.');
+             appendChatroomInfo(C_MSG['77'] + room_name);
              appendConsole('You joined room: ' + room_name);
 
              showRoomUsers(room_name);
          }
-         function handle_cr_leave_room(status, msg, tracker) {
+         function handle_cr_leave_room(status, msg, code, tracker) {
              if (status != 'ok') {
-                 appendChatroomInfo(msg);
+                 appendChatroomInfo(current_msg + ': ' + msg);
                  return;
              }
              if (tracker != current_tid && tracker != 0) { // 0 - from server.
@@ -1392,7 +1474,7 @@
              }
 
              $('#div_room').html(C_MSG['60']);
-             appendChatroomInfo(C_MSG['59'] + current_room + '.');
+             appendChatroomInfo(C_MSG['59'] + current_room);
 
              $('#spanCreateRoom').show();
 
@@ -1403,7 +1485,7 @@
              is_room_master = false;
              //disableChatroom(true);
          }
-         function handle_cr_speak(status, msg, tracker) {
+         function handle_cr_speak(status, msg, code, tracker) {
              if (status != 'ok') {
                  //updateInfo(msg, 'error');
                  appendChatroom('<font color="red">' + C_MSG['78'] + '(tracker: ' 
@@ -1422,16 +1504,16 @@
                  return;
              }
          }
-         function handle_cr_whisper(status, msg, tracker) {
+         function handle_cr_whisper(status, msg, code, tracker) {
 
          }
-         function handle_cr_broadcast(status, msg, tracker) {
+         function handle_cr_broadcast(status, msg, code, tracker) {
 
          }
-         function handle_cr_admin_show_table(status, msg, tracker) {
+         function handle_cr_admin_show_table(status, msg, code, tracker) {
 
          }
-         function handle_cr_logout(status, msg, tracker) {
+         function handle_cr_logout(status, msg, code, tracker) {
              // basically, won't get this.
              if (status == 'ok') {
                  $('#div_logout').html('');
@@ -1593,7 +1675,6 @@
              return dateTime;
          }
 
-
          function setChatroomBgImg(id) {
              var bgImg = 'none';
              var bgSize = '100% 100%';
@@ -1607,6 +1688,14 @@
              $('#chatroom').css('background-size', bgSize);
 
              getInputFocus();
+         }
+
+         // v: field:value pair.
+         function send_msg_pref(pref) {
+             var current_tid = make_tracker();
+             data = '{"cmd":"update_pref", "pref":"' + pref +
+                    '", "tracker":"' + current_tid + '"}';
+             send_data(data);
          }
 
          //
@@ -1732,11 +1821,13 @@
              });
 
              setChatroomScrSaver(true);
+             $('#selectBgImg').val(bgImgID); // initialize to client default.
 
              $('#selectBgImg').change(function() {
                  //alert($(this).val());
                  bgImgID = $(this).val();
                  setChatroomBgImg(bgImgID);
+                 send_msg_pref("bgImgID:" + bgImgID);
              });
 
              doDisconnect(true); // initialize to clean state.

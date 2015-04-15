@@ -1,2 +1,2 @@
 clear
-./client.py ws://localhost:9000
+./client.py ws://localhost:9001

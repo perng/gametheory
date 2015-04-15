@@ -31,6 +31,7 @@
         border-radius:5px;
       }
       #chatroom {
+        font-size: 11pt;
         text-align: left;
         height: 450px;
         width: 720px;
@@ -141,8 +142,8 @@
           position: absolute;
           left: 598px;
           width: 134px;
-          top: 300px;
-          height: 163px;
+          top: 298px;
+          height: 165px;
           /*top: 345px;
           height: 118px;*/
           background-color: #eeeeee;
@@ -150,6 +151,10 @@
           padding-bottom: 2px;
 
           font-size:10pt;
+
+          box-shadow: 6px 0 4px  -4px #222 , -6px 0 4px  -4px #222;
+          -moz-box-shadow: 6px 0 4px  -4px #222, -6px 0 4px  -4px #222;
+          -webkit-box-shadow: 6px 0 4px  -4px #222, -6px 0 4px  -4px #222;
       }
 
       #div_right_panel {
@@ -334,10 +339,6 @@
           border-radius:5px;
       }
 
-      #btnSendTxt {
-          //position: absolute;
-      }
-
       .txtReg {
           width:150px;
       }
@@ -352,6 +353,7 @@
           width: 130px;
           height: 25px;
           background-color: white;
+          font-size: 10pt;
       }
 
       .transparent {
