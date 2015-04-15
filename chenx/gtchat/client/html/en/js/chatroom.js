@@ -212,7 +212,7 @@
                }
                else if (msg == '@help') {
                    appendChatroomInfo(msg + 
-": @rooms (list rooms), @who (list room users), @users (list logged in users), @create {room} (create and join a new room), @join {room} (join an existing room), @leave (leave a room), @where (show current room name), @public (set room as public), @private (set room as private), @master (assign another room user as master), @kick (kick a user out of current room), @max {max_size} (set room max size), @passwd {new password} (update password), @logout (logout)");
+": @rooms (list rooms), @who (list room users), @users (list logged in users), @create {room} (create and join a new room), @join {room} (join an existing room), @invite {user} (invite a user to current room), @leave (leave a room), @where (show current room name), @public (set room as public), @private (set room as private), @master {user} (assign another room user as master), @kick {user} (kick a user out of current room), @max {max_size} (set room max size), @passwd {new password} (update password), @logout (logout)");
                }
                else if (msg == '@leave') {
                    doLeaveRoom();
