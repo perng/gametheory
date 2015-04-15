@@ -446,6 +446,15 @@ open client.html in a browser.
 
 == Change Log ==
 
+4/14/2015
+
+- font definition, to be consistent on different platform. (seems ok)
+- server side return status code besides status msg, so client can write Chinese. (done, added S_MSG to chatroom_msg_cn.js)
+- left/up arrow for last command. right/down to flip to empty. (done)
+- shift-return for multiple line. (done)
+- use different default bgImg (done, easy, just use different bgImgID at beginning)
+- store bgImg preference to server side (done)
+
 4/12/2015
 
 - added background image to settings.
