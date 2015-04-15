@@ -1085,12 +1085,12 @@
          }
          function handle_cr_update_pref(status, msg, code, tracker) {
              if (status != 'ok') {
-                 appendChatroomInfo('Error: ' + msg);
+                 //appendChatroomInfo('Error: ' + msg);
                  //alert(C_MSG['52'] + msg); // be silent on this.
                  return;
              }
 
-             appendChatroomInfo(msg);
+             //appendChatroomInfo(msg);
          }
 
          function handle_cr_get_room_list_console(status, msg, code, tracker) {
