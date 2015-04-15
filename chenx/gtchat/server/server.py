@@ -1094,13 +1094,17 @@ class Cls_Chatroom():
         client = self.get_client(src)
         self.send_c_response("ok", "update_pwd", response_msg, usr, client, tracker)
 
+
     def api_update_pref(self, usr, pref, src, tracker):
         """
         Only usr himself receives a response.
         """
         if pref.startswith("bgImgID:"):
             bgImgID = pref[8:]
-            self.T_users_pref[usr] = bgImgID
+            username = self.getUserRealName(usr)
+            self.T_users_pref[username] = bgImgID
+            self.DB_is_dirty = True  # do this so will flushDB when exit.
+            #print 'update pref of ' + username + ' to ' + bgImgID
 
             # send response message to sender.
             response_msg = usr
@@ -1111,6 +1115,17 @@ class Cls_Chatroom():
         else:
             # send response message to sender.
             raise Exception("37|unknown preference: " + pref)
+
+
+    def getUserRealName(self, usr):
+        """
+        For a user that logs in with multiple sessions, name is like: username (n)
+        Strip out the sequence number part, return the username part.
+        """
+        p_index = usr.find("(");
+        if p_index > 0:
+            usr = usr[0:p_index - 1]  # strip out username
+        return usr
 
 
     def api_register(self, usr, pwd, src, client, tracker):
