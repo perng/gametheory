@@ -51,6 +51,9 @@ from autobahn.twisted.websocket import WebSocketServerFactory, \
     WebSocketServerProtocol, \
     listenWS
 
+reload(sys)
+sys.setdefaultencoding("utf-8")
+
 
 DEBUG = True
 #DEBUG = False
@@ -75,8 +78,20 @@ class Cls_Chatroom():
         self.T_users_active = {}  # entry = src:Cls_ActiveUser_object
         self.T_rooms = {}         # entry = name:user_list
 
-        self.username_pattern = re.compile("^[a-zA-Z0-9_]+$")
-        self.roomname_pattern = re.compile("^[a-zA-Z0-9_]+$")
+        # These are fine, but do not include unicode characters.
+        # But users may want to enter name in Chinese, for example.
+        #self.username_pattern = re.compile("^[a-zA-Z0-9_]+$")
+        #self.roomname_pattern = re.compile("^[a-zA-Z0-9_]+$")
+
+        # Absolutely cannot contain: : , | " ( \
+        # self.username_neg_pattern = re.compile("[:,\|\"\(\\\]")
+        # Use more strict enforcement, disallow these.
+        # Allow: a-zA-Z0-9_, and other unicode characters.
+        self.username_neg_pattern = re.compile("[`'~!@#\$%\^&\*\+\-=\[\];<>\./\?)\{\}:,\|\"\(\\\]")
+        self.roomname_neg_pattern = self.username_neg_pattern
+
+        # Password cannot contain: : , | " ( \
+        self.pwd_neg_pattern = re.compile("[:,\|\"\(\\\]")
 
         self.DB = "/home2/cssauhco/gametheory/gtchat/db.txt";       # db file, for temp use.
         self.DB_is_dirty = False
@@ -134,9 +149,9 @@ class Cls_Chatroom():
             #print 'line: ' + line + ', len=' + str( len(fields) ) 
             # no need to trim since data is trimmed before save.
             if len(fields) == 3:
-                name = fields[0]
-                pwd  = fields[1]
-                pref = fields[2]
+                name = decode_utf8(fields[0])
+                pwd  = decode_utf8(fields[1])
+                pref = decode_utf8(fields[2])
                 self.T_users[name] = pwd
                 self.T_users_pref[name] = pref
 
@@ -153,7 +168,9 @@ class Cls_Chatroom():
         if not (os.path.exists(self.DB) and os.path.isfile(self.DB)):
             return;
 
-        pref = self.T_users_pref[usr]
+        pref = encode_utf8(self.T_users_pref[usr])
+        usr = encode_utf8(usr)
+        pwd = encode_utf8(pwd)
 
         fo = open(self.DB, "a")
         fo.write(usr + "\t" + pwd + "\t" + pref + "\n")
@@ -174,8 +191,10 @@ class Cls_Chatroom():
         newDB = self.DB + '.tmp'
         fo = open(newDB, 'w')
         for key, value in self.T_users.iteritems():
-            pref = self.T_users_pref[key]
-            fo.write(key + "\t" + value + "\t" + pref + "\n")
+            pref = encode_utf8(self.T_users_pref[key])
+            usr = encode_utf8(key)
+            pwd = encode_utf8(value)
+            fo.write(usr + "\t" + pwd + "\t" + pref + "\n")
         fo.close()
 
         ts = time.time()
@@ -192,10 +211,10 @@ class Cls_Chatroom():
 
         if DEBUG or LOG:
             if DEBUG: print(' ')   # if debug, add an empty line for better display.
-            print ('==' + src + ':: ' + msg)
+            print ('==' + src + ':: ' + encode_utf8(msg))
 
         try:
-            # The 3 checks below will close connection if msg does not obey protocl.
+            # These 3 checks will close connection if msg doesn't obey rule:
             # Must be in json format, and provide cmd, usr.
             #
             # Exception msg format: -1#[1/2/3]|message.
@@ -205,10 +224,18 @@ class Cls_Chatroom():
             # security: you don't want to tell an illegal client the reason
             # why the connection is shut down.
             try: 
-                # do replacement of \n and \r to avoid json parse error.
+                # Do replacement of \r and \n to avoid json parse error.
                 # either use the line below, or use strict=False.
-                #msg = msg.replace('\r', '\\r').replace('\n', '\\n')
-                self.params = json.loads(msg, strict=False)
+                # msg = msg.replace('\r', '\\r').replace('\n', '\\n')
+                #
+                # But this still got issue with "\", so need to escape "\".
+                # This then also solves issue of escaped char in register.
+                # e.g., \b was treated as special char before. Now it's not
+                # and can be correctly disgarded.
+
+                msg = msg.replace('\\', '\\\\')
+                self.params = json.loads(msg, strict=False) 
+
             except Exception as err:
                 raise Exception('-1#1|' + str(err))
 
@@ -225,8 +252,9 @@ class Cls_Chatroom():
             # tracker is optional. Default to 0 if not provided.
             tracker = str(self.params['tracker']) if self.params.get('tracker') else '0'
 
-            if DEBUG: print("cmd = " + cmd + ", usr = " + usr + ", src = " + src \
-                            + ", tracker = " + tracker)
+            if DEBUG: print("cmd = " + encode_utf8(cmd) + ", usr = " \
+                            + encode_utf8(usr) + ", src = " + src \
+                            + ", tracker = " + encode_utf8(tracker))
 
             if cmd == "register":
                 pwd = self.get_param('pwd')
@@ -631,7 +659,7 @@ class Cls_Chatroom():
 
         if room_name in self.T_rooms:
             raise Exception("13|Room '" + room_name + "' already exists")
-        if not self.roomname_pattern.match(room_name):
+        if self.roomname_neg_pattern.search(room_name):
             raise Exception("14|valid room name should contain only letters, numbers and underscore")
 
         # If user was in another room, he needs to quit there first.
@@ -648,7 +676,7 @@ class Cls_Chatroom():
 
         self.T_rooms[room_name] = room  # add room to room list.
 
-        if DEBUG: 
+        if DEBUG:
             self.dump_db("T_rooms", self.T_rooms)
 
         # send response message to sender.
@@ -1082,6 +1110,8 @@ class Cls_Chatroom():
             raise Exception("30|old password does not match")
         if old_pwd == new_pwd:
             raise Exception("31|Please use a password different from the old one")
+        if self.pwd_neg_pattern.search(new_pwd):
+            raise Exception("38|Invalid character found in password")
 
         self.T_users[usr] = new_pwd
         self.saveDB_T_users(usr, new_pwd)
@@ -1104,7 +1134,7 @@ class Cls_Chatroom():
             username = self.getUserRealName(usr)
             self.T_users_pref[username] = bgImgID
             self.DB_is_dirty = True  # do this so will flushDB when exit.
-            #print 'update pref of ' + username + ' to ' + bgImgID
+            #print 'update pref of ' + encode_utf8(username) + ' to ' + bgImgID
 
             # send response message to sender.
             response_msg = usr
@@ -1137,8 +1167,10 @@ class Cls_Chatroom():
             raise Exception("32|invalid user name")
         if len(pwd) < 8:
             raise Exception("33|user password length should >= 8")
-        if not self.username_pattern.match(usr):
-            raise Exception("34|valid user name should contain only letters, numbers and underscore")
+        if self.username_neg_pattern.search(usr):
+            raise Exception("34|Invalid character found in user name")
+        if self.pwd_neg_pattern.search(pwd):
+            raise Exception("38|Invalid character found in password")
 
         if usr in self.T_users:
             raise Exception("35|this username is not available")
@@ -1184,7 +1216,7 @@ class Cls_Chatroom():
                 msg = self.make_msg_c_event("room_gone", usr + ":" + room_name, '0')
                 self.broadcast_to_all(msg, src)
 
-        print "logout user: " + usr
+        print "logout user: " + encode_utf8(usr)
         del self.T_users_active[src]
         del self.T_users_src[usr]
 
@@ -1195,7 +1227,7 @@ class Cls_Chatroom():
             user = usr[0:p_index - 1]  # strip out username
             p2_index = usr.find(")");
             n = usr[p_index + 1:p2_index]  # strip out sequence number.
-            #print usr + ':' + user + ': n = ' + str(n)
+            #print encode_utf8(usr) + ':' + encode_utf8(user) + ': n = ' + str(n)
             self.T_users_active_ct[user].remove(int(n))
 
         # send this notification to all users (except sender).
@@ -1212,13 +1244,16 @@ class Cls_Chatroom():
 
         usr = self.T_users_active[src].name
         if DEBUG:
-            print "unregister: " + usr + ", " + src
+            print "unregister: " + encode_utf8(usr) + ", " + src
         self.logout_cleanup(usr, src, '');
 
 
     def dump_db(self, tbl_name, tbl):
-        print("==table: " + tbl_name + "==")
+        print("==table: " + encode_utf8(tbl_name) + "==")
+        #print unicode(tbl, 'utf-8').encode('utf-8')
         print(tbl)
+        #for key, value in tbl.iteritems():
+        #    print encode_utf8(key) + ',' + encode_utf8(value)
 
 
 class Cls_ActiveUser():
@@ -1248,7 +1283,7 @@ class Cls_Room():
         self.max_size = 0    # max room users. 0 means infinite.
 
     def __str__(self):
-        return "[room - name: " + self.room_name \
+        return "[room - name: " + encode_utf8(self.room_name) \
              + ", master: " + self.getMaster() \
              + ", users: " + ",".join(self.getUserNameList()) + "]"
         
@@ -1303,7 +1338,7 @@ class Cls_Room():
 
     def isEmpty(self):
         if DEBUG and not self.user_list:
-            print "room " + self.room_name + " is empty now"
+            print "room " + encode_utf8(self.room_name) + " is empty now"
         return not self.user_list
 
 
@@ -1364,7 +1399,7 @@ class BroadcastServerFactory(WebSocketServerFactory):
             self.game_handler.unregister(client.peer)
 
     def broadcast(self, msg, sender):
-        print("broadcasting message '{}' ..".format(msg) + " - sender: " + sender)
+        print("broadcasting message '{}' ..".format(msg.encode('utf-8')) + " - sender: " + sender)
         for c in self.clients:
             if c.peer != sender: # This avoids a client boardcasting to self. X.C.
                 c.sendMessage(msg.encode('utf8'))
@@ -1391,6 +1426,13 @@ def cleanup(*args):
     reactor.stop()
 
 
+def encode_utf8(str):
+    return str.encode('utf-8')
+
+def decode_utf8(str):
+    return str.decode('utf-8')
+
+
 if __name__ == '__main__':
 
     if len(sys.argv) > 1 and sys.argv[1] == 'debug':
@@ -1402,7 +1444,10 @@ if __name__ == '__main__':
     ServerFactory = BroadcastServerFactory
     # ServerFactory = BroadcastPreparedServerFactory
 
-    factory = ServerFactory("ws://localhost:9001",
+    url = "ws://localhost:9001"
+    print "url: " + url
+
+    factory = ServerFactory(url,
                             debug=debug,
                             debugCodePaths=debug)
 

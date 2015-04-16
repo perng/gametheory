@@ -22,12 +22,12 @@
          // server given by the value of AUTO_CONNECT.
          var AUTO_CONNECT = ''; 
          //AUTO_CONNECT = 'ws://127.0.0.1:9001';
-         //AUTO_CONNECT = 'ws://192.168.198.131:9001';
-         AUTO_CONNECT = 'ws://homecox.com:9001';
+         AUTO_CONNECT = 'ws://192.168.198.131:9001';
+         //AUTO_CONNECT = 'ws://homecox.com:9001';
 
          // If DEBUG is true, the debug console will be shown.
          var DEBUG = true;
-         DEBUG = false;
+         //DEBUG = false;
 
          if (typeof String.prototype.startsWith != 'function') {
              String.prototype.startsWith = function (str){
@@ -223,22 +223,26 @@
                else if (msg.startsWith('@create ')) {
                    request_src = "console";
                    var room_name = msg.substr(8); // after '@create '
-                   if (room_name == '') {
-                       appendChatroomInfo('@create: please provide a room name');
+                   var err = validateRoomname(room_name);
+                   if (err != '') {
+                       appendChatroomInfo('@create: ' + err);
+                   } else {
+                       appendConsole('Now create room: ' + room_name);
+                       doCreateRoom(room_name);
                    }
-                   appendConsole('Now create room: ' + room_name);
-                   doCreateRoom(room_name);
                }
                else if (msg == '@join') {
                    appendChatroomInfo('@create: please provide a room name');
                }
                else if (msg.startsWith('@join ')) {
                    var room_name = msg.substr(6); // after '@join '
-                   if (room_name == '') {
-                       appendChatroomInfo('@create: please provide a room name');
+                   var err = validateRoomname(room_name);
+                   if (err != '') {
+                       appendChatroomInfo('@join: ' + err);
+                   } else {
+                       appendConsole('Now join room: ' + room_name);
+                       doJoinRoom(room_name);
                    }
-                   appendConsole('Now join room: ' + room_name);
-                   doJoinRoom(room_name);
                }
                else if (msg == '@logout') {
                    doLogout();
@@ -280,11 +284,13 @@
                }
                else if (msg.startsWith('@invite ')) {
                    var user_name = $.trim( msg.substr(8) ); // after '@invite '
-                   if (user_name == '') {
-                       appendChatroomInfo('@create: please provide a user name');
+                   var err = validateUsername(user_name);
+                   if (err != '') {
+                       appendChatroomInfo('@invite: ' + err);
+                   } else {
+                       appendConsole('Now invite: ' + user_name);
+                       doInvite(user_name);
                    }
-                   appendConsole('Now invite: ' + user_name);
-                   doInvite(user_name);
                }
                else if (msg == '@master') {
                    appendChatroomInfo('@master: please provide a user name in this room');
@@ -294,11 +300,13 @@
                        appendChatroomInfo('@master: you have no permission for this operation');
                    }
                    else {
-                       current_cmd = "master";
-                       var user_name = $.trim( msg.substr(8) ); // after '@master '
-                       data = '{"cmd":"master", "user":"' + user_name + '", "room_name":"' +
-                              current_room + '", "tracker":"' + current_tid + '"}';
-                       send_data(data);
+                       var user_name = $.trim(msg.substr(8)); //after '@master'
+                       var err = validateUsername(user_name);
+                       if (err != '') {
+                           appendChatroomInfo('@master: ' + err);
+                       } else {
+                           doMaster(user_name, current_room);
+                       }
                    }
                }
                else if (msg == '@kick') {
@@ -309,11 +317,13 @@
                        appendChatroomInfo('@kick: you have no permission for this operation');
                    }
                    else {
-                       current_cmd = "kick";
-                       var user_name = $.trim( msg.substr(6) ); // after '@kick '
-                       data = '{"cmd":"kick", "user":"' + user_name + '", "room_name":"' +
-                              current_room + '", "tracker":"' + current_tid + '"}';
-                       send_data(data);
+                       var user_name = $.trim(msg.substr(6)); //after '@kick'
+                       var err = validateUsername(user_name);
+                       if (err != '') {
+                           appendChatroomInfo('@kick: ' + err);
+                       } else {
+                           doKick(user_name, current_room);
+                       }
                    }
                }
                else if (msg == '@max') {
@@ -327,7 +337,7 @@
                        current_cmd = "max";
                        var max_size = $.trim( msg.substr(5) ); // after '@max '
                        if (! isInt(max_size)) {
-                           appendChatroominfo('@max: ' + max_size + ' is not an integer.');
+                           appendChatroomInfo('@max: ' + max_size + ' is not an integer.');
                        }
                        else {
                            if (max_size < 0) max_size = 0;
@@ -372,6 +382,40 @@
              return !isNaN(value) && 
                     parseInt(Number(value)) == value && 
                     !isNaN(parseInt(value, 10));
+         }
+
+         function validateUsername(s) {
+             var msg = '';
+             if (s == '') {
+                 msg = 'please provide a user name';
+             }
+             else if (! nameIsValid(s)) {
+                 msg = 's: found invalid character';
+             }
+             return msg;
+         }
+         function validateRoomname(s) {
+             var msg = '';
+             if (s == '') {
+                 msg = 'please provide a room name';
+             }
+             else if (! nameIsValid(s)) {
+                 msg = 's: found invalid character';
+             }
+             return msg;
+         }
+
+         // for username and roomname, must not contain special chars:
+         // `~!@#$%^&*()+-={}[]\|:";'<>,./?
+         // can only be a-zA-Z0-9_ and utf-8 chars like Chinese.
+         function nameIsValid(s) {
+             var res = s.search(/[`'~!@#\$%\^&\*\+\-=\[\];<>\.\/\?\)\{\}:,\|\"\(\\]/g);
+             return res == -1;
+         }
+
+         function pwdIsValid(s) {
+             var res = s.search(/[:,\|\"\(\\]/g);
+             return res == -1;
          }
 
          // double quote need be encoded.
@@ -710,6 +754,20 @@
              var msg = '{"cmd":"join_room", "room_name":"' + room_name + 
                        '", "tracker":"' + current_tid + '"}';
              send_data(msg);
+         }
+         function doMaster(user, room) {
+             current_tid = make_tracker();
+             current_cmd = "master";
+             data = '{"cmd":"master", "user":"' + user + '", "room_name":"'
+                      + room + '", "tracker":"' + current_tid + '"}';
+             send_data(data);
+         }
+         function doKick(user, room) {
+             current_tid = make_tracker();
+             current_cmd = "kick";
+             data = '{"cmd":"kick", "user":"' + user + '", "room_name":"' +
+                      room + '", "tracker":"' + current_tid + '"}';
+             send_data(data);
          }
          function doInvite(user) {
              var user_name = $.trim(user);
