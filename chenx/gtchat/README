@@ -3,7 +3,7 @@
 
 By: X. Chen
 Created on: 3/18/2015
-Last modified: 4/8/2015
+Last modified: 4/15/2015
 
 
 == About ==
@@ -445,6 +445,15 @@ open client.html in a browser.
 
 
 == Change Log ==
+
+4/15/2015
+
+- Chinese input cause speak error, and disconnect.
+  * is utf-8 encode/decode issue. solved.
+- Now do input check for user/room name in @create/join/invite/master/kick.
+- limit use of chars to use for username/pwd/roomname: basically: a-zA-Z0-9_ plus utf-8 chars (CN)
+- added @game chess/on/off, for 6p chess.
+- adjusted arrow_mode: only up/down used now, to avoid confusion.
 
 4/14/2015
 
