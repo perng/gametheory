@@ -16,6 +16,8 @@
          var request_src = ''; // used for command line requests @rooms, @users.
          var bgImg_downloaded = false;
          var bgImgID = 2;
+         var bgImgSize = '';
+         var game_chess_loaded = false;
 
          // If this is not empty, the server textbox and connect button will
          // be hidden, and when the page is loaded it'll automatically connect to 
@@ -249,6 +251,27 @@
                }
                else if (msg == '@passwd') {
                    showFormUpdatePwd();
+               }
+               else if (msg == '@game chess') {
+                   appendChatroomInfo('@game chess');
+                   $('#game_panel').show();
+                   if (! game_chess_loaded) {
+                       game_chess_loaded = true;
+                       document.getElementById('game').src = 'http://cssauh.com/sp/';
+                   }
+                   $('#chatroom').css('width', '360px');
+
+                   var bgSize = bgImgSize.split(' ');
+                   var width = parseInt(bgSize[0].replace('%', '')) * 2;
+                   var newBgSize = width + '% ' + bgSize[1];
+                   //alert (newBgSize);
+                   $('#chatroom').css('background-size', newBgSize);
+               }
+               else if (msg == '@game off') {
+                   appendChatroomInfo('@game off');
+                   $('#chatroom').css('width', '720px');
+                   $('#game_panel').hide();
+                   $('#chatroom').css('background-size', bgImgSize);
                }
                // All commands below need a non-empty current_room.
                else if (current_room == '') {
@@ -500,18 +523,23 @@
 
              // If current txtMsg is empty, press arrow keys to flip
              // in/out the last input for convenience.
-             if ($('#txtMsg').val() == '' && (e.keyCode == 38 || e.keyCode == 37)) {
+             if ($('#txtMsg').val() == '' && e.keyCode == 38) {
                  // 38: up arrow, 37: left arrow.
                  $('#txtMsg').val(current_msg);
                  arrow_mode = true;
                  return;
              }
-             else if (arrow_mode == true && (e.keyCode == 40 || e.keyCode == 39)) {
+             else if (arrow_mode == true && e.keyCode == 40) {
                  // 40: down array, 39: right arrow.
                  $('#txtMsg').val('');
                  arrow_mode = false;
                  return;
              }
+             else if (arrow_mode == true && 
+                      (e.keyCode == 38 || e.keyCode == 40)) {
+                 return;
+             }
+             arrow_mode = false; // other key pressed.
 
              // Do not send text on Enter when either:
              // 1) not in sendTextOnEnter mode or 2) Shift key is pressed.
@@ -1744,6 +1772,8 @@
 
              $('#chatroom').css('background-image', bgImg);
              $('#chatroom').css('background-size', bgSize);
+
+             bgImgSize = bgSize;
 
              getInputFocus();
          }
