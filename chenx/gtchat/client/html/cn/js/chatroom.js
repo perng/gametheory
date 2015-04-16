@@ -214,7 +214,7 @@
                }
                else if (msg == '@help') {
                    appendChatroomInfo(msg + 
-": @rooms (列出所有聊天室), @who (列出当前聊天室用户), @users (列出所有用户), @create {room} (创建并加入新聊天室), @join {room} (加入已有聊天室), @invite {user} (邀请用户加入当前聊天室), @leave (离开当前聊天室), @where (显示当前聊天室名), @game chess (打开六子棋游戏窗口), @game on {和@game chess相同}, @game off (关闭游戏窗口), @public (设置当前聊天室为公开聊天室), @private (设置当前聊天室为秘密聊天室), @master {user} (转移聊天室管理员身份给室内另一用户), @kick {user} (把某一用户踢出当前聊天室), @max {max_size} (设置当前聊天室最大容量), @passwd {new password} (更新密码), @logout (退出登录)");
+": @rooms (列出所有聊天室), @who (列出当前聊天室用户), @users (列出所有用户), @create {room} (创建并加入新聊天室), @join {room} (加入已有聊天室), @invite {user} (邀请用户加入当前聊天室), @leave (离开当前聊天室), @where (显示当前聊天室名), @game chess (打开六子棋游戏窗口), @game on {和@game chess相同}, @game off (关闭游戏窗口), @public (设置当前聊天室为公开聊天室), @private (设置当前聊天室为秘密聊天室), @master {user} (转移聊天室管理员身份给室内另一用户), @kick {user} (把某一用户踢出当前聊天室), @max {max_size} (设置当前聊天室最大容量), @passwd (更新密码), @logout (退出登录)");
                }
                else if (msg == '@leave') {
                    doLeaveRoom();
