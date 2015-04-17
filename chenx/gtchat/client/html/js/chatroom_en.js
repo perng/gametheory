@@ -836,7 +836,7 @@
              $('#game_panel').show();
              if (! game_chess_loaded) {
                  game_chess_loaded = true;
-                 document.getElementById('game').src = 'http://cssauh.com/sp/';
+                 document.getElementById('game').src = 'http://homecox.com/games/sp/';
              }
              $('#chatroom').css('width', '360px');
 
