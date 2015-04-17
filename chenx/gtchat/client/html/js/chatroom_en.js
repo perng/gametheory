@@ -39,6 +39,13 @@
              };
          }
 
+         function playSound(id) {
+             var v = document.getElementById(id);
+             if (v && v.play) {
+                 v.play();
+             }
+         }
+
          function send_data(data) {
              appendConsole('==> Send: ' + data);
              socket.send(data);
@@ -195,6 +202,8 @@
                } else {
                    msg = v;
                }
+
+               playSound('idSoundSend');
 
                current_msg = msg;
                current_tid = make_tracker();
@@ -387,6 +396,7 @@
              }
              else {
                  author = '<span style="font-size:10pt; color: #cccccc;">' + author + '</span>';
+                 playSound('idSoundRecv');
              }
              appendChatroom(author + '<br/>' + msg);
          }
