@@ -203,8 +203,6 @@
                    msg = v;
                }
 
-               playSound('idSoundSend');
-
                current_msg = msg;
                current_tid = make_tracker();
 
@@ -379,6 +377,7 @@
                    msg = decodeNewLine(msg);
                    //appendChatroom('<font color="#99ff99">>> ' + getTimeStamp() + '<br/>' + msg + '</font>');
                    doSpeak(msg, current_user, true);
+                   playSound('idSoundSend');
                }
             } else {
                //console.log("Connection not opened.")
