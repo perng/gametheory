@@ -892,11 +892,6 @@ class Cls_Chatroom():
         self.validate_active_user(src)
         self.validate_active_room(room_name)
 
-        # A user already in a room cannot join again.
-        #if self.T_rooms[room_name].containsUsername(usr):
-        #    raise Exception("21|user '" + usr + \
-        #          "' is already in room '" + room_name + "'")
-
         room = self.T_rooms[room_name];
 
         if not room.getIsPublic() and not invited:
@@ -915,6 +910,11 @@ class Cls_Chatroom():
         # Ideally a user will call api_leave_room first before calling
         # api_join_room, but it may not be done properly by client.
         prev_room = self.T_users_active[src].room
+
+        # A user already in a room cannot join again.
+        if prev_room == room_name:
+            raise Exception("21|You are already in this room")
+
         if prev_room != "":
             self.api_leave_room(prev_room, usr, src, tracker, False)
 
@@ -1283,7 +1283,7 @@ class Cls_Room():
         self.max_size = 0    # max room users. 0 means infinite.
 
     def __str__(self):
-        return "[room - name: " + encode_utf8(self.room_name) \
+        return "[room - name: " + self.room_name \
              + ", master: " + self.getMaster() \
              + ", users: " + ",".join(self.getUserNameList()) + "]"
         
