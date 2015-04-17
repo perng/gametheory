@@ -19,6 +19,7 @@
          var bgImgID = 2;
          var bgImgSize = '';
          var game_chess_loaded = false;
+         var canPlayMP3 = supportAudioMP3();
 
 
          if (typeof String.prototype.startsWith != 'function') {
@@ -28,7 +29,27 @@
              };
          }
 
-         function playSound(id) {
+         function supportAudioMP3() {
+             var audio  = document.createElement("audio");
+             var canPlayMP3 = (typeof audio.canPlayType === "function" &&
+                          audio.canPlayType("audio/mpeg") !== "");
+             return canPlayMP3;
+         }
+
+         function playSound(type) {
+             if (! canPlayMP3) return;
+             var v;
+             if (type == 'send') {
+                 v = document.getElementById('idSoundSend');
+                 v.src = '../sound/send2.mp3';
+             } else if (type == 'recv') {
+                 v = document.getElementById('idSoundRecv');
+                 v.src = '../sound/recv.mp3';
+             }
+             v.play();
+         }
+
+         function playSound2(id) {
              var v = document.getElementById(id);
              if (v && v.play) {
                  v.play();
@@ -369,7 +390,7 @@
                    msg = decodeNewLine(msg);
                    //appendChatroom('<font color="#99ff99">>> ' + getTimeStamp() + '<br/>' + msg + '</font>');
                    doSpeak(msg, current_user, true);
-                   playSound('idSoundSend');
+                   playSound('send');
                }
             } else {
                //console.log("Connection not opened.")
@@ -387,7 +408,7 @@
              }
              else {
                  author = '<span style="font-size:10pt; color: #cccccc;">' + author + '</span>';
-                 playSound('idSoundRecv');
+                 playSound('recv');
              }
              appendChatroom(author + '<br/>' + msg);
          }
@@ -836,7 +857,7 @@
              $('#game_panel').show();
              if (! game_chess_loaded) {
                  game_chess_loaded = true;
-                 document.getElementById('game').src = 'http://homecox.com/games/sp/';
+                 document.getElementById('game').src = 'http://cssauh.com/sp/';
              }
              $('#chatroom').css('width', '360px');
 
