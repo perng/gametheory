@@ -20,17 +20,6 @@
          var bgImgSize = '';
          var game_chess_loaded = false;
 
-         // If this is not empty, the server textbox and connect button will
-         // be hidden, and when the page is loaded it'll automatically connect to 
-         // server given by the value of AUTO_CONNECT.
-         var AUTO_CONNECT = ''; 
-         AUTO_CONNECT = 'ws://127.0.0.1:9001';
-         AUTO_CONNECT = 'ws://192.168.198.131:9001';
-         //AUTO_CONNECT = 'ws://homecox.com:9001';
-
-         // If DEBUG is true, the debug console will be shown.
-         var DEBUG = true;
-         //DEBUG = false;
 
          if (typeof String.prototype.startsWith != 'function') {
              String.prototype.startsWith = function (str){
@@ -222,7 +211,7 @@
                }
                else if (msg == '$help') {
                    appendChatroomInfo(msg + 
-": $rooms (list rooms), $who (list room users), $users (list logged in users), $create {room} (create and join a new room), $join {room} (join an existing room), $invite {user} (invite a user to current room), $leave (leave a room), $where (show current room name), $game chess (open 6-piece chess game window), $game on (same as $game chess), $game off (close game window), $public (set room as public), $private (set room as private), $master {user} (assign another room user as master), $kick {user} (kick a user out of current room), $max {max_size} (set room max size), $passwd (update password), $logout (logout)");
+": $rooms (list rooms), $who (list room users), $users (list logged in users), $create {room} (create and join a new room), $join {room} (join an existing room), $invite {user} (invite a user to current room), $leave (leave a room), $where (show current room name), $game chess (open 6-piece chess game window), $game on (same as $game chess), $game off (close game window), $clear (clear chatroom content), $public (set room as public), $private (set room as private), $master {user} (assign another room user as master), $kick {user} (kick a user out of current room), $max {max_size} (set room max size), $passwd (update password), $logout (logout)");
                }
                else if (msg == '$leave') {
                    doLeaveRoom();
@@ -269,6 +258,9 @@
                }
                else if (msg == '$game off') {
                    doGameOff();
+               }
+               else if (msg == '$clear') {
+                   clearChatroom();
                }
                // All commands below need a non-empty current_room.
                else if (current_room == '') {

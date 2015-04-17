@@ -20,17 +20,6 @@
          var bgImgSize = '';
          var game_chess_loaded = false;
 
-         // If this is not empty, the server textbox and connect button will
-         // be hidden, and when the page is loaded it'll automatically connect to 
-         // server given by the value of AUTO_CONNECT.
-         var AUTO_CONNECT = ''; 
-         AUTO_CONNECT = 'ws://127.0.0.1:9001';
-         AUTO_CONNECT = 'ws://192.168.198.131:9001';
-         //AUTO_CONNECT = 'ws://homecox.com:9001';
-
-         // If DEBUG is true, the debug console will be shown.
-         var DEBUG = true;
-         DEBUG = false;
 
          if (typeof String.prototype.startsWith != 'function') {
              String.prototype.startsWith = function (str){
@@ -222,7 +211,7 @@
                }
                else if (msg == '$help') {
                    appendChatroomInfo(msg + 
-": $rooms (列出所有聊天室), $who (列出当前聊天室用户), $users (列出所有用户), $create {room} (创建并加入新聊天室), $join {room} (加入已有聊天室), $invite {user} (邀请用户加入当前聊天室), $leave (离开当前聊天室), $where (显示当前聊天室名), $game chess (打开六子棋游戏窗口), $game on (和$game chess相同), $game off (关闭游戏窗口), $public (设置当前聊天室为公开聊天室), $private (设置当前聊天室为秘密聊天室), $master {user} (转移聊天室管理员身份给室内另一用户), $kick {user} (把某一用户踢出当前聊天室), $max {max_size} (设置当前聊天室最大容量), $passwd (更新密码), $logout (退出登录)");
+": $rooms (列出所有聊天室), $who (列出当前聊天室用户), $users (列出所有用户), $create {room} (创建并加入新聊天室), $join {room} (加入已有聊天室), $invite {user} (邀请用户加入当前聊天室), $leave (离开当前聊天室), $where (显示当前聊天室名), $game chess (打开六子棋游戏窗口), $game on (和$game chess相同), $game off (关闭游戏窗口), $clear(清除聊天室内容), $public (设置当前聊天室为公开聊天室), $private (设置当前聊天室为秘密聊天室), $master {user} (转移聊天室管理员身份给室内另一用户), $kick {user} (把某一用户踢出当前聊天室), $max {max_size} (设置当前聊天室最大容量), $passwd (更新密码), $logout (退出登录)");
                }
                else if (msg == '$leave') {
                    doLeaveRoom();
@@ -269,6 +258,9 @@
                }
                else if (msg == '$game off') {
                    doGameOff();
+               }
+               else if (msg == '$clear') {
+                   clearChatroom();
                }
                // All commands below need a non-empty current_room.
                else if (current_room == '') {
