@@ -74,33 +74,36 @@ There are two ways to log out:<br/><br/>
 
 <h2>Chatroom commands</h2>
 
+<p>All the commands have a shortcut name and a full name.</p>
+
 <p>Commands available to all the users:</p>
 
 <ul>
-<li>$rooms  - list rooms 
-<li>$who  - list room users 
-<li>$users  - list logged in users 
-<li>$create {room}  - create and join a new room 
-<li>$join {room}  - join an existing room 
-<il>$invite {user}  - invite a user into current room
-<li>$leave  - leave a room 
-<li>$where  - show current room name 
-<li>$game chess  - open 6-piece chess game window
-<li>$game on  - (same as $game chess)
-<li>$game off  - close game window
-<li>$clear  - clear chatroom content
-<li>$passwd  - update password
-<li>$logout  - logout
+<li>$c {room}  - $create, create and join a new room
+<li>$e  - $erase, erase chatroom content
+<li>$g chess  - $game chess, open 6-piece chess game window
+<li>$g on  - $game on, same as $game chess
+<li>$g off  - $game off, close game window
+<li>$h  - $?, $help, display help message
+<li>$i {user}  - $invite, invite a user into current room
+<li>$j {room}  - $join, join an existing room
+<li>$l  - $leave, leave a room
+<li>$o  - $who, list room users  
+<li>$p  - $passwd, update password
+<li>$r  - $rooms, list rooms 
+<li>$u  - $users, list logged in users 
+<li>$w  - $where, show current room name 
+<li>$x  - $exit, $logout, logout
 </ul>
 
 <p>Commands available only to room master:</p>
 
 <ul>
-<li>$public  - set room as public 
-<li>$private  - set room as private. Only invited user can enter a private room.
-<li>$master {user}  - assign another room user as master. There is only one room master at a time.
-<li>$kick {user}  - kick a user out of current room 
-<li>$max {max_size}  - set room max size. 0 or negative means no limit. 
+<li>$b  - $public, set room as public 
+<li>$k {user}  - $kick, kick a user out of current room 
+<li>$m {size}  - $max, set room max size. 0 or negative means no limit. 
+<li>$t {user}  - $master, assign another room user as master. There is only one room master at a time.
+<li>$v  - $private, set room as private. Only invited user can enter a private room.
 </ul>
 
 
