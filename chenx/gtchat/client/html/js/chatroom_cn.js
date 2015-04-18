@@ -14,7 +14,7 @@
          var current_user = ''; // keep track of current logged in user.
          var current_room = ''; // keep track of current room.
          var is_room_master = false;  // Whether this user is room master.
-         var request_src = ''; // used for command line requests $rooms, $users.
+         var request_src = ''; // used for command line requests #rooms, #users.
          var bgImg_downloaded = false;
          var bgImgID = 2;
          var bgImgSize = '';
@@ -173,26 +173,26 @@
 
          function getHelp() {
              var help = "\
-<br/>$b ($public, 设置当前聊天室为公开聊天室) \
-<br/>$c {room} ($create, 创建并加入新聊天室) \
-<br/>$e ($erase, 清除聊天室内容) \
-<br/>$g chess ($game chess, 打开六子棋游戏窗口) \
-<br/>$g on ($game on, 和$game chess相同) \
-<br/>$g off ($game off, 隐藏游戏窗口) \
-<br/>$h ($?, $help, 显示本帮助信息) \
-<br/>$i {user} ($invite, 邀请用户加入当前聊天室) \
-<br/>$j {room} ($join, 加入已有聊天室) \
-<br/>$k {user} ($kick, 把某一用户踢出当前聊天室) \
-<br/>$l ($leave, 离开当前聊天室, 并进入大厅) \
-<br/>$m {size} ($max, 设置当前聊天室最大容量, 0或负数表示无上限) \
-<br/>$o ($who, 列出当前聊天室用户) \
-<br/>$p ($passwd, 更新密码) \
-<br/>$r ($rooms, 列出所有在线聊天室) \
-<br/>$t {user} ($master, 转移聊天室管理员身份给室内另一用户) \
-<br/>$u ($users, 列出所有在线用户) \
-<br/>$v ($private, 设置当前聊天室为秘密聊天室) \
-<br/>$w ($where, 显示当前聊天室名) \
-<br/>$x ($exit, $logout, 退出登录) \
+<br/>#b (#public, 设置当前聊天室为公开聊天室) \
+<br/>#c {room} (#create, 创建并加入新聊天室) \
+<br/>#e (#erase, 清除聊天室内容) \
+<br/>#gc (#g chess, #game chess, 打开六子棋游戏窗口) \
+<br/>#g1 (#g on, #game on, 和#game chess相同) \
+<br/>#g0 (#g off, #game off, 隐藏游戏窗口) \
+<br/>#h (#?, #help, 显示本帮助信息) \
+<br/>#i {user} (#invite, 邀请用户加入当前聊天室) \
+<br/>#j {room} (#join, 加入已有聊天室) \
+<br/>#k {user} (#kick, 把某一用户踢出当前聊天室) \
+<br/>#l (#leave, 离开当前聊天室, 并进入大厅) \
+<br/>#m {size} (#max, 设置当前聊天室最大容量, 0或负数表示无上限) \
+<br/>#o (#who, 列出当前聊天室用户) \
+<br/>#p (#passwd, 更新密码) \
+<br/>#r (#rooms, 列出所有在线聊天室) \
+<br/>#t {user} (#master, 转移聊天室管理员身份给室内另一用户) \
+<br/>#u (#users, 列出所有在线用户) \
+<br/>#v (#private, 设置当前聊天室为秘密聊天室) \
+<br/>#w (#where, 显示当前聊天室名) \
+<br/>#x (#exit, #logout, 退出登录) \
 ";
              return help;
          }
@@ -216,72 +216,72 @@
                current_msg = msg;
                current_tid = make_tracker();
 
-               if (msg == '$rooms' || msg == '$r') {
+               if (msg == '#rooms' || msg == '#r') {
                    request_src = 'console';
                    current_cmd = "get_room_list";
                    data = '{"cmd":"get_room_list", "tracker":"' + current_tid + '"}';
                    send_data(data);
                    //appendChatroomInfo(msg + ":");
                }
-               else if (msg == '$users' || msg == '$u') {
+               else if (msg == '#users' || msg == '#u') {
                    request_src = "console"
                    current_cmd = "get_user_list";
                    data = '{"cmd":"get_user_list", "tracker":"' + current_tid + '"}';
                    send_data(data);
                    //appendChatroomInfo(msg + ":");
                }
-               else if (msg == '$help' || msg == '$h' || msg == '$?') {
-                   appendChatroomInfo('$help: ' + helpMsg);
+               else if (msg == '#help' || msg == '#h' || msg == '#?') {
+                   appendChatroomInfo('#help: ' + helpMsg);
                }
-               else if (msg == '$leave' || msg == '$l') {
+               else if (msg == '#leave' || msg == '#l') {
                    doLeaveRoom();
                }
-               else if (msg == '$create' || msg == '$c') {
-                   appendChatroomInfo('$create: ' + C_MSG['11']);
+               else if (msg == '#create' || msg == '#c') {
+                   appendChatroomInfo('#create: ' + C_MSG['11']);
                }
-               else if (msg.startsWith('$create ') || msg.startsWith('$c ')) {
+               else if (msg.startsWith('#create ') || msg.startsWith('#c ')) {
                    request_src = "console";
-                   var room_name = msg.startsWith('$c ') ? msg.substr(3) : msg.substr(8); // after '$create '
+                   var room_name = msg.startsWith('#c ') ? msg.substr(3) : msg.substr(8); // after '#create '
                    room_name = $.trim(room_name);
                    var err = validateRoomname(room_name);
                    if (err != '') {
-                       appendChatroomError('$create: ' + err);
+                       appendChatroomError('#create: ' + err);
                    } else {
                        appendConsole('Now create room: ' + room_name);
                        doCreateRoom(room_name);
                    }
                }
-               else if (msg == '$join' || msg == '$j') {
-                   appendChatroomInfo('$create: ' + C_MSG['11']);
+               else if (msg == '#join' || msg == '#j') {
+                   appendChatroomInfo('#join: ' + C_MSG['11']);
                }
-               else if (msg.startsWith('$join ') || msg.startsWith('$j ')) {
-                   var room_name = msg.startsWith('$j ') ? msg.substr(3) : msg.substr(6); // after '$join '
+               else if (msg.startsWith('#join ') || msg.startsWith('#j ')) {
+                   var room_name = msg.startsWith('#j ') ? msg.substr(3) : msg.substr(6); // after '#join '
                    room_name = $.trim(room_name);
                    var err = validateRoomname(room_name);
                    if (err != '') {
-                       appendChatroomError('$join: ' + err);
+                       appendChatroomError('#join: ' + err);
                    } else {
                        appendConsole('Now join room: ' + room_name);
                        doJoinRoom(room_name);
                    }
                }
-               else if (msg == '$logout' || msg == '$exit' || msg == '$x') {
+               else if (msg == '#logout' || msg == '#exit' || msg == '#x') {
                    doLogout();
                }
-               else if (msg == '$passwd' || msg == '$p') {
+               else if (msg == '#passwd' || msg == '#p') {
                    showFormUpdatePwd();
                }
-               else if (msg == '$game chess' || msg == '$g chess') {
+               else if (msg == '#gc' || msg == '#game chess' || msg == '#g chess') {
                    doGameChess();
                }
-               else if (msg == '$game on' || msg == '$g on') {
-                   appendChatroomInfo('$game on');
+               else if (msg == '#g1' || msg == '#game on' || msg == '#g on') {
+                   appendChatroomInfo('#game on');
                    doGameChess();
                }
-               else if (msg == '$game off' || msg == '$g off') {
+               else if (msg == '#g0' || msg == '#game off' || msg == '#g off') {
                    doGameOff();
                }
-               else if (msg == '$erase' || msg == '$e') {
+               else if (msg == '#erase' || msg == '#e') {
                    clearChatroom();
                }
                // All commands below need a non-empty current_room.
@@ -291,91 +291,91 @@
                    appendChatroomInfo(C_MSG['13']);
                    appendConsole('Type message before join a room:' + msg);
                }
-               else if (msg == '$who' || msg == '$o') {
+               else if (msg == '#who' || msg == '#o') {
                    request_src = "console_who";
                    current_cmd = "get_room_user_list";
                    data = '{"cmd":"get_room_user_list", "room_name":"' + current_room + '", "tracker":"' + current_tid + '"}';
                    send_data(data);
                    //appendChatroomInfo(msg + ":");
                }
-               else if (msg == '$where' || msg == '$w') {
-                   appendChatroomInfo('$where: ' + C_MSG['14'] + current_room);
+               else if (msg == '#where' || msg == '#w') {
+                   appendChatroomInfo('#where: ' + C_MSG['14'] + current_room);
                }
-               else if (msg == '$invite' || msg == '$i') {
-                   appendChatroomInfo('$create: ' + C_MSG['15']);
+               else if (msg == '#invite' || msg == '#i') {
+                   appendChatroomInfo('#invite: ' + C_MSG['15']);
                }
-               else if (msg.startsWith('$invite ') || msg.startsWith('$i ')) {
-                   var user_name = msg.startsWith('$i ') ? msg.substr(3) : msg.substr(8); // after '$invite '
+               else if (msg.startsWith('#invite ') || msg.startsWith('#i ')) {
+                   var user_name = msg.startsWith('#i ') ? msg.substr(3) : msg.substr(8); // after '#invite '
                    user_name = $.trim(user_name);
                    var err = validateUsername(user_name);
                    if (err != '') {
-                       appendChatroomError('$invite: ' + err);
+                       appendChatroomError('#invite: ' + err);
                    } else {
                        appendConsole('Now invite: ' + user_name);
                        doInvite(user_name);
                    }
                }
-               else if (msg == '$private' || msg == '$v' || msg == '$public' || msg == '$b') { // Only room master can do this.
+               else if (msg == '#private' || msg == '#v' || msg == '#public' || msg == '#b') { // Only room master can do this.
                    if (! is_room_master) {
                        appendChatroomError(msg + ': ' + C_MSG['16']);
                    }   
                    else {
                        current_cmd = "set_room_permission";
-                       var is_public = ((msg == '$public' || msg == '$b') ? 1 : 0);
+                       var is_public = ((msg == '#public' || msg == '#b') ? 1 : 0);
                        data = '{"cmd":"set_room_permission", "permission":"' + is_public + '", "room_name":"' + 
                               current_room + '", "tracker":"' + current_tid + '"}';
                        send_data(data);
                    }
                }
-               else if (msg == '$master' || msg == '$t') {
-                   appendChatroomInfo('$master: ' + C_MSG['15']);
+               else if (msg == '#master' || msg == '#t') {
+                   appendChatroomInfo('#master: ' + C_MSG['15']);
                }
-               else if (msg.startsWith('$master ') || msg.startsWith('$t ')) {
+               else if (msg.startsWith('#master ') || msg.startsWith('#t ')) {
                    if (! is_room_master) {
-                       appendChatroomError('$master: ' + C_MSG['16']);
+                       appendChatroomError('#master: ' + C_MSG['16']);
                    }
                    else {
-                       var user_name = msg.startsWith('$t ') ? msg.substr(3) : msg.substr(8); //after '$master'
+                       var user_name = msg.startsWith('#t ') ? msg.substr(3) : msg.substr(8); //after '#master'
                        user_name = $.trim(user_name);
                        var err = validateUsername(user_name);
                        if (err != '') {
-                           appendChatroomError('$master: ' + err);
+                           appendChatroomError('#master: ' + err);
                        } else {
                            doMaster(user_name, current_room);
                        }
                    }
                }
-               else if (msg == '$kick' || msg == '$k') {
-                   appendChatroomInfo('$kick: ' + C_MSG['15']);
+               else if (msg == '#kick' || msg == '#k') {
+                   appendChatroomInfo('#kick: ' + C_MSG['15']);
                }
-               else if (msg.startsWith('$kick ') || msg.startsWith('$k ')) {
+               else if (msg.startsWith('#kick ') || msg.startsWith('#k ')) {
                    if (! is_room_master) {
-                       appendChatroomError('$kick: ' + C_MSG['16']);
+                       appendChatroomError('#kick: ' + C_MSG['16']);
                    }
                    else {
-                       var user_name = msg.startsWith('$k ') ? msg.substr(3) : msg.substr(6); //after '$kick'
+                       var user_name = msg.startsWith('#k ') ? msg.substr(3) : msg.substr(6); //after '#kick'
                        user_name = $.trim(user_name);
                        var err = validateUsername(user_name);
                        if (err != '') {
-                           appendChatroomError('$kick: ' + err);
+                           appendChatroomError('#kick: ' + err);
                        } else {
                            doKick(user_name, current_room);
                        }
                    }
                }
-               else if (msg == '$max' || msg == '$m') {
-                   appendChatroomInfo('$max: ' + C_MSG['17']);
+               else if (msg == '#max' || msg == '#m') {
+                   appendChatroomInfo('#max: ' + C_MSG['17']);
                }
-               else if (msg.startsWith('$max ') || msg.startsWith('$m ')) {
+               else if (msg.startsWith('#max ') || msg.startsWith('#m ')) {
                    if (! is_room_master) {
-                       appendChatroomError('$max: ' + C_MSG['16']);
+                       appendChatroomError('#max: ' + C_MSG['16']);
                    }
                    else {
                        current_cmd = "max";
-                       var max_size = msg.startsWith('$m ') ? msg.substr(3) : msg.substr(5); // after '$max '
+                       var max_size = msg.startsWith('#m ') ? msg.substr(3) : msg.substr(5); // after '#max '
                        max_size = $.trim(max_size);
                        if (! isInt(max_size)) {
-                           appendChatroomError('$max: ' + max_size + C_MSG['18']);
+                           appendChatroomError('#max: ' + max_size + C_MSG['18']);
                        }
                        else {
                            if (max_size < 0) max_size = 0;
@@ -790,7 +790,7 @@
          }
          function doLeaveRoom() {
              if (current_room == '') {
-                 appendChatroomInfo('$leave ' + C_MSG['25']);
+                 appendChatroomInfo('#leave ' + C_MSG['25']);
                  return;
              }
 
@@ -863,7 +863,7 @@
              }
          }
          function doGameChess() {
-             appendChatroomInfo('$game chess');
+             appendChatroomInfo('#game chess');
              $('#game_panel').show();
              if (! game_chess_loaded) {
                  game_chess_loaded = true;
@@ -878,7 +878,7 @@
              $('#chatroom').css('background-size', newBgSize);
          }
          function doGameOff() {
-             appendChatroomInfo('$game off');
+             appendChatroomInfo('#game off');
              $('#chatroom').css('width', '720px');
              $('#game_panel').hide();
              $('#chatroom').css('background-size', bgImgSize);
@@ -1242,7 +1242,7 @@
              arr = arr.map(function(x){ return /:0$/.test(x) ? 
                  x.substr(0, x.length - 2) + ' (private)' : x.substr(0, x.length - 2); });
              msg = arr.sort().join(', ');
-             appendChatroomInfo("$rooms: " + msg);
+             appendChatroomInfo("#rooms: " + msg);
          }
          function handle_cr_get_room_list(status, msg, code, tracker) {
              if (request_src == 'console') {
@@ -1339,7 +1339,7 @@
              }
             
              msg = msg.split(',').sort().join(', ');
-             appendChatroomInfo("$users: " + msg);
+             appendChatroomInfo("#users: " + msg);
          }
          function handle_cr_get_user_list(status, msg, code, tracker) {
              if (request_src == 'console') {
@@ -1380,7 +1380,7 @@
 
              if (request_src == 'console_who') {
                  users = users.split(',').sort().join(', ');
-                 appendChatroomInfo("$who: " + C_MSG['55'] + users);
+                 appendChatroomInfo("#who: " + C_MSG['55'] + users);
              }
              else if (request_src == 'showRoomUsers') {
                  addToSelectList('selectRoomUsersList', '', users);
