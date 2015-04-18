@@ -93,6 +93,8 @@ class Cls_Chatroom():
         # Password cannot contain: : , | " ( \
         self.pwd_neg_pattern = re.compile("[:,\|\"\(\\\]")
 
+        self.color_pattern = re.compile("^#[0-9a-fA-F]{6}$")
+
         self.DB = "/home2/cssauhco/gametheory/gtchat/db.txt";       # db file, for temp use.
         self.DB_is_dirty = False
 
@@ -135,8 +137,8 @@ class Cls_Chatroom():
             self.T_users_pref['a'] = Cls_UserPref(default_pref)
             self.T_users_pref['b'] = Cls_UserPref(default_pref)
 
-            print self.T_users
-            print self.T_users_pref
+            #print self.T_users
+            #print self.T_users_pref
             self.createFile(self.DB)
 
             return 
@@ -161,8 +163,8 @@ class Cls_Chatroom():
                 self.T_users[name] = pwd
                 self.T_users_pref[name] = pref
 
-        print self.T_users
-        print self.T_users_pref
+        #print self.T_users
+        #print self.T_users_pref
 
 
     def saveDB_T_users(self, usr, pwd):
@@ -354,8 +356,9 @@ class Cls_Chatroom():
 
             elif cmd == "speak":
                 msg = self.get_param('msg')
+                style = self.get_param('style')
                 room_name = self.get_param('room_name')
-                self.api_speak(msg, room_name, usr, src, tracker)
+                self.api_speak(msg, style, room_name, usr, src, tracker)
 
             elif cmd == "whisper":
                 msg = self.get_param('msg')
@@ -526,10 +529,69 @@ class Cls_Chatroom():
         return json.JSONEncoder().encode(data)
 
 
-    def api_speak(self, msg, room_name, usr, src, tracker):
+    def process_msg(self, msg, style):
+        # do not allow html tag for security.
+        msg = msg.replace('<', '&lt;')
+
+        """
+        Allow: 
+        font-style: <b>, <i>, <u>
+        font-size (int)
+        font-color (#0-9a-f-A-F){6}
+        img
+        Format: 'b:i:u:size=3:color=#ffffff' or 'img'
+        """
+
+        if style == 'img':
+            msg = '<img src="' + msg + '" class="chatroom"/>'
+        else:
+            styles = style.split(':')
+            for st in styles:
+                if st == 'b':
+                    msg = '<b>' + msg + '</b>'
+                elif st == 'i':
+                    msg = '<i>' + msg + '</i>'
+                elif st == 'u':
+                    msg = '<u>' + msg + '</u>'
+                elif st.startswith('size='):
+                    size = st[5:]
+                    if not self.isInt(size): 
+                        raise Exception('39|not valid size number')
+                    msg = '<font size="' + size + '">' + msg + '</font>'
+                elif st.startswith('color='):
+                    color = st[6:]
+                    if not self.isHTMLColor(color):
+                        raise Exception('40|not valid HTML color')
+                    msg = '<font color="' + color + '">' + msg + '</font>'
+
+        #print 'msg processed: ' + msg
+
+        return msg
+
+
+    def isHTMLColor(self, s):
+        return True if self.color_pattern.match(s) else False
+
+
+    def isInt(self, s):
+        try:
+            return str(s) == str(int(s))
+        except:
+            return False
+
+
+    def api_speak(self, msg, style, room_name, usr, src, tracker):
         self.validate_active_user(src)
         self.validate_active_room(room_name)
         self.validate_room_user(room_name, src)
+
+        # process msg
+        msg = self.process_msg(msg, style)
+
+        # send response message to sender.
+        response_msg = msg #"message is sent"
+        client = self.get_client(src)
+        self.send_c_response("ok", "speak", response_msg, usr, client, tracker)
 
         """
         Now broadcast to users in this room.
@@ -538,17 +600,6 @@ class Cls_Chatroom():
         # send event message to users in this room.
         msg = self.make_msg_c_speak(msg, usr, room_name, tracker)
         self.broadcast_to_room(room_name, msg, src)
-
-        #target_src_list = self.T_rooms[room_name].getUserSrcList()
-        #msg = self.make_msg_c_speak(msg, usr, room_name, tracker)
-        #for target_src in target_src_list:
-        #    if target_src != src:  # do not send to self.
-        #        self.send_msg(self.get_client(target_src), msg)
-
-        # send response message to sender.
-        response_msg = "message is sent"
-        client = self.get_client(src)
-        self.send_c_response("ok", "speak", response_msg, usr, client, tracker)
 
 
     """

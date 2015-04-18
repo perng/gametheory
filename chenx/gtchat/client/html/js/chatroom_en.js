@@ -378,14 +378,13 @@
                else {
                    current_cmd = "speak";
                    //alert(msg);
-                   data = '{"cmd":"speak", "room_name":"' + current_room + '", "msg":"' + strEncode(msg) + 
+                   var style = '.'; //b:u:i:size=a:color=#888888';
+                   data = '{"cmd":"speak", "room_name":"' + current_room + 
+                          '", "msg":"' + strEncode(msg) + 
+                          '", "style":"' + strEncode(style) +
                           '", "tracker":"' + current_tid + '"}';
                    send_data(data);
-                   //console.log("Text message sent: " + msg);
-                   msg = decodeNewLine(msg);
-                   //appendChatroom('<font color="#99ff99">>> ' + getTimeStamp() + '<br/>' + msg + '</font>');
-                   doSpeak(msg, current_user, true);
-                   playSound('send');
+                   //doSpeak(msg, current_user, true);
                }
             } else {
                //console.log("Connection not opened.")
@@ -397,9 +396,12 @@
              var t = getTimeStamp();
              var color = isMe ? ' color="#99ff99"' : '';
              var author = '>> ' + usr + ' ' + t;
+             msg = strDecode(msg);
              if (isMe) {
                  author = '<span style="font-size:10pt; color:#ccffcc;">' + author + '</span>';
+                 //msg = strDecode(msg);
                  msg = '<span style="color: #99ff99;">' + msg + '</span>';
+                 playSound('send');
              }
              else {
                  author = '<span style="font-size:10pt; color: #cccccc;">' + author + '</span>';
@@ -871,6 +873,7 @@
 
          function process_message(msg) {
              //alert(msg);
+             msg = msg.replace(/\|/g, "&#124;"); // JSON cannot handle '|'.
              var jo = JSON.parse(msg);
              var cmd = jo.cmd;
              //alert(jo + ',' + cmd);
@@ -917,16 +920,12 @@
              else if (last_cmd == 'logout')      { handle_cr_logout(status, msg, code, tracker); }
          }
          function handle_c_speak(jo) {
-             //var msg = jo.msg;
              var jo_msg = getJoMsg(jo.msg);
              var code = jo_msg.code;
              var msg = jo_msg.msg;
              var usr = jo.usr;
              var room_name = jo.room_name;
              var tracker = jo.tracker;
-             //dump(':speak: ' + msg + ',' + room_name + ',' + tracker);
-             msg = strDecode(msg);
-             //appendChatroom('>> ' + usr + ': ' + getTimeStamp() + '<br/>' + msg);
              doSpeak(msg, usr, false);
          }
          function handle_c_whisper(jo) {
@@ -1174,7 +1173,7 @@
                          else if (key == 'bgSoundID') bgSoundID = val;
                      }
                  } 
-                 console.log('bgImg=' + bgImgID + ', bgSound=' + bgSoundID);
+                 //console.log('bgImg=' + bgImgID + ', bgSound=' + bgSoundID);
 
                  // set environment according to user preferences.
                  $('#selectBgSound').val(bgSoundID);
@@ -1619,8 +1618,10 @@
          function handle_cr_speak(status, msg, code, tracker) {
              if (status != 'ok') {
                  //updateInfo(msg, 'error');
-                 appendChatroom('<font color="red">Error sending message (tracker: ' 
-                                + tracker + '): ' + msg + '</font>');
+                 var v = msg.split(':')
+                 if (v.length == 2) msg = v[1];
+                 appendChatroom('<font color="red">Error sending message: ' 
+                                + msg + '</font>');
                  return;
              }
              if (tracker != current_tid) {
@@ -1634,6 +1635,7 @@
                  }
                  return;
              }
+             doSpeak(msg, current_user, true);
          }
          function handle_cr_whisper(status, msg, code, tracker) {
 

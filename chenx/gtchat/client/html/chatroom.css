@@ -363,6 +363,12 @@
           opacity: 0.9;
       }
 
+      /* limit size of image display in chatroom. */
+      img.chatroom {
+          max-width: 100%;
+          height: auto;
+      }
+
       #debug_console {
           position: relative; 
       }
