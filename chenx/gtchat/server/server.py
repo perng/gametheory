@@ -72,7 +72,7 @@ class Cls_Chatroom():
         Storage (database tables)
         """
         self.T_users = {}         # entry = name:pwd
-        self.T_users_pref = {}    # entry = name:pref. Preferences: bgImgID so far.
+        self.T_users_pref = {}    # entry = name:pref. Preferences.
         self.T_users_src = {}     # entry = name:src. E.g. usr1:tcp4:127.0.0.1:57778
         self.T_users_active_ct = {} # entry: name:[list of session_id], session_id = 1, 2, 3, ...
         self.T_users_active = {}  # entry = src:Cls_ActiveUser_object
@@ -129,9 +129,15 @@ class Cls_Chatroom():
             self.T_users['a'] = '11111111'
             self.T_users['b'] = '11111111'
 
-            self.T_users_pref['admin'] = '2'
-            self.T_users_pref['a'] = '2'
-            self.T_users_pref['b'] = '2'
+            default_pref = "bgImgID:2,bgSoundID:1"
+
+            self.T_users_pref['admin'] = Cls_UserPref(default_pref) 
+            self.T_users_pref['a'] = Cls_UserPref(default_pref)
+            self.T_users_pref['b'] = Cls_UserPref(default_pref)
+
+            print self.T_users
+            print self.T_users_pref
+            self.createFile(self.DB)
 
             return 
 
@@ -151,9 +157,12 @@ class Cls_Chatroom():
             if len(fields) == 3:
                 name = decode_utf8(fields[0])
                 pwd  = decode_utf8(fields[1])
-                pref = decode_utf8(fields[2])
+                pref = Cls_UserPref( decode_utf8(fields[2]) )
                 self.T_users[name] = pwd
                 self.T_users_pref[name] = pref
+
+        print self.T_users
+        print self.T_users_pref
 
 
     def saveDB_T_users(self, usr, pwd):
@@ -168,7 +177,7 @@ class Cls_Chatroom():
         if not (os.path.exists(self.DB) and os.path.isfile(self.DB)):
             return;
 
-        pref = encode_utf8(self.T_users_pref[usr])
+        pref = encode_utf8(self.T_users_pref[usr].getPrefStr())
         usr = encode_utf8(usr)
         pwd = encode_utf8(pwd)
 
@@ -179,19 +188,32 @@ class Cls_Chatroom():
         self.DB_is_dirty = True
 
 
+    def createFile(self, file):
+        dir = os.path.dirname(file)
+        if not os.path.exists(dir):
+            os.makedirs(dir)
+            if DEBUG:
+                print "creating dir " + dir
+
+        if not os.path.isfile(file):
+            fp = open(self.DB, 'w')
+            fp.close()
+            print "create file " + file
+
+
     def flushDB(self):
         """
         Save database data in memory to disk before exit.
         """
         if not self.DB_is_dirty:
             print "DB is not dirty, no need to flush DB."
-            return
+            #return
 
         print "flush to db before exit" 
         newDB = self.DB + '.tmp'
         fo = open(newDB, 'w')
         for key, value in self.T_users.iteritems():
-            pref = encode_utf8(self.T_users_pref[key])
+            pref = encode_utf8(self.T_users_pref[key].getPrefStr())
             usr = encode_utf8(key)
             pwd = encode_utf8(value)
             fo.write(usr + "\t" + pwd + "\t" + pref + "\n")
@@ -1033,7 +1055,7 @@ class Cls_Chatroom():
             if usr not in self.T_users or self.T_users[usr] != pwd:
                 raise Exception("25|invalid login information")
 
-            pref = self.T_users_pref[usr]  # get preferences.
+            pref = self.T_users_pref[usr].getPrefStr()  # get preferences.
 
             if usr in self.T_users_src:
                 #raise Exception("26|user " + usr + " has already logged in")
@@ -1049,7 +1071,7 @@ class Cls_Chatroom():
         else: # 'tmp'. anonymous user
             if usr in self.T_users:
                 raise Exception("27|this username has been taken")
-            pref = '0'
+            pref = ''
 
         user = Cls_ActiveUser(usr, src, client)
         self.T_users_active[src] = user
@@ -1059,7 +1081,7 @@ class Cls_Chatroom():
         self.T_users_src[usr] = src  
 
         # send response message to sender. Include personal settings/preferences.
-        response_msg = usr + ':' + pref
+        response_msg = usr + ',' + pref
         client = self.get_client(src)
         self.send_c_response("ok", "login", response_msg, usr, client, tracker)
 
@@ -1128,23 +1150,45 @@ class Cls_Chatroom():
     def api_update_pref(self, usr, pref, src, tracker):
         """
         Only usr himself receives a response.
+        This can process multiple preferences. 
+        Input format should be: key1:val1,key2:val2,...
         """
-        if pref.startswith("bgImgID:"):
-            bgImgID = pref[8:]
-            username = self.getUserRealName(usr)
-            self.T_users_pref[username] = bgImgID
+        self.validate_active_user(src)
+
+        # print 'update pref of ' + encode_utf8(username) + ': ' + encode_utf8(pref)
+
+        username = self.getUserRealName(usr)
+        input_err = ''
+        prefs = []
+
+        # first check if data are all in good format.
+        items = pref.split(',')
+        for item in items:
+            fields = item.split(':')
+            if len(fields) == 2:
+                prefs.append(fields)
+            else:
+                if input_err != '': 
+                    input_err += ','
+                input_err += item
+
+        # if data are all in good format, update preferences.
+        if input_err == '':
+            for item in prefs:
+                key = item[0]
+                val = item[1]
+                self.T_users_pref[username].setPref(key, val)
+                #print 'updat pref: ' + key + '=' + val
             self.DB_is_dirty = True  # do this so will flushDB when exit.
-            #print 'update pref of ' + encode_utf8(username) + ' to ' + bgImgID
 
             # send response message to sender.
-            response_msg = usr
-            if DEBUG: response_msg += ':bgImgID:' + bgImgID
+            response_msg = usr 
+            if DEBUG: response_msg += ',' + pref
             client = self.get_client(src)
             self.send_c_response("ok", "update_pref", response_msg, usr, client, tracker)
-
         else:
             # send response message to sender.
-            raise Exception("37|unknown preference: " + pref)
+            raise Exception("37|invalid preference (should be colon delimited pair): " + input_err)
 
 
     def getUserRealName(self, usr):
@@ -1271,6 +1315,39 @@ class Cls_ActiveUser():
 
     def getClient(self): 
         return self.client
+
+
+# Store user preferences in a dictionary.
+class Cls_UserPref():
+    def __init__(self, pref):
+        self.dict = {}
+        fields = pref.split(',')
+        for field in fields:
+            kv = field.split(':')
+            if len(kv) == 2:
+                key = kv[0].strip()
+                val = kv[1].strip()
+                self.dict[key] = val
+
+    def __str__(self):
+        return self.getPrefStr()
+
+    def __repr__(self):
+        return self.__str__()
+    
+    def setPref(self, key, val):
+        self.dict[key] = val
+
+    def getPref(self, key):
+        return self.dict[key] if key in self.dict else ''
+
+    def getPrefStr(self):
+        pref = ''
+        for key, value in self.dict.iteritems():
+            if pref != '':
+                pref += ','
+            pref += key + ':' + value
+        return pref
 
 
 class Cls_Room():

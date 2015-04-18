@@ -102,7 +102,16 @@
           <span style="background-color:#bbccff; display:inline-block; padding:2px; width:96%; font-size: 11pt;">Settings</span><br/>
           <input type="checkbox" id="cbSendMode" checked><span> Send text on Enter</span><br/>
 
-          <span style="padding-top: 5px; padding-bottom: 5px; iborder-bottom:solid 2px #999999; iborder-top:solid 2px #999999; display:inline-block; width:130px;">
+          <span style="padding-top: 2px; padding-bottom: 0px; display:inline-block; width:130px;">
+          Sound<br/>
+          <select id="selectBgSound" style="width:130px;">
+              <option value="0">None</option>
+              <option value="1">Mario</option>
+              <option value="2">Vision</option>
+          </select>
+          </span><br/>
+
+          <span style="padding-top: 2px; padding-bottom: 2px; display:inline-block; width:130px;">
           Background<br/>
           <select id="selectBgImg" style="width:130px;">
               <option value="0">Blank</option>
@@ -191,8 +200,8 @@
       </div>
 
       <p><br/></p>
-      <audio id="idSoundSend" preload="auto" autobuffer src="../sound/send.mp3"/>
-      <audio id="idSoundRecv" preload="auto" autobuffer src="../sound/recv.mp3"/>
+      <audio id="idSoundSend" preload="auto" autobuffer/>
+      <audio id="idSoundRecv" preload="auto" autobuffer/>
 
    </body>
 </html>

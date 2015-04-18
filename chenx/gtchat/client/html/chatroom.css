@@ -142,8 +142,8 @@
           position: absolute;
           left: 598px;
           width: 134px;
-          top: 298px;
-          height: 165px;
+          top: 260px; /* 298 */
+          height: 203px; /* 165 */
           /*top: 345px;
           height: 118px;*/
           background-color: #eeeeee;

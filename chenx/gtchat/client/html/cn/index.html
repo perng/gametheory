@@ -104,7 +104,16 @@
           <span style="background-color:#bbccff; display:inline-block; padding:2px; width:96%; font-size: 11pt;">设置</span><br/>
           <input type="checkbox" id="cbSendMode" checked><span> 按回车键发送</span><br/>
 
-          <span style="padding-top: 5px; padding-bottom: 5px; iborder-bottom:solid 2px #999999; iborder-top:solid 2px #999999; display:inline-block; width:130px;">
+          <span style="padding-top: 2px; padding-bottom: 0px; display:inline-block; width:130px;">
+          声音<br/>
+          <select id="selectBgSound" style="width:130px;">
+              <option value="0">无</option>
+              <option value="1">Mario</option>
+              <option value="2">Vision</option>
+          </select>
+          </span><br/>
+
+          <span style="padding-top: 5px; padding-bottom: 5px; display:inline-block; width:130px;">
           聊天室背景<br/>
           <select id="selectBgImg" style="width:130px;">
               <option value="0">空白</option>
@@ -193,8 +202,8 @@
       </div>
 
       <p><br/></p>
-      <audio id="idSoundSend" preload="auto" autobuffer src="../sound/send.mp3"/>
-      <audio id="idSoundRecv" preload="auto" autobuffer src="../sound/recv.mp3"/>
+      <audio id="idSoundSend" preload="auto" autobuffer/>
+      <audio id="idSoundRecv" preload="auto" autobuffer/>
 
    </body>
 </html>

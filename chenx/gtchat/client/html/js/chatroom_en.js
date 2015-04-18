@@ -18,8 +18,9 @@
          var bgImg_downloaded = false;
          var bgImgID = 2;
          var bgImgSize = '';
-         var game_chess_loaded = false;
+         var bgSoundID = 1;
          var canPlayMP3 = supportAudioMP3();
+         var game_chess_loaded = false;
 
 
          if (typeof String.prototype.startsWith != 'function') {
@@ -37,23 +38,16 @@
          }
 
          function playSound(type) {
-             if (! canPlayMP3) return;
+             if (! canPlayMP3 || bgSoundID == 0) return;
              var v;
              if (type == 'send') {
                  v = document.getElementById('idSoundSend');
-                 v.src = '../sound/send2.mp3';
+                 v.src = '../sound/send' + bgSoundID + '.mp3';
              } else if (type == 'recv') {
                  v = document.getElementById('idSoundRecv');
-                 v.src = '../sound/recv.mp3';
+                 v.src = '../sound/recv' + bgSoundID + '.mp3';
              }
              v.play();
-         }
-
-         function playSound2(id) {
-             var v = document.getElementById(id);
-             if (v && v.play) {
-                 v.play();
-             }
          }
 
          function send_data(data) {
@@ -193,6 +187,7 @@
             document.getElementById('txtMsg').disabled = v;
             document.getElementById('cbSendMode').disabled = v;
             document.getElementById('btnLogout').disabled = v;
+            document.getElementById('selectBgSound').disabled = v;
             document.getElementById('selectBgImg').disabled = v;
             setChatroomScrSaver(v);
             //document.getElementById('btnSendBin').disabled = v;
@@ -1166,14 +1161,25 @@
                  $('#span_login').hide();
                  document.getElementById('login_pwd').value = ''; // clear password.
                  // msg is username plus sequence number when the user 
-                 // logs in with multple sessions.
-
-                 var v = msg.split(':');  // msg: user:preference
+                 // logs in with multple sessions, followed by preferences.
+                 var v = msg.split(',');  // msg: user,preferences
                  current_user = v[0];     // $('#login_name').val();
-                 bgImgID = v[1];
 
-                 // set background image dropdown list selected value.
+                 // get preferences. E.g, bgImgID:1,bgSoundID:1
+                 for (var i = 1, n = v.length; i < n; ++ i ) {
+                     kv = v[i].split(':');
+                     if (kv.length == 2) {
+                         var key = kv[0], val = kv[1];
+                         if (key == 'bgImgID') bgImgID = val;
+                         else if (key == 'bgSoundID') bgSoundID = val;
+                     }
+                 } 
+                 console.log('bgImg=' + bgImgID + ', bgSound=' + bgSoundID);
+
+                 // set environment according to user preferences.
+                 $('#selectBgSound').val(bgSoundID);
                  $('#selectBgImg').val(bgImgID);
+                 setChatroomBgImg(bgImgID);
 
                  var msg_logout = ' [<a href="#" onclick="doLogout();">Logout</a>] ';
                  //$('#div_logout').html(msg_logout);
@@ -1757,8 +1763,8 @@
              var pos = getMousePosInDiv(event, 'panel_settings');
              var x = pos.x, y = pos.y;
              //$('#div_msg').html(x + ',' + y); return;
-             // 134, 163: size of panel_settings.
-             if (x >= 0 && x <= 134 && y >= 0 && y <= 163) return;
+             // 134, 203: width/height of panel_settings.
+             if (x >= 0 && x <= 134 && y >= 0 && y <= 203) return;
 
              $('#panel_settings').hide();
          }
@@ -1800,7 +1806,6 @@
              return dateTime;
          }
 
-
          function setChatroomBgImg(id) {
              var bgImg = 'none';
              var bgSize = '100% 100%';
@@ -1834,7 +1839,7 @@
          //
          function setChatroomScrSaver(do_set) {
              if (! do_set) {
-                 setChatroomBgImg(bgImgID);
+                 //setChatroomBgImg(bgImgID);
                  return;
              }
 
@@ -1949,13 +1954,20 @@
              });
 
              setChatroomScrSaver(true);
-             $('#selectBgImg').val(bgImgID);
+             $('#selectBgImg').val(bgImgID); // initialize to client default.
 
+             $('#selectBgImg').val(bgImgID);
              $('#selectBgImg').change(function() {
                  //alert($(this).val());
                  bgImgID = $(this).val();
                  setChatroomBgImg(bgImgID);
                  send_msg_pref("bgImgID:" + bgImgID);
+             });
+
+             $('#selectBgSound').val(bgSoundID);
+             $('#selectBgSound').change(function() {
+                 bgSoundID = $(this).val();
+                 send_msg_pref("bgSoundID:" + bgSoundID);
              });
 
              doDisconnect(true); // initialize to clean state.
