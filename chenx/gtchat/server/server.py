@@ -557,7 +557,7 @@ class Cls_Chatroom():
                     size = st[5:]
                     if not self.isInt(size): 
                         raise Exception('39|not valid size number')
-                    msg = '<font size="' + size + '">' + msg + '</font>'
+                    msg = '<font size="' + size + 'pt">' + msg + '</font>'
                 elif st.startswith('color='):
                     color = st[6:]
                     if not self.isHTMLColor(color):
