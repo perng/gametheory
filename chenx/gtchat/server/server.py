@@ -483,8 +483,15 @@ class Cls_Chatroom():
         Send response message to request sender.
         In theory for each request, a response should be sent,
         although sometimes it may be ignored without any issue.
+
+        Note: the 'code' field exists only in c_reponse message, when status is 'error'.
         """
-        code = '0'
+        if status == 'error':
+            barIndex = msg.index('|')
+            code = msg[:barIndex]
+            msg = msg[barIndex+1:]
+        else:
+            code = '0'
 
         data = {"cmd":"c_response", "status":status, "last_cmd":last_cmd, \
                 "msg":msg, "code":code, "tracker":tracker}
