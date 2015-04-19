@@ -4,7 +4,7 @@
 #
 # The MIT License (MIT)
 #
-# Copyright (c) Tavendo GmbH, X. Chen
+# Copyright (c) X. Chen
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -30,9 +30,10 @@
 # Modifications: 
 # 1) avoid send to self when broadcast, 
 # 2) output format.
-# 3) added Chatroom API classes Cls_chatroom, Cls_ActiveUser, Cls_Rooms.
+# 3) added Chatroom API classes Cls_chatroom, Cls_ActiveUser, Cls_Rooms,
+#    Cls_UserPref.
 #
-# X.C. (3/18/2015 - 3/19/2015)
+# X. Chen (3/18/2015 - 4/18/2015)
 # 
 
 import sys, os

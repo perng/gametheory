@@ -21,7 +21,9 @@
          var bgSoundID = 1;
          var canPlayMP3 = supportAudioMP3();
          var game_chess_loaded = false;
-         var helpMsg = getHelp();
+         var helpMsgAll    = getHelpAll();
+         var helpMsgCommon = getHelpCommon();
+         var helpMsgMaster = getHelpMaster();
 
 
          if (typeof String.prototype.startsWith != 'function') {
@@ -47,6 +49,12 @@
              } else if (type == 'recv') {
                  v = document.getElementById('idSoundRecv');
                  v.src = '../sound/recv' + bgSoundID + '.mp3';
+             } else if (type == 'info') {
+                 v = document.getElementById('idSoundSend');
+                 v.src = '../sound/info.mp3';
+             } else if (type == 'err') {
+                 v = document.getElementById('idSoundSend');
+                 v.src = '../sound/error.mp3';
              }
              v.play();
          }
@@ -171,7 +179,8 @@
             //document.getElementById('btnSendBin').disabled = v;
          }
 
-         function getHelp() {
+         // Show help for all commands.
+         function getHelpAll() {
              var help = "\
 <br/>#b (#public, 设置当前聊天室为公开聊天室) \
 <br/>#c {room} (#create, 创建并加入新聊天室) \
@@ -179,7 +188,9 @@
 <br/>#gc (#g chess, #game chess, 打开六子棋游戏窗口) \
 <br/>#g1 (#g on, #game on, 和#game chess相同) \
 <br/>#g0 (#g off, #game off, 隐藏游戏窗口) \
-<br/>#h (#?, #help, 显示本帮助信息) \
+<br/>#h (#?, #help, 显示帮助信息) \
+<br/>#ha (#help all, 显示所有帮助信息) \
+<br/>#hm (#help master, 显示聊天室管理员帮助信息) \
 <br/>#i {user} (#invite, 邀请用户加入当前聊天室) \
 <br/>#j {room} (#join, 加入已有聊天室) \
 <br/>#k {user} (#kick, 把某一用户踢出当前聊天室) \
@@ -193,6 +204,41 @@
 <br/>#v (#private, 设置当前聊天室为秘密聊天室) \
 <br/>#w (#where, 显示当前聊天室名) \
 <br/>#x (#exit, #logout, 退出登录) \
+";
+             return help;
+         }
+
+         // Help on commands for common users.
+         function getHelpCommon() {
+             var help = "\
+<br/>#c {room} (#create, 创建并加入新聊天室) \
+<br/>#e (#erase, 清除聊天室内容) \
+<br/>#gc (#g chess, #game chess, 打开六子棋游戏窗口) \
+<br/>#g1 (#g on, #game on, 和#game chess相同) \
+<br/>#g0 (#g off, #game off, 隐藏游戏窗口) \
+<br/>#h (#?, #help, 显示帮助信息) \
+<br/>#hm (#help master, 显示聊天室管理员帮助信息) \
+<br/>#i {user} (#invite, 邀请用户加入当前聊天室) \
+<br/>#j {room} (#join, 加入已有聊天室) \
+<br/>#l (#leave, 离开当前聊天室, 并进入大厅) \
+<br/>#o (#who, 列出当前聊天室用户) \
+<br/>#p (#passwd, 更新密码) \
+<br/>#r (#rooms, 列出所有在线聊天室) \
+<br/>#u (#users, 列出所有在线用户) \
+<br/>#w (#where, 显示当前聊天室名) \
+<br/>#x (#exit, #logout, 退出登录) \
+";
+             return help;
+         }
+
+         // Help on commands for room master only.
+         function getHelpMaster() {
+             var help = "\
+<br/>#b (#public, 设置当前聊天室为公开聊天室) \
+<br/>#k {user} (#kick, 把某一用户踢出当前聊天室) \
+<br/>#m {size} (#max, 设置当前聊天室最大容量, 0或负数表示无上限) \
+<br/>#t {user} (#master, 转移聊天室管理员身份给室内另一用户) \
+<br/>#v (#private, 设置当前聊天室为秘密聊天室) \
 ";
              return help;
          }
@@ -231,13 +277,19 @@
                    //appendChatroomInfo(msg + ":");
                }
                else if (msg == '#help' || msg == '#h' || msg == '#?') {
-                   appendChatroomInfo('#help: ' + helpMsg);
+                   appendChatroomInfo('#help: ' + helpMsgCommon);
+               }
+               else if (msg == '#hm' || msg == '#help master') {
+                   appendChatroomInfo('#help master: ' + helpMsgMaster);
+               }
+               else if (msg == '#ha' || msg == '#help all') {
+                   appendChatroomInfo('#help all: ' + helpMsgAll);
                }
                else if (msg == '#leave' || msg == '#l') {
                    doLeaveRoom();
                }
                else if (msg == '#create' || msg == '#c') {
-                   appendChatroomInfo('#create: ' + C_MSG['11']);
+                   appendChatroomError('#create: ' + C_MSG['11']);
                }
                else if (msg.startsWith('#create ') || msg.startsWith('#c ')) {
                    request_src = "console";
@@ -252,7 +304,7 @@
                    }
                }
                else if (msg == '#join' || msg == '#j') {
-                   appendChatroomInfo('#join: ' + C_MSG['11']);
+                   appendChatroomError('#join: ' + C_MSG['11']);
                }
                else if (msg.startsWith('#join ') || msg.startsWith('#j ')) {
                    var room_name = msg.startsWith('#j ') ? msg.substr(3) : msg.substr(6); // after '#join '
@@ -284,7 +336,9 @@
                else if (msg == '#erase' || msg == '#e') {
                    clearChatroom();
                }
+               //
                // All commands below need a non-empty current_room.
+               //
                else if (current_room == '') {
                    //appendChatroomInfo('>> ' + msg);
                    appendChatroomInfo(C_MSG['12'] + + msg);
@@ -302,7 +356,7 @@
                    appendChatroomInfo('#where: ' + C_MSG['14'] + current_room);
                }
                else if (msg == '#invite' || msg == '#i') {
-                   appendChatroomInfo('#invite: ' + C_MSG['15']);
+                   appendChatroomError('#invite: ' + C_MSG['15']);
                }
                else if (msg.startsWith('#invite ') || msg.startsWith('#i ')) {
                    var user_name = msg.startsWith('#i ') ? msg.substr(3) : msg.substr(8); // after '#invite '
@@ -315,6 +369,9 @@
                        doInvite(user_name);
                    }
                }
+               //
+               // Commands below requires to be a room master.
+               //
                else if (msg == '#private' || msg == '#v' || msg == '#public' || msg == '#b') { // Only room master can do this.
                    if (! is_room_master) {
                        appendChatroomError(msg + ': ' + C_MSG['16']);
@@ -328,7 +385,12 @@
                    }
                }
                else if (msg == '#master' || msg == '#t') {
-                   appendChatroomInfo('#master: ' + C_MSG['15']);
+                   if (! is_room_master) {
+                       appendChatroomError('#master: ' + C_MSG['16']);
+                   }
+                   else {
+                       appendChatroomError('#master: ' + C_MSG['15']);
+                   }
                }
                else if (msg.startsWith('#master ') || msg.startsWith('#t ')) {
                    if (! is_room_master) {
@@ -346,7 +408,12 @@
                    }
                }
                else if (msg == '#kick' || msg == '#k') {
-                   appendChatroomInfo('#kick: ' + C_MSG['15']);
+                   if (! is_room_master) {
+                       appendChatroomError('#kick: ' + C_MSG['16']);
+                   }
+                   else {
+                       appendChatroomError('#kick: ' + C_MSG['15']);
+                   }
                }
                else if (msg.startsWith('#kick ') || msg.startsWith('#k ')) {
                    if (! is_room_master) {
@@ -364,7 +431,12 @@
                    }
                }
                else if (msg == '#max' || msg == '#m') {
-                   appendChatroomInfo('#max: ' + C_MSG['17']);
+                   if (! is_room_master) {
+                       appendChatroomError('#max: ' + C_MSG['16']);
+                   }
+                   else {
+                       appendChatroomError('#max: ' + C_MSG['17']);
+                   }
                }
                else if (msg.startsWith('#max ') || msg.startsWith('#m ')) {
                    if (! is_room_master) {
@@ -521,9 +593,11 @@
          }
          function appendChatroomInfo(msg) {
              appendChatroom('<font color="orange">' + msg + '</font>');
+             playSound('info');
          }
          function appendChatroomError(msg) {
              appendChatroom('<font color="red">' + msg + '</font>');
+             playSound('err');
          }
 
          function toggleSendMode() {
@@ -1283,6 +1357,8 @@
                      var is_public = item_name.substr(leng - 1, 1);
                      var bgImg = is_public == '1' ? 'url(../images/home.png)' : 'url(../images/lock.png)'
 
+                     //if (room == '@Lobby') room = C_MSG['92'];
+
                      o.append($('<option>', {
                          value: room,
                          text: room
@@ -1906,7 +1982,10 @@
                      if ($(this).val() == current_room) {
                          appendChatroomInfo(C_MSG['80'] + current_room);
                      } else {
-                         doJoinRoom($(this).val());
+                         var room = $(this).val();
+                         //if (room == C_MSG['92']) room = '@Lobby';
+                         current_msg = current_cmd = '#join ' + room;
+                         doJoinRoom(room);
                      }
                  });
              });

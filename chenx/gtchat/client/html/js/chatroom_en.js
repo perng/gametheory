@@ -21,7 +21,9 @@
          var bgSoundID = 1;
          var canPlayMP3 = supportAudioMP3();
          var game_chess_loaded = false;
-         var helpMsg = getHelp();
+         var helpMsgAll    = getHelpAll();
+         var helpMsgCommon = getHelpCommon();
+         var helpMsgMaster = getHelpMaster();
 
 
          if (typeof String.prototype.startsWith != 'function') {
@@ -47,6 +49,12 @@
              } else if (type == 'recv') {
                  v = document.getElementById('idSoundRecv');
                  v.src = '../sound/recv' + bgSoundID + '.mp3';
+             } else if (type == 'info') {
+                 v = document.getElementById('idSoundSend');
+                 v.src = '../sound/info.mp3';
+             } else if (type == 'err') {
+                 v = document.getElementById('idSoundSend');
+                 v.src = '../sound/error.mp3';
              }
              v.play();
          }
@@ -171,7 +179,8 @@
             //document.getElementById('btnSendBin').disabled = v;
          }
 
-         function getHelp() {
+         // Show help for all comands.
+         function getHelpAll() {
              var help = "\
 <br/>#b (#public, set room as public) \
 <br/>#c {room} (#create, create and join a new room) \
@@ -179,7 +188,9 @@
 <br/>#gc (#g chess, #game chess, open 6-piece chess game window) \
 <br/>#g1 (#g on, #game on, same as #game chess) \
 <br/>#g0 (#g off, #game off, hide game window) \
-<br/>#h (#?, #help, show this help) \
+<br/>#h (#?, #help, show help) \
+<br/>#ha (#help all, show help for all commands) \
+<br/>#hm (#help master, show help for room master) \
 <br/>#i {user} (#invite, invite a user to current room) \
 <br/>#j {room} (#join, join an existing room) \
 <br/>#k {user} (#kick, kick a user out of current room) \
@@ -193,6 +204,41 @@
 <br/>#v (#private, set room as private) \
 <br/>#w (#where, show current room name) \
 <br/>#x (#exit, #logout, logout) \
+";
+             return help;
+         }
+
+         // Help on commands for common users.
+         function getHelpCommon() {
+             var help = "\
+<br/>#c {room} (#create, create and join a new room) \
+<br/>#e (#erase, erase chatroom content) \
+<br/>#gc (#g chess, #game chess, open 6-piece chess game window) \
+<br/>#g1 (#g on, #game on, same as #game chess) \
+<br/>#g0 (#g off, #game off, hide game window) \
+<br/>#h (#?, #help, show help) \
+<br/>#hm (#help master, show help for room master) \
+<br/>#i {user} (#invite, invite a user to current room) \
+<br/>#j {room} (#join, join an existing room) \
+<br/>#l (#leave, leave current room, and enter Lobby) \
+<br/>#o (#who, list users in current room) \
+<br/>#p (#passwd, update password) \
+<br/>#r (#rooms, list online rooms) \
+<br/>#u (#users, list online users) \
+<br/>#w (#where, show current room name) \
+<br/>#x (#exit, #logout, logout) \
+";
+             return help;
+         }
+
+         // Help on commands for room master only.
+         function getHelpMaster() {
+             var help = "\
+<br/>#b (#public, set room as public) \
+<br/>#k {user} (#kick, kick a user out of current room) \
+<br/>#m {size} (#max, set room max size, 0 or negative means no limit) \
+<br/>#t {user} (#master, assign another room user as master) \
+<br/>#v (#private, set room as private) \
 ";
              return help;
          }
@@ -231,13 +277,19 @@
                    //appendChatroomInfo(msg + ":");
                }
                else if (msg == '#help' || msg == '#h' || msg == '#?') {
-                   appendChatroomInfo('#help: ' + helpMsg);
+                   appendChatroomInfo('#help: ' + helpMsgCommon);
+               }
+               else if (msg == '#hm' || msg == '#help master') {
+                   appendChatroomInfo('#help master: ' + helpMsgMaster);
+               }
+               else if (msg == '#ha' || msg == '#help all') {
+                   appendChatroomInfo('#help all: ' + helpMsgAll);
                }
                else if (msg == '#leave' || msg == '#l') {
                    doLeaveRoom();
                }
                else if (msg == '#create' || msg == '#c') {
-                   appendChatroomInfo('#create: please provide a room name');
+                   appendChatroomError('#create: please provide a room name');
                }
                else if (msg.startsWith('#create ') || msg.startsWith('#c ')) {
                    request_src = "console";
@@ -251,7 +303,7 @@
                    }
                }
                else if (msg == '#join' || msg == '#j') {
-                   appendChatroomInfo('#join: please provide a room name');
+                   appendChatroomError('#join: please provide a room name');
                }
                else if (msg.startsWith('#join ') || msg.startsWith('#j ')) {
                    var room_name = msg.startsWith('#j ') ? msg.substr(3) : msg.substr(6); // after '#join '
@@ -282,7 +334,9 @@
                else if (msg == '#erase' || msg == '#e') {
                    clearChatroom();
                }
+               //
                // All commands below need a non-empty current_room.
+               //
                else if (current_room == '') {
                    //appendChatroomInfo('>> ' + msg);
                    appendChatroomError('You are not in a room, text is not sent: ' + msg);
@@ -300,7 +354,7 @@
                    appendChatroomInfo('#where: you are in room: ' + current_room);
                }
                else if (msg == '#invite' || msg == '#i') {
-                   appendChatroomInfo('#invite: please provide a user name');
+                   appendChatroomError('#invite: please provide a user name');
                }
                else if (msg.startsWith('#invite ') || msg.startsWith('#i ')) {
                    var user_name = msg.startsWith('#i ') ? msg.substr(3) : msg.substr(8); // after '#invite '
@@ -313,6 +367,9 @@
                        doInvite(user_name);
                    }
                }
+               //
+               // Commands below requires to be a room master.
+               //
                else if (msg == '#private' || msg == '#v' || msg == '#public' || msg == '#b') { // Only room master can do this.
                    if (! is_room_master) {
                        appendChatroomError(msg + ': you have no permission for this operation');
@@ -326,7 +383,12 @@
                    }
                }
                else if (msg == '#master' || msg == '#t') {
-                   appendChatroomInfo('#master: please provide a user name in this room');
+                   if (! is_room_master) {
+                       appendChatroomError('#master: you have no permission for this operation');
+                   }
+                   else {
+                       appendChatroomError('#master: please provide a user name in this room');
+                   }
                }
                else if (msg.startsWith('#master ') || msg.startsWith('#t ')) {
                    if (! is_room_master) {
@@ -344,7 +406,12 @@
                    }
                }
                else if (msg == '#kick' || msg == '#k') {
-                   appendChatroomInfo('#kick: please provide a user name in this room');
+                   if (! is_room_master) {
+                       appendChatroomError('#kick: you have no permission for this operation');
+                   }
+                   else {
+                       appendChatroomError('#kick: please provide a user name in this room');
+                   }
                }
                else if (msg.startsWith('#kick ') || msg.startsWith('#k ')) {
                    if (! is_room_master) {
@@ -362,7 +429,12 @@
                    }
                }
                else if (msg == '#max' || msg == '#m') {
-                   appendChatroomInfo('#max: please provide max room size (0 or positive integer)');
+                   if (! is_room_master) {
+                       appendChatroomError('#max: you have no permission for this operation');
+                   }
+                   else {
+                       appendChatroomError('#max: please provide max room size (0 or positive integer)');
+                   }
                }
                else if (msg.startsWith('#max ') || msg.startsWith('#m ')) {
                    if (! is_room_master) {
@@ -516,9 +588,11 @@
          }
          function appendChatroomInfo(msg) {
              appendChatroom('<font color="orange">' + msg + '</font>');
+             playSound('info');
          }
          function appendChatroomError(msg) {
              appendChatroom('<font color="red">' + msg + '</font>');
+             playSound('err');
          }
 
          function toggleSendMode() {
@@ -1899,7 +1973,9 @@
                      if ($(this).val() == current_room) {
                          appendChatroomInfo('You are already in room ' + current_room);
                      } else {
-                         doJoinRoom($(this).val());
+                         var room = $(this).val();
+                         current_msg = current_cmd = '#join ' + room;
+                         doJoinRoom(room);
                      }
                  });
              });
