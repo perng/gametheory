@@ -1637,8 +1637,8 @@ class BroadcastPreparedServerFactory(BroadcastServerFactory):
 
 def cleanup(*args):
     factory.game_handler.flushDB()
-    factory.game_handler.doLog("server stops")
     factory.game_handler.use_log_cache = False
+    factory.game_handler.doLog("server stops")
     reactor.stop()
 
 
