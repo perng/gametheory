@@ -199,7 +199,7 @@
 <br/>#o (#who, list users in current room) \
 <br/>#p (#passwd, update password) \
 <br/>#r (#rooms, list online rooms) \
-<br/>#s {size} (#size, set room max size, 0 or negative means no limit) \
+<br/>#s {size} (#size, set room max size, 0 means no limit) \
 <br/>#u (#users, list online users) \
 <br/>#v (#private, set room as private) \
 <br/>#w (#where, show current room name) \
@@ -237,7 +237,7 @@
 <br/>#b (#public, set room as public) \
 <br/>#k {user} (#kick, kick a user out of current room) \
 <br/>#m {user} (#master, assign another room user as master) \
-<br/>#s {size} (#size, set room max size, 0 or negative means no limit) \
+<br/>#s {size} (#size, set room max size, 0 means no limit) \
 <br/>#v (#private, set room as private) \
 ";
              return help;
