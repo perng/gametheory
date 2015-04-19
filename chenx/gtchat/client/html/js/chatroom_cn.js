@@ -195,11 +195,11 @@
 <br/>#j {room} (#join, 加入已有聊天室) \
 <br/>#k {user} (#kick, 把某一用户踢出当前聊天室) \
 <br/>#l (#leave, 离开当前聊天室, 并进入大厅) \
-<br/>#m {size} (#max, 设置当前聊天室最大容量, 0或负数表示无上限) \
+<br/>#m {user} (#master, 转移聊天室管理员身份给室内另一用户) \
 <br/>#o (#who, 列出当前聊天室用户) \
 <br/>#p (#passwd, 更新密码) \
 <br/>#r (#rooms, 列出所有在线聊天室) \
-<br/>#t {user} (#master, 转移聊天室管理员身份给室内另一用户) \
+<br/>#s {size} (#size, 设置当前聊天室最大容量, 0或负数表示无上限) \
 <br/>#u (#users, 列出所有在线用户) \
 <br/>#v (#private, 设置当前聊天室为秘密聊天室) \
 <br/>#w (#where, 显示当前聊天室名) \
@@ -236,8 +236,8 @@
              var help = "\
 <br/>#b (#public, 设置当前聊天室为公开聊天室) \
 <br/>#k {user} (#kick, 把某一用户踢出当前聊天室) \
-<br/>#m {size} (#max, 设置当前聊天室最大容量, 0或负数表示无上限) \
-<br/>#t {user} (#master, 转移聊天室管理员身份给室内另一用户) \
+<br/>#m {user} (#master, 转移聊天室管理员身份给室内另一用户) \
+<br/>#s {size} (#size, 设置当前聊天室最大容量, 0或负数表示无上限) \
 <br/>#v (#private, 设置当前聊天室为秘密聊天室) \
 ";
              return help;
@@ -384,7 +384,7 @@
                        send_data(data);
                    }
                }
-               else if (msg == '#master' || msg == '#t') {
+               else if (msg == '#master' || msg == '#m') {
                    if (! is_room_master) {
                        appendChatroomError('#master: ' + C_MSG['16']);
                    }
@@ -392,12 +392,12 @@
                        appendChatroomError('#master: ' + C_MSG['15']);
                    }
                }
-               else if (msg.startsWith('#master ') || msg.startsWith('#t ')) {
+               else if (msg.startsWith('#master ') || msg.startsWith('#m ')) {
                    if (! is_room_master) {
                        appendChatroomError('#master: ' + C_MSG['16']);
                    }
                    else {
-                       var user_name = msg.startsWith('#t ') ? msg.substr(3) : msg.substr(8); //after '#master'
+                       var user_name = msg.startsWith('#m ') ? msg.substr(3) : msg.substr(8); //after '#master'
                        user_name = $.trim(user_name);
                        var err = validateUsername(user_name);
                        if (err != '') {
@@ -430,24 +430,24 @@
                        }
                    }
                }
-               else if (msg == '#max' || msg == '#m') {
+               else if (msg == '#size' || msg == '#s') {
                    if (! is_room_master) {
-                       appendChatroomError('#max: ' + C_MSG['16']);
+                       appendChatroomError('#size: ' + C_MSG['16']);
                    }
                    else {
-                       appendChatroomError('#max: ' + C_MSG['17']);
+                       appendChatroomError('#size: ' + C_MSG['17']);
                    }
                }
-               else if (msg.startsWith('#max ') || msg.startsWith('#m ')) {
+               else if (msg.startsWith('#size ') || msg.startsWith('#s ')) {
                    if (! is_room_master) {
-                       appendChatroomError('#max: ' + C_MSG['16']);
+                       appendChatroomError('#size: ' + C_MSG['16']);
                    }
                    else {
-                       current_cmd = "max";
-                       var max_size = msg.startsWith('#m ') ? msg.substr(3) : msg.substr(5); // after '#max '
+                       current_cmd = "size";
+                       var max_size = msg.startsWith('#s ') ? msg.substr(3) : msg.substr(5); // after '#max '
                        max_size = $.trim(max_size);
                        if (! isInt(max_size)) {
-                           appendChatroomError('#max: ' + max_size + C_MSG['18']);
+                           appendChatroomError('#size: ' + max_size + C_MSG['18']);
                        }
                        else {
                            if (max_size < 0) max_size = 0;
@@ -1609,6 +1609,7 @@
              var v = msg.split(':'); // max_size:room_master:room_name
              var size = v[0];
              var room_name = v[2]; // should be the same as current_room.
+             if (size == '0') size = C_MSG['93'];
 
              msg = C_MSG['72'] + size;
              appendChatroomInfo(msg);

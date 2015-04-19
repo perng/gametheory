@@ -195,11 +195,11 @@
 <br/>#j {room} (#join, join an existing room) \
 <br/>#k {user} (#kick, kick a user out of current room) \
 <br/>#l (#leave, leave current room, and enter Lobby) \
-<br/>#m {size} (#max, set room max size, 0 or negative means no limit) \
+<br/>#m {user} (#master, assign another room user as master) \
 <br/>#o (#who, list users in current room) \
 <br/>#p (#passwd, update password) \
 <br/>#r (#rooms, list online rooms) \
-<br/>#t {user} (#master, assign another room user as master) \
+<br/>#s {size} (#size, set room max size, 0 or negative means no limit) \
 <br/>#u (#users, list online users) \
 <br/>#v (#private, set room as private) \
 <br/>#w (#where, show current room name) \
@@ -236,8 +236,8 @@
              var help = "\
 <br/>#b (#public, set room as public) \
 <br/>#k {user} (#kick, kick a user out of current room) \
-<br/>#m {size} (#max, set room max size, 0 or negative means no limit) \
-<br/>#t {user} (#master, assign another room user as master) \
+<br/>#m {user} (#master, assign another room user as master) \
+<br/>#s {size} (#size, set room max size, 0 or negative means no limit) \
 <br/>#v (#private, set room as private) \
 ";
              return help;
@@ -382,7 +382,7 @@
                        send_data(data);
                    }
                }
-               else if (msg == '#master' || msg == '#t') {
+               else if (msg == '#master' || msg == '#m') {
                    if (! is_room_master) {
                        appendChatroomError('#master: you have no permission for this operation');
                    }
@@ -390,12 +390,12 @@
                        appendChatroomError('#master: please provide a user name in this room');
                    }
                }
-               else if (msg.startsWith('#master ') || msg.startsWith('#t ')) {
+               else if (msg.startsWith('#master ') || msg.startsWith('#m ')) {
                    if (! is_room_master) {
                        appendChatroomError('#master: you have no permission for this operation');
                    }
                    else {
-                       var user_name = msg.startsWith('#t ') ? msg.substr(3) : msg.substr(8); //after '#master'
+                       var user_name = msg.startsWith('#m ') ? msg.substr(3) : msg.substr(8); //after '#master'
                        user_name = $.trim(user_name);
                        var err = validateUsername(user_name);
                        if (err != '') {
@@ -428,24 +428,24 @@
                        }
                    }
                }
-               else if (msg == '#max' || msg == '#m') {
+               else if (msg == '#size' || msg == '#s') {
                    if (! is_room_master) {
-                       appendChatroomError('#max: you have no permission for this operation');
+                       appendChatroomError('#size: you have no permission for this operation');
                    }
                    else {
-                       appendChatroomError('#max: please provide max room size (0 or positive integer)');
+                       appendChatroomError('#size: please provide max room size (0 or positive integer)');
                    }
                }
-               else if (msg.startsWith('#max ') || msg.startsWith('#m ')) {
+               else if (msg.startsWith('#size ') || msg.startsWith('#s ')) {
                    if (! is_room_master) {
-                       appendChatroomError('#max: you have no permission for this operation');
+                       appendChatroomError('#size: you have no permission for this operation');
                    }
                    else {
-                       current_cmd = "max";
-                       var max_size = msg.startsWith('#m ') ? msg.substr(3) :  msg.substr(5); // after '#max '
+                       current_cmd = "size";
+                       var max_size = msg.startsWith('#s ') ? msg.substr(3) :  msg.substr(5); 
                        max_size = $.trim(max_size);
                        if (! isInt(max_size)) {
-                           appendChatroomError('#max: ' + max_size + ' is not an integer.');
+                           appendChatroomError('#size: ' + max_size + ' is not an integer.');
                        }
                        else {
                            if (max_size < 0) max_size = 0;
@@ -1263,7 +1263,7 @@
                  // GUI for create/join room.
                  disableChatroom(false); 
                  appendChatroomInfo('You are logged in.');
-                 appendChatroomInfo('Type #rooms for room list, #create {room} to create room, #join {room} to join a room, #help for more.');
+                 appendChatroomInfo('Type #r for room list, #c {room} to create room, #j {room} to join a room, #h for more.');
              } else {
                  alert('Invalid login name or password.', 'error');
                  document.getElementById('login_name').focus();
@@ -1598,6 +1598,7 @@
              var v = msg.split(':'); // max_size:room_master:room_name
              var size = v[0];
              var room_name = v[2]; // should be the same as current_room.
+             if (size == '0') size = ' no limit';
 
              msg = 'You set the max size of this room to ' + size;
              appendChatroomInfo(msg);
