@@ -56,10 +56,26 @@ reload(sys)
 sys.setdefaultencoding("utf-8")
 
 
+# Configuration parameters.
+from config import *
+
+#
+# Configuration parameters. Now imported from config.py above.
+#
+"""
 DEBUG = True
 #DEBUG = False
 LOG = True
 #LOG = False
+WEBSOCKET_URL = "ws://localhost:9001"
+WEB_PORT = 8080
+CONST_LOG_PATH = "/home2/cssauhco/gametheory/gtchat/log.txt"
+CONST_LOG_CACHE_SIZE = 500
+CONST_DB_PATH = "/home2/cssauhco/gametheory/gtchat/db.txt"
+CONST_USE_LOBBY = True
+CONST_LOBBY_NAME = "Lobby"
+CONST_DEFAULT_PREF = "bgImgID:2,bgSoundID:1"
+"""
 
 #
 # Cls_Chatroom is a singleton: only one instance is running at any time.
@@ -68,6 +84,8 @@ class Cls_Chatroom():
 
     def __init__(self, factory):
         self.factory = factory
+
+        self.getConfig()
 
         """
         Storage (database tables)
@@ -96,22 +114,69 @@ class Cls_Chatroom():
 
         self.color_pattern = re.compile("^#[0-9a-fA-F]{6}$")
 
-        self.DB = "/home2/cssauhco/gametheory/gtchat/db.txt";       # db file, for temp use.
         self.DB_is_dirty = False
+        self.loadDB()
 
         """
         Use a default room Lobby, when user first logs in, he is in lobby.
         When a user leaves any room, he is back in Lobby.
         """
-        self.USE_LOBBY = True
-        self.LOBBY_NAME = "Lobby"
         if self.USE_LOBBY:
             self.createLobby()
        
-        self.loadDB()
-
         if DEBUG:
             print ">>> new Cls_Chatroom instance created"
+
+
+    def getConfig(self):
+        if DEBUG:
+            print "== config =="
+            print "DEBUG = " + str(DEBUG)
+            print "LOG = " + str(LOG)
+            print "WEBSOCKET_URL = " + WEBSOCKET_URL
+            print "WEB_PORT = " + str(WEB_PORT)
+            print "LOG_PATH = " + CONST_LOG_PATH 
+            print "DB_PATH = " + CONST_DB_PATH
+            print "USE_LOBBY = " + str(CONST_USE_LOBBY)
+            print "LOBBY_NAME = " + CONST_LOBBY_NAME 
+            print "DEFAULT_PREF = " + CONST_DEFAULT_PREF 
+
+        self.DB = CONST_DB_PATH
+        self.LOG_PATH = CONST_LOG_PATH
+        self.USE_LOBBY = CONST_USE_LOBBY    # True
+        self.LOBBY_NAME = CONST_LOBBY_NAME  # "Lobby"
+
+        self.createFileIfNotExist(CONST_LOG_PATH)
+        self.use_log_cache = True
+
+        if LOG:
+            self.logs = []
+            self.doLog("server starts")
+
+
+    def doLog(self, msg):
+        if not LOG:
+            return
+
+        if not (os.path.exists(self.LOG_PATH) and os.path.isfile(self.LOG_PATH)):
+            print 'No log since log file does not exist: ' + self.LOG_PATH
+            return
+
+        time = self.getTimeStamp(1)
+        msg = time + ': ' + encode_utf8(msg)
+        self.logs.append(msg)
+
+        # write in batch to disk every 100 logs.
+        if self.use_log_cache and len(self.logs) < CONST_LOG_CACHE_SIZE:
+            return
+
+        for line in self.logs:
+            fo = open(self.LOG_PATH, "a")
+            fo.write(line + "\n")
+            fo.close()
+
+            # clear the list.
+            self.logs = []
 
 
     def createLobby(self):
@@ -132,16 +197,17 @@ class Cls_Chatroom():
             self.T_users['a'] = '11111111'
             self.T_users['b'] = '11111111'
 
-            default_pref = "bgImgID:2,bgSoundID:1"
+            default_pref = CONST_DEFAULT_PREF  #"bgImgID:2,bgSoundID:1"
 
             self.T_users_pref['admin'] = Cls_UserPref(default_pref) 
             self.T_users_pref['a'] = Cls_UserPref(default_pref)
             self.T_users_pref['b'] = Cls_UserPref(default_pref)
 
-            #print self.T_users
-            #print self.T_users_pref
-            self.createFile(self.DB)
+            print self.T_users
+            print self.T_users_pref
+            self.createFileIfNotExist(self.DB)
 
+            self.DB_is_dirty = True
             return 
 
         print 'read from self.DB'
@@ -191,7 +257,7 @@ class Cls_Chatroom():
         self.DB_is_dirty = True
 
 
-    def createFile(self, file):
+    def createFileIfNotExist(self, file):
         dir = os.path.dirname(file)
         if not os.path.exists(dir):
             os.makedirs(dir)
@@ -199,7 +265,7 @@ class Cls_Chatroom():
                 print "creating dir " + dir
 
         if not os.path.isfile(file):
-            fp = open(self.DB, 'w')
+            fp = open(file, 'w')
             fp.close()
             print "create file " + file
 
@@ -210,7 +276,7 @@ class Cls_Chatroom():
         """
         if not self.DB_is_dirty:
             print "DB is not dirty, no need to flush DB."
-            #return
+            return
 
         print "flush to db before exit" 
         newDB = self.DB + '.tmp'
@@ -222,10 +288,17 @@ class Cls_Chatroom():
             fo.write(usr + "\t" + pwd + "\t" + pref + "\n")
         fo.close()
 
-        ts = time.time()
-        st = datetime.datetime.fromtimestamp(ts).strftime('%Y-%m-%d-%H-%M-%S')
-        os.rename(self.DB, self.DB + '.' + st)
+        os.rename(self.DB, self.DB + '.' + self.getTimeStamp(2))
         os.rename(newDB, self.DB)
+
+
+    def getTimeStamp(self, type):
+        ts = time.time()
+        if (type == 2):
+            st = datetime.datetime.fromtimestamp(ts).strftime('%Y-%m-%d-%H-%M-%S')
+        else:
+            st = datetime.datetime.fromtimestamp(ts).strftime('%Y-%m-%d %H:%M:%S')
+        return st
 
 
     def handle(self, msg, client):
@@ -1152,6 +1225,8 @@ class Cls_Chatroom():
             # add user to default chatroom Lobby.
             self.addUserToLobby(usr, src, tracker)
 
+        self.doLog("login: " + usr)
+
 
     def getFirstMisingIntInList(self, list):
         size = len(list)
@@ -1337,6 +1412,8 @@ class Cls_Chatroom():
         msg = self.make_msg_c_event("logout", usr, tracker)
         self.broadcast_to_all(msg, src)
 
+        self.doLog("logout: " + usr)
+
 
     def unregister(self, src):
         """
@@ -1357,6 +1434,7 @@ class Cls_Chatroom():
         print(tbl)
         #for key, value in tbl.iteritems():
         #    print encode_utf8(key) + ',' + encode_utf8(value)
+
 
 
 class Cls_ActiveUser():
@@ -1559,6 +1637,8 @@ class BroadcastPreparedServerFactory(BroadcastServerFactory):
 
 def cleanup(*args):
     factory.game_handler.flushDB()
+    factory.game_handler.doLog("server stops")
+    factory.game_handler.use_log_cache = False
     reactor.stop()
 
 
@@ -1580,8 +1660,7 @@ if __name__ == '__main__':
     ServerFactory = BroadcastServerFactory
     # ServerFactory = BroadcastPreparedServerFactory
 
-    url = "ws://localhost:9001"
-    print "url: " + url
+    url = WEBSOCKET_URL
 
     factory = ServerFactory(url,
                             debug=debug,
@@ -1594,7 +1673,7 @@ if __name__ == '__main__':
 
     webdir = File(".")
     web = Site(webdir)
-    reactor.listenTCP(8080, web)
+    reactor.listenTCP(WEB_PORT, web)
 
     #atexit.register(factory.game_handler.flushDB)
     #signal.signal(signal.SIGINT, cleanup)
