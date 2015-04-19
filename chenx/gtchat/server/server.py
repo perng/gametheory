@@ -561,9 +561,13 @@ class Cls_Chatroom():
         Note: the 'code' field exists only in c_reponse message, when status is 'error'.
         """
         if status == 'error':
-            barIndex = msg.index('|')
-            code = msg[:barIndex]
-            msg = msg[barIndex+1:]
+            #print 'msg = ' + encode_utf8(msg)
+            try:
+                barIndex = msg.index('|')  # index() raises an exception if not found.
+                code = msg[:barIndex]
+                msg = msg[barIndex+1:]
+            except:
+                code = '41'
         else:
             code = '0'
 
@@ -1355,7 +1359,7 @@ class Cls_Chatroom():
 
         # add new user to database.
         self.T_users[usr] = pwd
-        self.T_users_pref[usr] = '2'  # default preference.
+        self.T_users_pref[usr] = Cls_UserPref(CONST_DEFAULT_PREF)  # default preference.
         self.saveDB_T_users(usr, pwd)
 
         if DEBUG:
