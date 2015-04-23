@@ -1,0 +1,460 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<script type="text/javascript" src="../js/ajax/libs/jquery/1.4/jquery.min.js"></script>
+
+<STYLE type="text/css">
+
+body {
+    padding: 10px;
+}
+
+#t1, #t2, #t3 {
+    padding-top: 0px;
+    background-color: transparent;
+    position: relative; 
+    top: 0; 
+    left: 0px;
+    border: solid 3px white;
+    line-height: 15px;
+}
+
+.line {
+    line-height: 15px;
+    /*background-color: #eeeeee;*/
+}
+
+#line_number{
+	position: absolute;
+	overflow: hidden;
+	border-right: solid black 1px;
+	z-index:8;
+	width: 38px;
+	padding: 0 5px 0 0;
+	margin: 4 0 0 -45px;
+	text-align: right;
+	color: #AAAAAA;
+}
+
+#cur_line, #cur_line3 {
+    position: absolute;
+    background-color: #eeeeee;
+    /*border: solid 1px black;*/
+    width: 240px;
+    line-height: 15px;
+    height: 15px;
+    display:none;
+}
+
+</style>
+
+<script type="text/javascript">
+
+var t1;
+var t2;
+var t3;
+var t4;
+var top_offset = 0; // top row offset in t1/t3.
+var cursor_pos;
+var selectionStart;
+var selectionEnd;
+
+function init() {
+    t1 = document.getElementById('t1');
+    t2 = document.getElementById('t2');
+    t3 = document.getElementById('t3');
+    t4 = document.getElementById('t4');
+    cursor_pos = 0;
+    //line = 1;
+}
+
+function doKeyPress(e) {
+    e = e || window.e;
+    appendVal(e.keyCode + ':' + getChar(e) + ':' + metaChar(e) + ',');
+    appendVal3(e.keyCode, getChar(e), metaChar(e));
+getPos();
+}
+
+function doKeyUp(e) {
+    cursor_pos =  doGetCaretPosition(t1);
+    showMsg2('cursor_pos = ' + cursor_pos);
+getPos();
+GetSelection();
+}
+
+function appendVal(v) {
+    var t2 = $('#t2'); // document.getElementById('t2');
+    t2.val(t2.val() + v);
+}
+
+function getPos() {
+    var txt = $('#t1').val().substring(0, cursor_pos);
+    var row = txt.split('\n').length;
+    var col = cursor_pos - txt.lastIndexOf('\n') - 1;
+    showMsg4('row: ' + row + ' col: ' + col);
+
+    //var top = 15 * (row - 1) + 4;
+    //if (top > 289) top = 289; // max at row 20.
+
+    //if (row > 20) top_offset = row - 20 - 0;
+
+    var r = row - 1;
+    var top = 15 * r + 4;
+
+    $('#cur_line').css('top', top + 'px').css('display', 'block');
+    $('#cur_line3').css('top', top + 'px').css('display', 'block');
+}
+
+// This will be the output function.
+// need to send: 1) cursor_pos, 2) the 3 params below.
+// to-do: 
+// - select text (for delete).
+// - copy/paste.
+function appendVal3(scanCode, charCode, metaCode) {
+    var t3 = $('#t3'); // document.getElementById('t2');
+
+    cursor_pos =  doGetCaretPosition(t1);
+    showMsg('scanCode = ' + scanCode + ', charCode = ' + charCode 
+        + ', metaCode = ' + metaCode + ', cursor_pos = ' + cursor_pos);
+
+    showMsg3('selectioin start/end: ' + selectionStart + '/' + selectionEnd);
+
+    if (metaCode == 'ctrl' || metaCode == 'meta') {
+        if (metaCode == 'meta') showMsg3('metaCode = ' + metaCode);
+        return; // don't input anything.
+    }
+
+    switch (scanCode) {
+        case 0: 
+            //t3.val(t3.val() + charCode);
+            var txt = t3.val();
+            //var len = txt.length;
+            if (selectionStart == -1)
+                t3.val(txt.substring(0, cursor_pos) + charCode + txt.substring(cursor_pos));
+            else 
+                t3.val(txt.substring(0, selectionStart) + charCode + txt.substring(selectionEnd));
+            break;
+        case 8:  // delete
+            var txt = t3.val();
+            if (selectionStart == -1) {
+                t3.val(txt.substring(0, cursor_pos - 1) + txt.substring(cursor_pos));
+            }
+            else
+                t3.val(txt.substring(0, selectionStart) + txt.substring(selectionEnd));
+            break;
+        case 13:
+            //t3.val(t3.val() + '\n');
+            var txt = t3.val();
+            if (selectionStart == -1) {
+                t3.val(txt.substring(0, cursor_pos) + '\n' + txt.substring(cursor_pos));
+            }
+            else {
+                t3.val(txt.substring(0, selectionStart) + '\n' + txt.substring(selectionEnd));
+            }
+            break;
+        case 37: // left
+            break;
+        case 38: // up
+            break;
+        case 39: // right
+            break;
+        case 40: // down
+            break;
+        default:
+            break;
+    }
+}
+
+function showMsg(msg) {
+    $('#msg').html(msg);
+}
+
+function showMsg2(msg) {
+    $('#msg2').html(msg);
+}
+
+function showMsg3(msg) {
+    $('#msg3').html(msg);
+}
+
+function showMsg4(msg) {
+    $('#msg4').html(msg);
+}
+
+function metaChar(e) {
+    if (e.shiftKey) return "shift";
+    else if (e.ctrlKey) return "ctrl";
+    else if (e.altKey) return "alt";
+    else if (e.metaKey) return "meta"; // 'command' key in mac.
+    return '';
+}
+
+function getChar(e) {
+  if (e.which == null) {
+    return String.fromCharCode(e.keyCode) // IE
+  } else if (e.which!=0 && e.charCode!=0) {
+    return String.fromCharCode(e.which)   // the rest
+  } else {
+    //return null // special key
+    return '';
+  }
+}
+
+function get_focus(obj) {
+    obj.focus();
+}
+
+function doMouseDown(obj) {
+    var c = getCaret(obj);
+    appendVal('cursor-down:' + c);
+}
+
+function doMouseUp(obj) {
+    var c = getCaret(obj);
+    appendVal('cursor-up:' + c);
+
+    var t2 = document.getElementById('t2');
+    setSelectionRange(t2, c, c);
+    obj.focus();
+
+    GetSelection();
+
+    getPos();
+}
+
+function setSelectionRange(input, selectionStart, selectionEnd) {
+  if (input == null) return;
+
+  if (input.setSelectionRange) {
+    input.focus();
+    input.setSelectionRange(selectionStart, selectionEnd);
+  }
+  else if (input.createTextRange) {
+    var range = input.createTextRange();
+    range.collapse(true);
+    range.moveEnd('character', selectionEnd);
+    range.moveStart('character', selectionStart);
+    range.select();
+  }
+}
+
+function getCaret(el) { 
+  if (el.selectionStart) { 
+    return el.selectionStart; 
+  } else if (document.selection) { 
+    el.focus(); 
+
+    var r = document.selection.createRange(); 
+    if (r == null) { 
+      return 0; 
+    } 
+
+    var re = el.createTextRange(), 
+        rc = re.duplicate(); 
+    re.moveToBookmark(r.getBookmark()); 
+    rc.setEndPoint('EndToStart', re); 
+
+    return rc.text.length; 
+  }  
+  return 0; 
+}
+
+// get which mouse button is clicked.
+function fixWhich(e) {
+  if (!e.which && e.button) {
+    if (e.button & 1) e.which = 1      // Left
+    else if (e.button & 4) e.which = 2 // Middle
+    else if (e.button & 2) e.which = 3 // Right
+  }
+}
+
+// get and set cursor position.
+function doGetCaretPosition (ctrl) {
+    var CaretPos = 0;    // IE Support
+    if (document.selection) {
+        ctrl.focus ();
+        var Sel = document.selection.createRange ();
+        Sel.moveStart ('character', -ctrl.value.length);
+        CaretPos = Sel.text.length;
+    }
+    // Firefox support
+    else if (ctrl.selectionStart || ctrl.selectionStart == '0')
+        CaretPos = ctrl.selectionStart;
+    return (CaretPos);
+}
+function setCaretPosition(ctrl, pos){
+    if(ctrl.setSelectionRange)
+    {
+        ctrl.focus();
+        ctrl.setSelectionRange(pos,pos);
+    }
+    else if (ctrl.createTextRange) {
+        var range = ctrl.createTextRange();
+        range.collapse(true);
+        range.moveEnd('character', pos);
+        range.moveStart('character', pos);
+        range.select();
+    }
+}
+
+        function GetSelection () {
+            getTextAreaSelection(); return; // test this.
+
+            var selection = "";
+            var textarea = document.getElementById("t1");
+            if ('selectionStart' in textarea) {
+                    // check whether some text is selected in the textarea
+                if (textarea.selectionStart != textarea.selectionEnd) {
+                    selection = textarea.value.substring  (textarea.selectionStart, textarea.selectionEnd);
+                }
+            }
+            else {  // Internet Explorer before version 9
+                    // create a range from the current selection
+                var textRange = document.selection.createRange ();
+                    // check whether the selection is within the textarea
+                var rangeParent = textRange.parentElement ();
+                if (rangeParent === textarea) {
+                    selection = textRange.text;
+                }
+            }
+
+            if (selection == "") {
+                //alert ("No text is selected.");
+                selectionStart = selectionEnd = -1;
+            }
+            else {
+                //alert ("The current selection is: " + selection);
+                selectionStart = textarea.selectionStart;
+                selectionEnd = textarea.selectionEnd;
+            }
+            //showMsg3('selection start/end: ' + selectionStart + '/' + selectionEnd);
+       }
+
+function getTextAreaSelection() {
+    var textarea = document.getElementById("t1");
+    var start = textarea.selectionStart, end = textarea.selectionEnd;
+    selectionStart = textarea.selectionStart;
+    selectionEnd = textarea.selectionEnd;
+
+    cursor_pos = selectionStart;
+
+    if (selectionStart == selectionEnd) selectionStart = selectionEnd = -1;
+    return {
+        start: start,
+        end: end,
+        length: end - start,
+        text: textarea.value.slice(start, end)
+    };
+}
+
+function doOnpaste() {
+//alert(0); 
+    var textarea = document.getElementById("t1");
+    var sel = getTextAreaSelection(textarea);
+    var initialLength = textarea.value.length;
+    window.setTimeout(function() {
+        var val = textarea.value;
+        var pastedTextLength = val.length - (initialLength - sel.length);
+        var end = sel.start + pastedTextLength;
+
+        var start = sel.start;
+        var txt = val.slice(start, end);
+
+/*
+        callback({
+            start: sel.start,
+            end: end,
+            length: pastedTextLength,
+            text: val.slice(sel.start, end),
+            replacedText: sel.text
+        });
+*/
+
+        var t3 = $('#t3'); 
+        var v = t3.val();
+        t3.val(v.substring(0, start) + txt + v.substring(start));
+
+    }, 100);
+}
+
+
+$(document).ready(function() {
+    init();
+});
+</script>
+</head>
+<body>
+
+
+<div style="border: solid 1px #eeeeee; display: inline-block;">
+
+<div style="position: relative; left:20px; display:inline-block;">
+
+<div id="line_number">
+<div class="line">1</div>
+<div class="line">2</div>
+<div class="line">3</div>
+<div class="line">4</div>
+<div class="line">5</div>
+<div class="line">6</div>
+<div class="line">7</div>
+<div class="line">8</div>
+<div class="line">9</div>
+<div class="line">10</div>
+
+<div class="line">1</div>
+<div class="line">2</div>
+<div class="line">3</div>
+<div class="line">4</div>
+<div class="line">5</div>
+<div class="line">6</div>
+<div class="line">7</div>
+<div class="line">8</div>
+<div class="line">9</div>
+<div class="line">10</div>
+</div>
+
+<div id="cur_line">&nbsp;</div>
+
+<textarea rows=20 cols=30 id="t1" onkeypress="javascript:doKeyPress(event);" onkeyup="doKeyUp(event);"
+onmousedown="javascript:doMouseDown(this);" onmouseup="javascript:doMouseUp(this);" onpaste="doOnpaste();">
+</textarea>
+&nbsp;&nbsp;&nbsp;&nbsp;
+</div>
+
+</div>
+
+
+<textarea rows=20 cols=30 id="t2">
+</textarea>
+
+
+<div style="position: relative; left:20px; display:inline-block;">
+<div id="cur_line3"><br/></div>
+
+<textarea rows=20 cols=30 id="t3">
+</textarea>
+</div>
+
+<div id="msg"></div>
+<div id="msg2"></div>
+<div id="msg3"></div>
+<div id="msg4"></div>
+
+<p><br/></p>
+<pre>
+http://javascript.info/tutorial/keyboard-events#processing-the-character-keypress
+http://stackoverflow.com/questions/263743/caret-position-in-textarea-in-characters-from-the-start
+http://stackoverflow.com/questions/6157929/how-to-simulate-a-mouse-click-using-javascript
+http://stackoverflow.com/questions/17858174/set-cursor-to-specific-position-on-specific-line-in-a-textarea
+http://en.allexperts.com/q/Javascript-1520/Inserting-text-text-area.htm
+http://blog.vishalon.net/index.php/javascript-getting-and-setting-caret-position-in-textarea/
+http://stackoverflow.com/questions/11338592/how-can-i-bind-to-the-change-event-of-a-textarea-in-jquery
+http://jsbin.com/puvikutaha/1/edit?html,css,js,output
+* http://help.dottoro.com/ljtfkhio.php
+* http://stackoverflow.com/questions/3239124/javascript-catch-paste-event-in-textarea
+* http://collabedit.com/dtwpg
+</pre>
+
+</body>
+</html>

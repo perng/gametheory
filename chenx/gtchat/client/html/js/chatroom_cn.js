@@ -183,18 +183,15 @@
          // Show help for all commands.
          function getHelpAll() {
              var help = "\
-<br/>#a ($app, show available apps) \
-<br/>#a chess {#app chess, open 6-piece chess app window) \
-<br/>#a {app} ($app, open given app or url) \
-<br/>#a1 (#a on, #app on, turn on app) \
-<br/>#a0 (#a off, #app off, hide app window) \
-<br/>#ac (#a clear, #app clear, clear any app and hide app window) \
+<br/>#a ($app, 显示所有应用) \
+<br/>#a chess {#app chess, 打开六子棋游戏窗口) \
+<br/>#a {app} ($app, 打开指定的应用或URL) \
+<br/>#a1 (#a on, #app on, 打开应用窗口) \
+<br/>#a0 (#a off, #app off, 隐藏应用窗口) \
+<br/>#ac (#a clear, #app clear, 关闭应用，退出应用窗口) \
 <br/>#b (#public, 设置当前聊天室为公开聊天室) \
 <br/>#c {room} (#create, 创建并加入新聊天室) \
 <br/>#e (#erase, 清除聊天室内容) \
-<br/>#gc (#g chess, #app chess, 打开六子棋游戏窗口) \
-<br/>#g1 (#g on, #app on, 和#app chess相同) \
-<br/>#g0 (#g off, #app off, 隐藏游戏窗口) \
 <br/>#h (#?, #help, 显示帮助信息) \
 <br/>#ha (#help all, 显示所有帮助信息) \
 <br/>#hm (#help master, 显示聊天室管理员帮助信息) \
@@ -218,17 +215,14 @@
          // Help on commands for common users.
          function getHelpCommon() {
              var help = "\
-<br/>#a ($app, show available apps) \
-<br/>#a chess {#app chess, open 6-piece chess app window) \
-<br/>#a {app} ($app, open given app or url) \
-<br/>#a1 (#a on, #app on, turn on app) \
-<br/>#a0 (#a off, #app off, hide app window) \
-<br/>#ac (#a clear, #app clear, clear any app and hide app window) \
+<br/>#a ($app, 显示所有应用) \
+<br/>#a chess {#app chess, 打开六子棋游戏窗口) \
+<br/>#a {app} ($app, 打开指定的应用或URL) \
+<br/>#a1 (#a on, #app on, 打开应用窗口) \
+<br/>#a0 (#a off, #app off, 隐藏应用窗口) \
+<br/>#ac (#a clear, #app clear, 关闭应用，退出应用窗口) \
 <br/>#c {room} (#create, 创建并加入新聊天室) \
 <br/>#e (#erase, 清除聊天室内容) \
-<br/>#gc (#g chess, #app chess, 打开六子棋游戏窗口) \
-<br/>#g1 (#g on, #app on, 和#app chess相同) \
-<br/>#g0 (#g off, #app off, 隐藏游戏窗口) \
 <br/>#h (#?, #help, 显示帮助信息) \
 <br/>#hm (#help master, 显示聊天室管理员帮助信息) \
 <br/>#i {user} (#invite, 邀请用户加入当前聊天室) \
