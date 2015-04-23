@@ -20,7 +20,8 @@
          var bgImgSize = '';
          var bgSoundID = 1;
          var canPlayMP3 = supportAudioMP3();
-         var game_chess_loaded = false;
+         var current_app = '';
+         var apps = '';
          var helpMsgAll    = getHelpAll();
          var helpMsgCommon = getHelpCommon();
          var helpMsgMaster = getHelpMaster();
@@ -182,12 +183,15 @@
          // Show help for all comands.
          function getHelpAll() {
              var help = "\
+<br/>#a ($app, show available apps) \
+<br/>#a chess {#app chess, open 6-piece chess app window) \
+<br/>#a {app} ($app, open given app or url) \
+<br/>#a1 (#a on, #app on, turn on app) \
+<br/>#a0 (#a off, #app off, hide app window) \
+<br/>#ac (#a clear, #app clear, clear any app and hide app window) \
 <br/>#b (#public, set room as public) \
 <br/>#c {room} (#create, create and join a new room) \
 <br/>#e (#erase, erase chatroom content) \
-<br/>#gc (#g chess, #game chess, open 6-piece chess game window) \
-<br/>#g1 (#g on, #game on, same as #game chess) \
-<br/>#g0 (#g off, #game off, hide game window) \
 <br/>#h (#?, #help, show help) \
 <br/>#ha (#help all, show help for all commands) \
 <br/>#hm (#help master, show help for room master) \
@@ -211,11 +215,14 @@
          // Help on commands for common users.
          function getHelpCommon() {
              var help = "\
+<br/>#a ($app, show available apps) \
+<br/>#a chess {#app chess, open 6-piece chess app window) \
+<br/>#a {app} ($app, open given app or url) \
+<br/>#a1 (#a on, #app on, turn on app) \
+<br/>#a0 (#a off, #app off, hide app window) \
+<br/>#ac (#a clear, #app clear, clear any app and hide app window) \
 <br/>#c {room} (#create, create and join a new room) \
 <br/>#e (#erase, erase chatroom content) \
-<br/>#gc (#g chess, #game chess, open 6-piece chess game window) \
-<br/>#g1 (#g on, #game on, same as #game chess) \
-<br/>#g0 (#g off, #game off, hide game window) \
 <br/>#h (#?, #help, show help) \
 <br/>#hm (#help master, show help for room master) \
 <br/>#i {user} (#invite, invite a user to current room) \
@@ -321,16 +328,27 @@
                else if (msg == '#passwd' || msg == '#p') {
                    showFormUpdatePwd();
                }
-               else if (msg == '#gc' || msg == '#game chess' || msg == '#g chess') {
-                   doGameChess();
+
+               // For apps.
+               else if (msg == '#a1' || msg == '#a on' || msg == '#app on') {
+                   appendChatroomInfo('#app on');
+                   doAppOn();
                }
-               else if (msg == '#g1' || msg == '#game on' || msg == '#g on') {
-                   appendChatroomInfo('#game on');
-                   doGameChess();
+               else if (msg == '#a0' || msg == '#a off' || msg == '#app off') {
+                   appendChatroomInfo('#app off');
+                   doAppOff();
                }
-               else if (msg == '#g0' || msg == '#game off' || msg == '#g off') {
-                   doGameOff();
+               else if (msg == '#ac' || msg == '#a clear' || msg == '#app clear') {
+                   doAppClear();
                }
+               else if (msg == '#a' || msg == '#app') {
+                   //appendChatroomError('#app: please provide an app or url');
+                   doShowApps();
+               }
+               else if (msg.startsWith('#a ') || msg.startsWith('#app ')) {
+                   doAppUrl(msg);
+               }
+
                else if (msg == '#erase' || msg == '#e') {
                    clearChatroom();
                }
@@ -931,26 +949,75 @@
                  $('#txtMsg').focus();
              }
          }
-         function doGameChess() {
-             appendChatroomInfo('#game chess');
-             $('#game_panel').show();
-             if (! game_chess_loaded) {
-                 game_chess_loaded = true;
-                 document.getElementById('game').src = 'http://cssauh.com/sp/';
+         function doAppChess() {
+             appendChatroomInfo('#app chess');
+             document.getElementById('app').src = 'http://cssauh.com/sp/';
+             doAppOn();
+         }
+         function doAppOn() {
+             $('#app_panel').show();
+             if (current_app == '') {
+                 current_app == 'chess';
+                 document.getElementById('app').src = 'http://cssauh.com/sp/';
              }
              $('#chatroom').css('width', '360px');
 
              var bgSize = bgImgSize.split(' ');
              var width = parseInt(bgSize[0].replace('%', '')) * 2;
-             var newBgSize = width + '% ' + bgSize[1];
-             //alert (newBgSize);
+             var newBgSize = width + '% ' + bgSize[1];  //alert (newBgSize);
              $('#chatroom').css('background-size', newBgSize);
          }
-         function doGameOff() {
-             appendChatroomInfo('#game off');
+         function doAppOff() {
              $('#chatroom').css('width', '720px');
-             $('#game_panel').hide();
+             $('#app_panel').hide();
              $('#chatroom').css('background-size', bgImgSize);
+         }
+         function doAppClear() {
+             appendChatroomInfo('#app clear');
+             current_app = '';
+             document.getElementById('app').src = '';
+             doAppOff();
+         }
+         function doAppUrl(msg) {
+             var url = '';
+             msg = msg.replace(/\s+/g, ' ');
+
+             var v = msg.split(' ');
+             if (v.length >= 2) { url = v[1]; }
+             url = $.trim(url);
+            
+             if (url == '') {
+                 appendChatroomInfo('Please provide an app or url');
+                 return;
+             }
+
+             if (url == 'chess') {
+                 doAppChess();
+                 return;
+             }
+ 
+             var url2 = url.toLowerCase();
+             if (! url2.startsWith('http://') && ! url2.startsWith('https://')) {
+                 url = 'http://' + url;
+             }
+
+             appendChatroomInfo(msg);
+             current_app = url;
+             document.getElementById('app').src = url;
+             doAppOn();
+         }
+         function doShowApps() {
+             if (apps == '') {
+                 apps = 'chess';
+                 apps = '<font color="yellow">Internal apps</font>:,' + apps;
+                 apps += ',<font color="yellow">external apps:</font>';
+                 apps += ',audio-visualization.coding.io,brick-db.coding.io,pick-sticks-paper.coding.io,nicephoto.coding.io,rhythm-91aa5.coding.io';
+                 apps = apps.replace(/,/g, '<br/>');
+                 apps = '<font color="#00ff00">' + apps + '</font>';
+             }
+             appendChatroomInfo('#apps');
+             appendChatroomInfo(apps);
+             appendChatroomInfo('Use example: #a chess');
          }
 
          function process_message(msg) {
@@ -1836,8 +1903,8 @@
              var pos = getMousePosInDiv(event, 'panel_settings');
              var x = pos.x, y = pos.y;
              //$('#div_msg').html(x + ',' + y); return;
-             // 134, 203: width/height of panel_settings.
-             if (x >= 0 && x <= 134 && y >= 0 && y <= 203) return;
+             // 134, 213: width/height of panel_settings.
+             if (x >= 0 && x <= 134 && y >= 0 && y <= 213) return;
 
              $('#panel_settings').hide();
          }
@@ -1989,6 +2056,11 @@
              $('#selectUsersList').blur(function() {
                  // de-select all rows.
                  document.getElementById('selectUsersList').selectedIndex = -1;
+             });
+
+             $('#selectRoomUsersList').blur(function() {
+                 // de-select all rows.
+                 document.getElementById('selectRoomUsersList').selectedIndex = -1;
              });
 
              $('#span_all_users').click(function() {

@@ -142,10 +142,8 @@
           position: absolute;
           left: 598px;
           width: 134px;
-          top: 260px; /* 298 */
-          height: 203px; /* 165 */
-          /*top: 345px;
-          height: 118px;*/
+          top: 250px; /* 260 */
+          height: 213px; /* 203 */
           background-color: #eeeeee;
           padding-top: 0px;
           padding-bottom: 2px;
@@ -373,5 +371,14 @@
           position: relative; 
       }
 
-      html {display:table; margin-left:auto; margin-right:auto; margin-top:20px; }
-      body {display:table-cell; text-align:center; background-color:#eeeeee; font-size: 11pt; }
+      html {
+          display:table; margin-left:auto; margin-right:auto; margin-top:20px; 
+      }
+      body {
+          display:table-cell; text-align:center; background-color:#eeeeee; font-size: 11pt; 
+          background: url(images/body_bg1.jpg) no-repeat center center fixed;
+          -webkit-background-size: cover;
+          -moz-background-size: cover;
+          -o-background-size: cover;
+          background-size: cover;
+      }
