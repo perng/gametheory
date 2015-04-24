@@ -2,7 +2,7 @@
 <head>
 <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
 <script type="text/javascript" src="../js/ajax/libs/jquery/1.4/jquery.min.js"></script>
-<script type="text/javascript" src="browser.js"></script>
+
 <STYLE type="text/css">
 
 body {
@@ -25,15 +25,15 @@ body {
 }
 
 #line_number{
-    position: absolute;
-    overflow: hidden;
-    border-right: solid black 1px;
-    z-index:8;
-    width: 38px;
-    padding: 0 5px 0 0;
-    margin: 4 0 0 -45px;
-    text-align: right;
-    color: #AAAAAA;
+	position: absolute;
+	overflow: hidden;
+	border-right: solid black 1px;
+	z-index:8;
+	width: 38px;
+	padding: 0 5px 0 0;
+	margin: 4 0 0 -45px;
+	text-align: right;
+	color: #AAAAAA;
 }
 
 #cur_line, #cur_line3 {
@@ -53,6 +53,7 @@ body {
 var t1;
 var t2;
 var t3;
+var t4;
 var top_offset = 0; // top row offset in t1/t3.
 var cursor_pos;
 var selectionStart;
@@ -62,35 +63,30 @@ function init() {
     t1 = document.getElementById('t1');
     t2 = document.getElementById('t2');
     t3 = document.getElementById('t3');
+    t4 = document.getElementById('t4');
     cursor_pos = 0;
+    //line = 1;
 }
 
-// KeyDown event. But onkeydown is not universally accepted.
 function doKeyPress(e) {
-    //alert(0);
     e = e || window.e;
-    appendAct(e.keyCode + ':' + getChar(e) + ':' + metaChar(e) + ',');
-    appendDst(e.keyCode, getChar(e), metaChar(e));
-    getPos();
+    appendVal(e.keyCode + ':' + getChar(e) + ':' + metaChar(e) + ',');
+    appendVal3(e.keyCode, getChar(e), metaChar(e));
+getPos();
 }
 
 function doKeyUp(e) {
     cursor_pos =  doGetCaretPosition(t1);
     showMsg2('cursor_pos = ' + cursor_pos);
-    getPos();
-    GetSelection();
+getPos();
+GetSelection();
 }
 
-// Append user action to middle textarea.
-function appendAct(v) {
-    var t2 = $('#t2'); 
-    t2.val(t2.val() + v + '\n');
-    //textarea.scrollTop = textarea.scrollHeight;
-    t2.scrollTop(t2[0].scrollHeight);
+function appendVal(v) {
+    var t2 = $('#t2'); // document.getElementById('t2');
+    t2.val(t2.val() + v);
 }
 
-// Get row and column of cursor.
-// Also update position of current row div.
 function getPos() {
     var txt = $('#t1').val().substring(0, cursor_pos);
     var row = txt.split('\n').length;
@@ -112,9 +108,9 @@ function getPos() {
 // This will be the output function.
 // need to send: 1) cursor_pos, 2) the 3 params below.
 // to-do: 
-// - select text.
+// - select text (for delete).
 // - copy/paste.
-function appendDst(scanCode, charCode, metaCode) {
+function appendVal3(scanCode, charCode, metaCode) {
     var t3 = $('#t3'); // document.getElementById('t2');
 
     cursor_pos =  doGetCaretPosition(t1);
@@ -142,18 +138,11 @@ function appendDst(scanCode, charCode, metaCode) {
             else 
                 t3.val(txt.substring(0, selectionStart) + charCode + txt.substring(selectionEnd));
             break;
-        case 8:  // delete, on mac firefox; backspace on windows firefox.
-            var txt = t3.val();
-            if (selectionStart == -1) {
-                t3.val(txt.substring(0, cursor_pos - 1) + txt.substring(cursor_pos));
-            }
-            else
-                t3.val(txt.substring(0, selectionStart) + txt.substring(selectionEnd));
-            break;
+        case 8:  // delete, on mac firefox.
         case 46: // delete, on windows firefox.
             var txt = t3.val();
             if (selectionStart == -1) {
-                t3.val(txt.substring(0, cursor_pos) + txt.substring(cursor_pos + 1));
+                t3.val(txt.substring(0, cursor_pos - 1) + txt.substring(cursor_pos));
             }
             else
                 t3.val(txt.substring(0, selectionStart) + txt.substring(selectionEnd));
@@ -216,32 +205,28 @@ function getChar(e) {
   }
 }
 
+function get_focus(obj) {
+    obj.focus();
+}
 
 function doMouseDown(obj) {
-    //var c = getCaret(obj);
-    //appendAct(c + '==?==' + doGetCaretPosition(obj));
-    var c = doGetCaretPosition(obj);
-    appendAct('cursor-down:' + c);
-
-    getPos();
+    var c = getCaret(obj);
+    appendVal('cursor-down:' + c);
 }
 
 function doMouseUp(obj) {
-    //var c = getCaret(obj);
-    var c = doGetCaretPosition(obj);
-    appendAct('cursor-up:' + c);
+    var c = getCaret(obj);
+    appendVal('cursor-up:' + c);
 
-    /*
     var t2 = document.getElementById('t2');
     setSelectionRange(t2, c, c);
     obj.focus();
-    */
 
     GetSelection();
+
     getPos();
 }
 
-/*
 function setSelectionRange(input, selectionStart, selectionEnd) {
   if (input == null) return;
 
@@ -257,11 +242,7 @@ function setSelectionRange(input, selectionStart, selectionEnd) {
     range.select();
   }
 }
-*/
 
-/*
-// For click, selection.
-// get same result as doGetCaretPosition().
 function getCaret(el) { 
   if (el.selectionStart) { 
     return el.selectionStart; 
@@ -282,9 +263,7 @@ function getCaret(el) {
   }  
   return 0; 
 }
-*/
 
-/*
 // get which mouse button is clicked.
 function fixWhich(e) {
   if (!e.which && e.button) {
@@ -293,7 +272,6 @@ function fixWhich(e) {
     else if (e.button & 2) e.which = 3 // Right
   }
 }
-*/
 
 // get and set cursor position.
 function doGetCaretPosition (ctrl) {
@@ -324,8 +302,40 @@ function setCaretPosition(ctrl, pos){
     }
 }
 
+        function GetSelection () {
+            getTextAreaSelection(); return; // test this.
 
-function GetSelection() {
+            var selection = "";
+            var textarea = document.getElementById("t1");
+            if ('selectionStart' in textarea) {
+                    // check whether some text is selected in the textarea
+                if (textarea.selectionStart != textarea.selectionEnd) {
+                    selection = textarea.value.substring  (textarea.selectionStart, textarea.selectionEnd);
+                }
+            }
+            else {  // Internet Explorer before version 9
+                    // create a range from the current selection
+                var textRange = document.selection.createRange ();
+                    // check whether the selection is within the textarea
+                var rangeParent = textRange.parentElement ();
+                if (rangeParent === textarea) {
+                    selection = textRange.text;
+                }
+            }
+
+            if (selection == "") {
+                //alert ("No text is selected.");
+                selectionStart = selectionEnd = -1;
+            }
+            else {
+                //alert ("The current selection is: " + selection);
+                selectionStart = textarea.selectionStart;
+                selectionEnd = textarea.selectionEnd;
+            }
+            //showMsg3('selection start/end: ' + selectionStart + '/' + selectionEnd);
+       }
+
+function getTextAreaSelection() {
     var textarea = document.getElementById("t1");
     var start = textarea.selectionStart, end = textarea.selectionEnd;
     selectionStart = textarea.selectionStart;
@@ -343,8 +353,9 @@ function GetSelection() {
 }
 
 function doOnpaste() {
+//alert(0); 
     var textarea = document.getElementById("t1");
-    var sel = GetSelection(); 
+    var sel = getTextAreaSelection(textarea);
     var initialLength = textarea.value.length;
     window.setTimeout(function() {
         var val = textarea.value;
@@ -354,7 +365,7 @@ function doOnpaste() {
         var start = sel.start;
         var txt = val.slice(start, end);
 
-        /*
+/*
         callback({
             start: sel.start,
             end: end,
@@ -362,7 +373,7 @@ function doOnpaste() {
             text: val.slice(sel.start, end),
             replacedText: sel.text
         });
-        */
+*/
 
         var t3 = $('#t3'); 
         var v = t3.val();
@@ -371,6 +382,7 @@ function doOnpaste() {
     }, 100);
 }
 
+
 $(document).ready(function() {
     init();
 });
@@ -378,14 +390,9 @@ $(document).ready(function() {
 </head>
 <body>
 
-<p>
-Message typed in left most textarea will be repeated in the right most textarea.
-Middle textarea shows triples: scanCode, charCode, metaCode.
-<br/>Events considered: type, delete, paste, select range, mouse click.
-<br/>Tested in: Firefox.
-</p>
 
 <div style="border: solid 1px #eeeeee; display: inline-block;">
+
 <div style="position: relative; left:20px; display:inline-block;">
 
 <div id="line_number">
@@ -414,7 +421,7 @@ Middle textarea shows triples: scanCode, charCode, metaCode.
 
 <div id="cur_line">&nbsp;</div>
 
-<textarea rows=20 cols=30 id="t1" wrap="soft" onkeypress="javascript:doKeyPress(event);" onkeyup="doKeyUp(event);"
+<textarea rows=20 cols=30 id="t1" onkeypress="javascript:doKeyPress(event);" onkeyup="doKeyUp(event);"
 onmousedown="javascript:doMouseDown(this);" onmouseup="javascript:doMouseUp(this);" onpaste="doOnpaste();">
 </textarea>
 &nbsp;&nbsp;&nbsp;&nbsp;
@@ -423,34 +430,21 @@ onmousedown="javascript:doMouseDown(this);" onmouseup="javascript:doMouseUp(this
 </div>
 
 
-<textarea rows=20 cols=30 id="t2"></textarea>
+<textarea rows=20 cols=30 id="t2">
+</textarea>
 
 
 <div style="position: relative; left:20px; display:inline-block;">
 <div id="cur_line3"><br/></div>
-<textarea rows=20 cols=30 id="t3"></textarea>
+
+<textarea rows=20 cols=30 id="t3">
+</textarea>
 </div>
 
 <div id="msg"></div>
 <div id="msg2"></div>
 <div id="msg3"></div>
 <div id="msg4"></div>
-
-
-<p id="browser"></p>
-<script>
-var br = document.getElementById("browser");
-var b = getBrowser();
-br.innerHTML = 'Browser name: ' + b.browserName +"<br/>"
- + 'Full version: ' + b.fullVersion + '<br/>'
- + 'Major version: ' + b.majorVersion + '<br/>'
- + 'App name: ' + b.appName + '<br/>'
- + 'User Agent: ' + b.userAgent + '<br/>'
- + 'Platform: ' + b.platform + '<br/>'
- + 'Language: ' + b.language + '<br/>'
- + 'Java Enabled: ' + b.javaEnabled + '<br/>';
-</script>
-
 
 <p><br/></p>
 <pre>
