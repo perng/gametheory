@@ -161,6 +161,12 @@ function appendDst_chrome(e) {
         metaCode = metaChar(e);
     var t3 = $('#t3'); 
 
+    // on Mac, command key pressed, shouldn't enter anything.
+    if (metaCode == 'meta') {
+        if (metaCode == 'meta') showMsg3('metaCode = ' + metaCode);
+        return; // don't input anything.
+    }
+
     var sel = GetSelection();
     var cursor_pos = sel.start; //cursor_pos;
     var selectionStart = sel.start, selectionEnd = sel.end, selectionLen = sel.length;
