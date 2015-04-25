@@ -114,7 +114,7 @@ function getPos() {
 // - copy/paste.
 function appendDst(e) {
     var b = browser.browserName.toLowerCase();
-    if (b == 'chrome' || b == 'safari') appendDst_chrome(e);
+    if (b == 'chrome' || b == 'safari' || b == 'microsoft internet explorer') appendDst_chrome(e);
     else appendDst_firefox(e);
 }
 
@@ -361,15 +361,26 @@ function GetSelection() {
         var element = document.getElementById( 't1' );
 	// The current selection
 	var range = document.selection.createRange();
+        selectionLen = range.text.length;
+        
 	// We'll use this as a 'dummy'
 	var stored_range = range.duplicate();
 	// Select all text
         range.moveStart ('character', -element.value.length);
-        start = range.text.length;
+        element.selectionStart = range.text.length;
 
-        appendAct('start: ' + element.selectionStart + ', end: ' + element.selectionEnd);
+        if (selectionLen == 0) element.selectionEnd = element.selectionStart;
+        else element.selectionEnd = element.selectionStart + selectionLen;
 
-        return;
+        element.selectionLen = selectionLen;
+
+        element.start = element.selectionStart;
+        element.end = element.selectionEnd;
+        element.length = element.selectionLen;
+
+        appendAct('start: ' + element.start + ':' + element.selectionStart + ', end: ' + element.selectionEnd);
+
+        return element;
         /*
         textarea.focus ();
         var Sel = document.selection.createRange ();
@@ -388,12 +399,21 @@ function GetSelection() {
         var textarea = document.getElementById("t1");
         var start = textarea.selectionStart, end = textarea.selectionEnd;
 
+        // This works with firefox. The way of return a hash below does not.
+        textarea.start = start;
+        textarea.end = endl;
+        textarea.length = end - start;
+
+        return textarea;
+/*
         return {
             start: start,
             end: end,
             length: end - start,
             //text: textarea.value.slice(start, end)
         };
+*/
+    
     }
 }
 
@@ -470,7 +490,8 @@ $(document).ready(function() {
     // Cannot use keydown to handle alphabet input,  
     // because charCode will all be capitialized no matter it's lower or upper case.
     $('#t1').keydown(function(e) {
-        if (browserName == 'chrome' || browserName == 'safari') {
+        if (browserName == 'chrome' || browserName == 'safari' 
+            || browserName == 'microsoft internet explorer') {
             handle_chrome_special_char(e);
         }
     });
@@ -499,7 +520,7 @@ $(document).ready(function() {
 Message typed in left textarea will be repeated in the right textarea.
 Middle textarea shows triples: scanCode, charCode, metaCode.
 <br/>Events considered: type, delete, backspace, paste, select range, mouse click, home, end.
-<br/>Tested in: Firefox, Chrome, Safari. Safari bahavior is the same as Chrome. Opera does not work (take newline as 2 chars, and GetSelection() not accurate).
+<br/>Tested in: Firefox, Chrome, Safari. Safari bahavior is the same as Chrome. IE and Opera does not work for same reasons(take newline as 2 chars, and GetSelection() not accurate: on keypress, GetSelection is for previous position, not current position).
 </p>
 
 <div style="border: solid 1px #eeeeee; display: inline-block;">

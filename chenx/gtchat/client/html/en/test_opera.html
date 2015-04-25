@@ -66,18 +66,6 @@ function init() {
     //alert(browser.browserName);
 }
 
-// KeyDown event. But onkeydown is not universally accepted.
-function doKeyPress(e) {
-    e = e || window.e;
-    appendAct('key:' + e.keyCode + ', char:' + getChar(e) + ', meta:' + metaChar(e) + '');
-    appendDst(e);
-    getPos();
-}
-
-function doKeyUp(e) {
-    getPos();
-}
-
 // Append user action to middle textarea.
 function appendAct(v) {
     var t2 = $('#t2'); 
@@ -115,6 +103,7 @@ function getPos() {
 function appendDst(e) {
     var b = browser.browserName.toLowerCase();
     if (b == 'chrome' || b == 'safari') appendDst_chrome(e);
+    else if (b == 'opera') appendDst_opera(e);
     else appendDst_firefox(e);
 }
 
@@ -154,6 +143,115 @@ function handle_chrome_special_char(e) {
             break;
     }
 }
+
+function dumpStr(s) {
+    var i, len = s.length, msg = '';
+    for (i = 0; i < len; ++ i) {
+        var c = s.substr(i,1);
+        if (msg != '') msg += ',';
+        msg += '[' + (c) + ':' + c.charCodeAt() + ']';
+    }  
+    appendAct(msg);
+}
+
+function handle_opera_special_char(e) {
+    var scanCode = e.keyCode,
+        charCode = getChar(e),
+        metaCode = metaChar(e);
+    var t3 = $('#t3');
+
+    var sel = GetSelection();
+    var cursor_pos = sel.start; //cursor_pos;
+    var selectionStart = sel.start, selectionEnd = sel.end, selectionLen = sel.length;
+
+appendAct('\n---keyup, opera: scanCode=' + scanCode + ', start=' + cursor_pos + ', len=' + sel.length);
+
+    if (scanCode == 8) { // windows. backspace
+            var txt = t3.val();
+            if (selectionLen == 0) {
+                dumpStr(txt);
+                appendAct('last 2 chars: [' + txt.substr(cursor_pos-2,1).charCodeAt() + ', ' + txt.substr(cursor_pos-1,1).charCodeAt() + ']. total len=' + txt.length);
+/*
+                if (txt.substr(cursor_pos - 2, 1) == "\n") {
+                    setDstVal(txt.substring(0, cursor_pos - 2) + txt.substring(cursor_pos));
+                    appendAct('remove \\r\\n');
+                }
+                else 
+*/
+//appendAct('typeof: ' +  ( txt.substr(cursor_pos - 1, 1)));
+
+                {
+                    setDstVal(txt.substring(0, cursor_pos - 1) + txt.substring(cursor_pos));
+                    appendAct('remove single char at ' + (cursor_pos-1));
+                }
+            }
+            else
+                setDstVal(txt.substring(0, selectionStart) + txt.substring(selectionEnd));
+    }
+
+}
+
+// Opera (and IE) treat new line as "\r\n" instead of "\n" in firefox/chrome/safari.
+// Also the GetSelection() is accurate on keyup(), not keypress().
+function appendDst_opera(e) {
+    var scanCode = e.keyCode,
+        charCode = getChar(e),
+        metaCode = metaChar(e);
+    var t3 = $('#t3');
+
+    var sel = GetSelection();
+    var cursor_pos = sel.start; //cursor_pos;
+    var selectionStart = sel.start, selectionEnd = sel.end, selectionLen = sel.length;
+
+    //appendAct(cursor_pos + ' =?= ' + doGetCaretPosition(t1));
+
+    var msg =('appendDst_opera: scanCode = ' + scanCode + ', charCode = ' + charCode
+        + ', metaCode = ' + metaCode + ', cursor_pos = ' + cursor_pos);
+
+    appendAct(msg);
+    showMsg(msg);
+    showMsg3('selectioin start/end: ' + selectionStart + '/' + selectionEnd);
+
+    if (scanCode == 13) {
+        var txt = t3.val();
+        if (selectionLen == 0) {
+            setDstVal(txt.substring(0, cursor_pos) + "\n" + txt.substring(cursor_pos));
+        }
+        else {
+            setDstVal(txt.substring(0, selectionStart) + "\n" + txt.substring(selectionEnd));
+        }
+// well, seems it only accept one char '10', not 2 chars 10 and 13.
+// if use "\r\r" or "\n\n", or "\n\r", all accepted correctly as 2 chars.
+// but use "\r\n" then only 1 char is accepted (10 or \r).
+    }
+    else if (scanCode == 8) { // windows. backspace
+/*
+            var txt = t3.val();
+            if (selectionLen == 0) {
+                appendAct('last 2 chars: [' + txt.substring(cursor_pos - 2, 2) + ']');
+                setDstVal(txt.substring(0, cursor_pos - 1) + txt.substring(cursor_pos));
+            }
+            else
+                setDstVal(txt.substring(0, selectionStart) + txt.substring(selectionEnd));
+*/
+    }
+    else if (scanCode == 46) { // windows, delete
+            var txt = t3.val();
+            if (selectionLen == 0) {
+                setDstVal(txt.substring(0, cursor_pos) + txt.substring(cursor_pos + 1));
+            }
+            else
+                setDstVal(txt.substring(0, selectionStart) + txt.substring(selectionEnd));
+    }
+    else if (charCode != '') {  // this includes '\n'.
+        var txt = t3.val();
+        if (selectionLen == 0)
+            setDstVal(txt.substring(0, cursor_pos) + charCode + txt.substring(cursor_pos));
+        else
+            setDstVal(txt.substring(0, selectionStart) + charCode + txt.substring(selectionEnd));
+    }
+}
+
 
 function appendDst_chrome(e) {
     var scanCode = e.keyCode,
@@ -278,9 +376,11 @@ function metaChar(e) {
 }
 
 function getChar(e) {
-//appendAct('getChar: e.which=' + e.which + ', e.charCode=' + e.charCode);
+//appendAct('getChar: e.which=' + e.which + ', e.charCode=' + e.charCode + ', e.keyCode:' + e.keyCode);
   if (e.which == null) {
     return String.fromCharCode(e.keyCode) // IE
+  } else if (e.which == 0) { // opera
+    return '';
   } else if (e.which!=0) { // && e.charCode!=0) { // e.charCode not work for keyup.
     return String.fromCharCode(e.which)   // the rest
   } else {
@@ -355,46 +455,17 @@ function setCaretPosition(ctrl, pos){
 //   - start: start of selection. This is equal to cursor position.
 //   - end: end of selection
 function GetSelection() {
+    var textarea = document.getElementById("t1");
+    var start = textarea.selectionStart, end = textarea.selectionEnd;
 
-    //http://the-stickman.com/web-development/javascript/finding-selection-cursor-position-in-a-textarea-in-internet-explorer/
-    if (document.selection) { // IE support.
-        var element = document.getElementById( 't1' );
-	// The current selection
-	var range = document.selection.createRange();
-	// We'll use this as a 'dummy'
-	var stored_range = range.duplicate();
-	// Select all text
-        range.moveStart ('character', -element.value.length);
-        start = range.text.length;
+appendAct('GetS: start=' + start + ', end='+ end);
 
-        appendAct('start: ' + element.selectionStart + ', end: ' + element.selectionEnd);
-
-        return;
-        /*
-        textarea.focus ();
-        var Sel = document.selection.createRange ();
-        Sel.moveStart ('character', -textarea.value.length);
-        var start = Sel.text.length, end = start;
-        return {
-            start: start,
-            end: end,
-            length: end - start,
-        };
-        */
-    }
-
-    // non-IE.
-    else {
-        var textarea = document.getElementById("t1");
-        var start = textarea.selectionStart, end = textarea.selectionEnd;
-
-        return {
-            start: start,
-            end: end,
-            length: end - start,
-            //text: textarea.value.slice(start, end)
-        };
-    }
+    return {
+        start: start,
+        end: end,
+        length: end - start,
+        //text: textarea.value.slice(start, end)
+    };
 }
 
 // 
@@ -473,10 +544,16 @@ $(document).ready(function() {
         if (browserName == 'chrome' || browserName == 'safari') {
             handle_chrome_special_char(e);
         }
+if (browserName == 'opera') { 
+    //appendAct('keydown..--------.');
+}
     });
 
     $('#t1').keyup(function(e) {
         getPos();
+if (browserName == 'opera') {
+    handle_opera_special_char(e);
+}
     });
 
     $('#t1').mousedown(function(e) {
@@ -485,6 +562,7 @@ $(document).ready(function() {
 
     $('#t1').mouseup(function(e) {
         getPos();
+GetSelection();
     });
 
     $('#t1').bind('paste', function(e) {
@@ -496,10 +574,11 @@ $(document).ready(function() {
 <body>
 
 <p>
-Message typed in left textarea will be repeated in the right textarea.
+Message typed in left most textarea will be repeated in the right most textarea.
 Middle textarea shows triples: scanCode, charCode, metaCode.
-<br/>Events considered: type, delete, backspace, paste, select range, mouse click, home, end.
-<br/>Tested in: Firefox, Chrome, Safari. Safari bahavior is the same as Chrome. Opera does not work (take newline as 2 chars, and GetSelection() not accurate).
+<br/>Events considered: type, delete, backspace, paste, select range, mouse click, home, end. 
+To consider: ctrl + backspace.
+<br/>Tested in: Firefox, Chrome, Safari.  Safari bahavior is the same as Chrome.
 </p>
 
 <div style="border: solid 1px #eeeeee; display: inline-block;">
