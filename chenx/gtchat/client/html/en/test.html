@@ -284,7 +284,7 @@ function metaChar(e) {
 }
 
 function getChar(e) {
-//appendAct('getChar: e.which=' + e.which + ', e.charCode=' + e.charCode);
+appendAct('getChar: e.which=' + e.which + ', e.charCode=' + e.charCode);
   if (e.which == null) {
     return String.fromCharCode(e.keyCode) // IE
   } else if (e.which!=0) { // && e.charCode!=0) { // e.charCode not work for keyup.
@@ -476,12 +476,14 @@ $(document).ready(function() {
     // Cannot use keydown to handle alphabet input,  
     // because charCode will all be capitialized no matter it's lower or upper case.
     $('#t1').keydown(function(e) {
+appendAct('keydown: key=' + e.keyCode + ', char=' + e.charCode);
         if (browserName == 'chrome' || browserName == 'safari') {
             handle_chrome_special_char(e);
         }
     });
 
     $('#t1').keyup(function(e) {
+appendAct('keyup: key=' + e.keyCode + ', char=' + e.charCode);
         getPos();
     });
 
@@ -587,6 +589,8 @@ http://jsbin.com/puvikutaha/1/edit?html,css,js,output
 * http://stackoverflow.com/questions/3239124/javascript-catch-paste-event-in-textarea
 * http://collabedit.com/dtwpg
 http://www.quirksmode.org/js/keys.html
+* http://see.sl088.com/wiki/Html_%E8%BE%93%E5%85%A5%E6%B3%95%E4%BA%8B%E4%BB%B6
+* http://www.cnblogs.com/zoho/archive/2012/07/06/2578885.html
 </pre>
 
 </body>
