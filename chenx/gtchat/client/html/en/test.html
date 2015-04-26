@@ -463,27 +463,38 @@ function doOnpaste() {
     }, 100);
 }
 
+
+function doOncut() {
+    var textarea = document.getElementById("t1");
+    var sel = GetSelection();
+    appendAct('cut: cursor_pos:' + sel.start + ', start:' + sel.start + ', end:' + sel.end);
+
+    var t3 = $('#t3');
+    var v = t3.val();
+    t3.val(v.substring(0, sel.start) + v.substring(sel.end));
+}
+
+
 $(document).ready(function() {
     init();
-
-    $('#t1').keypress(function(e) {
-        //e = e || window.e;
-        appendAct('keypress - key:' + e.keyCode + ', char:' + getChar(e) + ', meta:' + metaChar(e) + '');
-        appendDst(e);
-        getPos();
-    });
 
     // Cannot use keydown to handle alphabet input,  
     // because charCode will all be capitialized no matter it's lower or upper case.
     $('#t1').keydown(function(e) {
-appendAct('keydown: key=' + e.keyCode + ', char=' + e.charCode);
+        appendAct('keydown: key=' + e.keyCode + ', char=' + e.charCode);
         if (browserName == 'chrome' || browserName == 'safari') {
             handle_chrome_special_char(e);
         }
     });
 
+    $('#t1').keypress(function(e) {
+        appendAct('keypress - key:' + e.keyCode + ', char:' + getChar(e) + ', meta:' + metaChar(e) + '');
+        appendDst(e);
+        getPos();
+    });
+
     $('#t1').keyup(function(e) {
-appendAct('keyup: key=' + e.keyCode + ', char=' + e.charCode);
+        appendAct('keyup: key=' + e.keyCode + ', char=' + e.charCode);
         getPos();
     });
 
@@ -498,6 +509,10 @@ appendAct('keyup: key=' + e.keyCode + ', char=' + e.charCode);
     $('#t1').bind('paste', function(e) {
         doOnpaste();
     });
+
+    $('#t1').bind('cut', function(e) {
+        doOncut();
+    });
 });
 </script>
 </head>
@@ -506,7 +521,7 @@ appendAct('keyup: key=' + e.keyCode + ', char=' + e.charCode);
 <p>
 Message typed in left textarea will be repeated in the right textarea.
 Middle textarea shows triples: scanCode, charCode, metaCode.
-<br/>Events considered: type, delete, backspace, paste, select range, mouse click, home, end.
+<br/>Events considered: type, delete, backspace, cut/paste, select range, mouse click, home, end.
 <br/>Tested in: Firefox, Chrome, Safari. Safari bahavior is the same as Chrome. Opera does not work (take newline as 2 chars, and GetSelection() not accurate).
 </p>
 
