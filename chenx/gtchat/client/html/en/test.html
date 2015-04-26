@@ -17,6 +17,8 @@ body {
     left: 0px;
     border: solid 3px #eeeeee;
     line-height: 15px;
+
+    ime-mode:disabled;
 }
 
 .line {
@@ -500,11 +502,14 @@ function doOndragEnd() {
     t3.val(v);
 }
 
+// if drop from outside text, this won't work, because sel is begining position, not end position.
 function doOndragDrop() {
     var textarea = document.getElementById("t1");
     var sel = GetSelection();
-    getPos();
     appendAct('drag drop: cursor_pos:' + sel.start + ', start:' + sel.start + ', end:' + sel.end);
+    if (sel.start == sel.end) return false; // if drop from outside, disable.
+
+    return true;
 }
 
 
@@ -556,7 +561,8 @@ $(document).ready(function() {
     });
 
     $('#t1').bind('drop', function(e) {
-        doOndragDrop();
+        return false; // simply disable drop. note this also disables dragstart/dragend. 
+        return doOndragDrop();
     });
 });
 </script>
@@ -599,7 +605,7 @@ Middle textarea shows triples: scanCode, charCode, metaCode.
 
 <div id="cur_line">&nbsp;</div>
 
-<textarea rows=20 cols=30 id="t1"></textarea>
+<textarea rows=20 cols=30 id="t1" type="tel"></textarea>
 &nbsp;&nbsp;&nbsp;&nbsp;
 </div>
 
@@ -652,6 +658,8 @@ http://www.quirksmode.org/js/keys.html
 * http://see.sl088.com/wiki/Html_%E8%BE%93%E5%85%A5%E6%B3%95%E4%BA%8B%E4%BB%B6
 * http://www.cnblogs.com/zoho/archive/2012/07/06/2578885.html
 * mouse drag: http://help.dottoro.com/ljmojcxu.php
+* disable ime mode: http://stackoverflow.com/questions/15520410/disable-ime-mode-in-google-chrome
+  (use both ime-mode:false, and type=tel)
 </pre>
 
 </body>
