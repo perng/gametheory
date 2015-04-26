@@ -475,6 +475,39 @@ function doOncut() {
 }
 
 
+var drag_start, drag_end;
+function doOndragStart() {
+    var textarea = document.getElementById("t1");
+    var sel = GetSelection();
+    drag_start = sel.start, drag_end = sel.end;
+    appendAct('drag start: cursor_pos:' + sel.start + ', start:' + sel.start + ', end:' + sel.end);
+}
+
+function doOndragEnd() {
+    var textarea = document.getElementById("t1");
+    var sel = GetSelection();
+    getPos();
+    appendAct('drag end: cursor_pos:' + sel.start + ', start:' + sel.start + ', end:' + sel.end);
+
+    var t3 = $('#t3');
+    var v = t3.val();
+    //t3.val();
+    var txt = v.substring(drag_start, drag_end); // cut text.
+    v = v.substring(0, drag_start) + v.substring(drag_end);
+
+    var new_start = sel.end - txt.length;
+    v = v.substring(0, new_start) + txt + v.substring(new_start);
+    t3.val(v);
+}
+
+function doOndragDrop() {
+    var textarea = document.getElementById("t1");
+    var sel = GetSelection();
+    getPos();
+    appendAct('drag drop: cursor_pos:' + sel.start + ', start:' + sel.start + ', end:' + sel.end);
+}
+
+
 $(document).ready(function() {
     init();
 
@@ -499,7 +532,7 @@ $(document).ready(function() {
     });
 
     $('#t1').mousedown(function(e) {
-        getPos();
+        //getPos();
     });
 
     $('#t1').mouseup(function(e) {
@@ -512,6 +545,18 @@ $(document).ready(function() {
 
     $('#t1').bind('cut', function(e) {
         doOncut();
+    });
+
+    $('#t1').bind('dragstart', function(e) {
+        doOndragStart();
+    });
+
+    $('#t1').bind('dragend', function(e) {
+        doOndragEnd();
+    });
+
+    $('#t1').bind('drop', function(e) {
+        doOndragDrop();
     });
 });
 </script>
@@ -606,6 +651,7 @@ http://jsbin.com/puvikutaha/1/edit?html,css,js,output
 http://www.quirksmode.org/js/keys.html
 * http://see.sl088.com/wiki/Html_%E8%BE%93%E5%85%A5%E6%B3%95%E4%BA%8B%E4%BB%B6
 * http://www.cnblogs.com/zoho/archive/2012/07/06/2578885.html
+* mouse drag: http://help.dottoro.com/ljmojcxu.php
 </pre>
 
 </body>
