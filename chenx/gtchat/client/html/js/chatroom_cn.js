@@ -25,6 +25,7 @@
          var helpMsgAll    = getHelpAll();
          var helpMsgCommon = getHelpCommon();
          var helpMsgMaster = getHelpMaster();
+         var url_sixp = 'http://homecox.com/games/sp/';
 
 
          if (typeof String.prototype.startsWith != 'function') {
@@ -957,14 +958,14 @@
 
          function doAppChess() {
              appendChatroomInfo('#app chess');
-             document.getElementById('app').src = 'http://cssauh.com/sp/';
+             doAppUrl_preload(url_sixp);
              doAppOn();
          }
          function doAppOn() {
              $('#app_panel').show();
              if (current_app == '') {
                  current_app == 'chess';
-                 document.getElementById('app').src = 'http://cssauh.com/sp/';
+                 doAppUrl_preload(url_sixp);
              }
              $('#chatroom').css('width', '360px');
 
@@ -1009,15 +1010,28 @@
 
              appendChatroomInfo(msg);
              current_app = url;
-             document.getElementById('app').src = url;
+             //document.getElementById('app').src = url;
+             doAppUrl_preload(url);
              doAppOn();
+         }
+         // Show a waiting message in the app iframe, preload in app_preload iframe.
+         // When preload is done, show it in the app iframe.
+         function doAppUrl_preload(url) {
+             document.getElementById('app').src = "../loading.html";
+             document.getElementById('app_preload').src = url;
+             $('#app_preload').load(function() {
+                 document.getElementById('app_preload').src = '';
+                 $('#app_preload').unbind(); // unbind from load(), otherwise it cycles.
+                 document.getElementById('app').src = url;
+                 //appendChatroomInfo('loaded: ' + url);
+             });
          }
          function doShowApps() {
              if (apps == '') {
                  apps = 'chess';
                  apps = '<font color="yellow">Internal apps</font>:,' + apps;
                  apps += ',<font color="yellow">external apps:</font>';
-                 apps += ',audio-visualization.coding.io,brick-db.coding.io,pick-sticks-paper.coding.io,nicephoto.coding.io,rhythm-91aa5.coding.io';
+                 apps += ',audio-visualization.coding.io,pick-sticks-paper.coding.io,nicephoto.coding.io';
                  apps = apps.replace(/,/g, '<br/>');
                  apps = '<font color="#00ff00">' + apps + '</font>';
              }

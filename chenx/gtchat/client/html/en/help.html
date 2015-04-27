@@ -48,15 +48,15 @@ The user interface includes (see Fig. 1 and Fig. 2):
 </ul>
 
 <img src="../images/chatroom1_en.png" style="max-width: 100%; height:auto; width:800px;">
-<center>
+<div style="width:800px; text-align:center;">
 Figure 1. Chatroom screenshot (before sign in).
-</center>
+</div>
 <br/>
 
-<img src="../images/chatroom2_en.png" style="max-width: 100%; height:auto; width:800px;">
-<center>
+<img src="../images/chatroom2_en.jpg" style="max-width: 100%; height:auto; width:800px;">
+<div style="width:800px; text-align:center;">
 Figure 2. Chatroom screenshot (after sign in).
-</center>
+</div>
 <br/>
 
 <h1>Register</h1>
@@ -86,14 +86,11 @@ There are two ways to log out:<br/><br/>
 <p>Commands available to all the users:</p>
 
 <ul>
-<li>#a ($app, show available apps) 
-<li>#a chess {#app chess, open 6-piece chess app window) 
-<li>#a {app} ($app, open given app or url) 
-<li>#a1 (#a on, #app on, turn on app) 
-<li>#a0 (#a off, #app off, hide app window) 
-<li>#ac (#a clear, #app clear, clear any app and hide app window) 
 <li>#c {room}  - #create, create and join a new room
 <li>#e  - #erase, erase chatroom content
+<li>#gc  - #g chess, #game chess, open 6-piece chess game window
+<li>#g1  - #g on, #game on, same as #game chess
+<li>#g0  - #g off, #game off, close game window
 <li>#h  - #?, #help, show help 
 <li>#hm  - #help master, show help for room master
 <li>#i {user}  - #invite, invite a user into current room
@@ -144,7 +141,6 @@ corner of the chatroom. The choices include:
 <li>Press the up arrow key can display the last input, press the down arrow key to recover to current input.
 <li>Double click on a room name in the room panel can enter the room.
 <li>A user can login multiple sessions, later session names will be appended with a sequence number.
-<li>A created chatroom disappears when the last user leaves.
 </ul>
 
 
