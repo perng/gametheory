@@ -126,7 +126,7 @@ class Test():
         if not self.read_test_cases(): 
             return
 
-        proc = Popen(['python', 'client.py', 'ws://localhost:9000'], \
+        proc = Popen(['python', 'client.py', 'ws://localhost:9001'], \
                    stdin=PIPE, stdout=PIPE, stderr=PIPE, shell=False)
 
         # set the O_NONBLOCK flag of p.stdout file descriptor:
@@ -185,7 +185,7 @@ if __name__ == '__main__':
     argc = len(sys.argv)
 
     if argc < 2:
-        #print("Need the WebSocket server address, i.e. ws://localhost:9000")
+        #print("Need the WebSocket server address, i.e. ws://localhost:9001")
         print "usage: test.py {test_filename} [-v|-f]"
         print "-v: show all details, -f show failed test cases only"
         sys.exit(1)

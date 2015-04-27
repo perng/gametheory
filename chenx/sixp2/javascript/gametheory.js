@@ -22,7 +22,7 @@ if (typeof (Chess6p_Remote) === 'undefined') {
         //this.DEBUG = false;
 
         this.ws = "ws://gametheory.olidu.com:80";
-        //this.ws = "ws://homecox.com:9000";
+        //this.ws = "ws://homecox.com:9002";
 
         // if these values will be accessed in UI by jquery or javascript DOM, 
         // so cannot be accessed as private value. must define as public, and use 'this.'.
@@ -370,17 +370,18 @@ if (typeof (Chess6p_Remote) === 'undefined') {
     }
 
     Chess6p_Remote.prototype.handle_sys_cmd = function(jo) {
-//        var sys_cmd = jo.sys_cmd;
-        var sys_cmd = jo.cmd;
+        var sys_cmd = jo.sys_cmd;
+        //var sys_cmd = jo.cmd;
     
         if (sys_cmd == 'player_joined') {
             var player_id = jo.player_id;
+            var player_name = jo.player_name;
             var sender_id = jo.sender_id;
             // This may be redundant. But useful when a player left and re-join.
             if (player_id == current_player_id) {
-                //$('#span_me').html(this.iconPlayerOn + 'Player ' + current_player_id + this.getMyColorPiece());
+                //$('#span_me').html(this.iconPlayerOn + 'Player ' + current_player_name + this.getMyColorPiece());
             } else {
-                $('#span_you').html('Player ' + player_id + this.iconPlayerOn + this.getMyColorPiece());
+                $('#span_you').html('Player ' + player_name + this.iconPlayerOn + this.getMyColorPiece());
             }
         } 
         else if (sys_cmd == 'player_left') {
@@ -403,25 +404,6 @@ if (typeof (Chess6p_Remote) === 'undefined') {
             current_players = players;
             $('#span_table').html('Table ' + table_id);
             
-/*
-            if (this.current_is_black) {
-                // black side table id is already displayed when processing WAITING message.
-                // this is needed by 1st player to display the other player's icon.
-                if (players.length != 2) {
-                    this.showInfo('wrong number of players', 'error');
-                    return;
-                }
-    
-                var you = '';
-                if (players[0] != current_player_id) you = players[0];
-                else if (players[1] != current_player_id) you = players[1];
-                $('#span_you').html(this.getMyColorPiece(false) + 'Player ' + you + this.iconPlayerOn);
-            }
-            else {
-            //    $('#span_table').html('Table ' + table_id); // white side.
-            }
-*/
-    
             this.showInfo('Game starts!');
             this.both_sides_connected = true;
             this.remote_game_started = true;
@@ -471,8 +453,7 @@ if (typeof (Chess6p_Remote) === 'undefined') {
         // There are 2 kinds of commands: sys_cmd, reply_cmd.
         var jo = JSON.parse(data);
     
-//        var sys_cmd = jo.sys_cmd;
-var sys_cmd = jo.cmd;
+        var sys_cmd = jo.sys_cmd;
         if (! (typeof sys_cmd === 'undefined')) {
             this.appendConsole('sys cmd receved');
             this.handle_sys_cmd(jo);
@@ -548,25 +529,24 @@ var sys_cmd = jo.cmd;
                 var game_status = jo.game_status;
                 if (game_status == 'WAITING') {
                     this.current_is_black = true;
-                    $('#span_me').html(this.iconPlayerOn + 'Player ' + current_player_id + this.getMyColorPiece(true));
+                    $('#span_me').html(this.iconPlayerOn + 'Player ' + current_player_name + this.getMyColorPiece(true));
                     $('#span_table').html('Table ' + current_table_id); // off position. need to set center.
                     this.showInfo('You joined game. Waiting for another player..');
                 }
                 else if (game_status == 'PLAYING') {
                     this.current_is_black = false;
                     current_table_id = jo.table_id;
-                    $('#span_me').html(this.iconPlayerOn + 'Player ' + current_player_id + this.getMyColorPiece(false));
+                    $('#span_me').html(this.iconPlayerOn + 'Player ' + current_player_name + this.getMyColorPiece(false));
                     $('#span_table').html('Table ' + current_table_id);
                     // show 1st player's icon.
-if (typeof current_players == 'undefined') {
-    var first_player_id = 0;
-} else {
-                    var first_player_id = 
-                                (current_player_id != current_players[0]) ?
-                                current_players[0] : current_players[1];
-}
+                    var players = jo.players;
+                    var player1 = players[0];
+                    // players[1] should be me.
+                    var first_player_id = player1.player_id;
+                    var first_player_name = player1.player_name;
+
                     $('#span_you').html(this.getMyColorPiece(true) + 'Player ' + 
-                    first_player_id + this.iconPlayerOn);
+                    first_player_name + this.iconPlayerOn);
     
                    this.showInfo('Game starts!');
                    this.both_sides_connected = true;

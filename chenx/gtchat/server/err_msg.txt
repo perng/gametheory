@@ -1,0 +1,40 @@
+-1#1| str(err)
+-1#2| str(err)
+-1#3| str(err)
+//36|"You are in room " + self.LOBBY_NAME
+1|"unknown cmd: " + cmd
+2|"send_msg(): Not active user: " + usr
+3|"non-exist request parameter: " + param
+4|"unknown user ''"
+5|"Invalid user"
+6|"Invalid user name '" + usr + "'"
+7|"Room name must be at least one char"
+8|"Room '" + room_name + "' does not exist"
+9|"Invalid room"
+10|"User " + self.get_src_username(src) + " is not in room " + room_name
+11|"unknown table: " + table_name
+12|"a user cannot whisper to self"
+13|"Room '" + room_name + "' already exists"
+14|"valid room name should contain only letters, numbers and underscore"
+15|"" + invitee + " is already in room " + room_name
+16|"Unknown reply code: ' + reply
+17|"User " + user + " is already room master"
+18|"Room master cannot be kicked.'
+19|"User ' + usr + ' has no permission on this operation'
+20|"User ' + usr + ' has no permission on this operation'
+21|"user '" + usr + \
+22|"Cannot join a private room. Invitation is needed.'
+23|"Cannot join a full room (size is " + str(room_max_size) + ")"
+24|"user " + usr + " already logged in from this connection"
+25|"invalid login information"
+26|"user " + usr + " has already logged in"
+27|"this username has been taken"
+28|"new password length should >= 8"
+29|"this username does not exist"
+30|"old password does not match"
+31|"Please use a password different from the old one"
+32|"invalid user name"
+33|"user password length should >= 8"
+34|"valid user name should contain only letters, numbers and underscore"
+35|"this username is not available"
+36|"You are in room " + self.LOBBY_NAME

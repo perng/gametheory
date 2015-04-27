@@ -1,0 +1,666 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<script type="text/javascript" src="../js/ajax/libs/jquery/1.4/jquery.min.js"></script>
+<script type="text/javascript" src="browser.js"></script>
+<STYLE type="text/css">
+
+body {
+    padding: 10px;
+}
+
+#t1, #t2, #t3 {
+    padding-top: 0px;
+    background-color: transparent;
+    position: relative; 
+    top: 0; 
+    left: 0px;
+    border: solid 3px #eeeeee;
+    line-height: 15px;
+}
+
+.line {
+    line-height: 15px;
+    /*background-color: #eeeeee;*/
+}
+
+#line_number{
+    position: absolute;
+    overflow: hidden;
+    border-right: solid black 1px;
+    z-index:8;
+    width: 38px;
+    padding: 0 5px 0 0;
+    margin: 4 0 0 -45px;
+    text-align: right;
+    color: #AAAAAA;
+}
+
+#cur_line, #cur_line3 {
+    position: absolute;
+    background-color: #eeeeee;
+    /*border: solid 1px black;*/
+    width: 240px;
+    line-height: 15px;
+    height: 15px;
+    display:none;
+}
+
+</style>
+
+<script type="text/javascript">
+
+var t1;
+var t2;
+var t3;
+var top_offset = 0; // top row offset in t1/t3.
+var browser;
+var browserName; // lower case browser name.
+
+function init() {
+    t1 = document.getElementById('t1');
+    t2 = document.getElementById('t2');
+    t3 = document.getElementById('t3');
+    browser = getBrowser();
+    browserName = browser.browserName.toLowerCase();
+    //alert(browser.browserName);
+}
+
+// Append user action to middle textarea.
+function appendAct(v) {
+    var t2 = $('#t2'); 
+    t2.val(t2.val() + v + '\n');
+    //textarea.scrollTop = textarea.scrollHeight;
+    t2.scrollTop(t2[0].scrollHeight);
+}
+
+// Get row and column of cursor.
+// Also update position of current row div.
+function getPos() {
+    cursor_pos =  doGetCaretPosition(t1);
+    var txt = $('#t1').val().substring(0, cursor_pos);
+    var row = txt.split('\n').length;
+    var col = cursor_pos - txt.lastIndexOf('\n') - 1;
+    showMsg4('row: ' + row + ' col: ' + col);
+
+    //var top = 15 * (row - 1) + 4;
+    //if (top > 289) top = 289; // max at row 20.
+
+    //if (row > 20) top_offset = row - 20 - 0;
+
+    var r = row - 1;
+    var top = 15 * r + 4;
+
+    $('#cur_line').css('top', top + 'px').css('display', 'block');
+    $('#cur_line3').css('top', top + 'px').css('display', 'block');
+}
+
+// This will be the output function.
+// need to send: 1) cursor_pos, 2) the 3 params below.
+// to-do: 
+// - select text.
+// - copy/paste.
+function appendDst(e) {
+    var b = browser.browserName.toLowerCase();
+    if (b == 'chrome' || b == 'safari') appendDst_chrome(e);
+    else if (b == 'opera') appendDst_opera(e);
+    else appendDst_firefox(e);
+}
+
+function setDstVal(val) {
+    var t3 = $('#t3');
+    t3.val(val);
+    t3.scrollTop(t3[0].scrollHeight);
+}
+
+function handle_chrome_special_char(e) {
+    appendAct('Chrome: key:' + e.keyCode + ', char:' + getChar(e) + ', meta:' + metaChar(e));
+
+    var sel = GetSelection();
+    var cursor_pos = sel.start; //cursor_pos;
+    var selectionStart = sel.start, selectionEnd = sel.end, selectionLen = sel.length;
+
+    showMsg3('selectioin start/end: ' + selectionStart + '/' + selectionEnd);
+
+    var t3 = $('#t3');
+    var keyCode = e.keyCode;
+    switch(keyCode) {
+        case 8:  // windows, backspace
+            var txt = t3.val();
+            if (selectionLen == 0) {
+                setDstVal(txt.substring(0, cursor_pos - 1) + txt.substring(cursor_pos));
+            }
+            else
+                setDstVal(txt.substring(0, selectionStart) + txt.substring(selectionEnd));
+            break;
+        case 46: // windows, delete
+            var txt = t3.val();
+            if (selectionLen == 0) {
+                setDstVal(txt.substring(0, cursor_pos) + txt.substring(cursor_pos + 1));
+            }
+            else
+                setDstVal(txt.substring(0, selectionStart) + txt.substring(selectionEnd));
+            break;
+    }
+}
+
+function dumpStr(s) {
+    var i, len = s.length, msg = '';
+    for (i = 0; i < len; ++ i) {
+        var c = s.substr(i,1);
+        if (msg != '') msg += ',';
+        msg += '[' + (c) + ':' + c.charCodeAt() + ']';
+    }  
+    appendAct(msg);
+}
+
+function handle_opera_special_char(e) {
+    var scanCode = e.keyCode,
+        charCode = getChar(e),
+        metaCode = metaChar(e);
+    var t3 = $('#t3');
+
+    var sel = GetSelection();
+    var cursor_pos = sel.start; //cursor_pos;
+    var selectionStart = sel.start, selectionEnd = sel.end, selectionLen = sel.length;
+
+appendAct('\n---keyup, opera: scanCode=' + scanCode + ', start=' + cursor_pos + ', len=' + sel.length);
+
+    if (scanCode == 8) { // windows. backspace
+            var txt = t3.val();
+            if (selectionLen == 0) {
+                dumpStr(txt);
+                appendAct('last 2 chars: [' + txt.substr(cursor_pos-2,1).charCodeAt() + ', ' + txt.substr(cursor_pos-1,1).charCodeAt() + ']. total len=' + txt.length);
+/*
+                if (txt.substr(cursor_pos - 2, 1) == "\n") {
+                    setDstVal(txt.substring(0, cursor_pos - 2) + txt.substring(cursor_pos));
+                    appendAct('remove \\r\\n');
+                }
+                else 
+*/
+//appendAct('typeof: ' +  ( txt.substr(cursor_pos - 1, 1)));
+
+                {
+                    setDstVal(txt.substring(0, cursor_pos - 1) + txt.substring(cursor_pos));
+                    appendAct('remove single char at ' + (cursor_pos-1));
+                }
+            }
+            else
+                setDstVal(txt.substring(0, selectionStart) + txt.substring(selectionEnd));
+    }
+
+}
+
+// Opera (and IE) treat new line as "\r\n" instead of "\n" in firefox/chrome/safari.
+// Also the GetSelection() is accurate on keyup(), not keypress().
+function appendDst_opera(e) {
+    var scanCode = e.keyCode,
+        charCode = getChar(e),
+        metaCode = metaChar(e);
+    var t3 = $('#t3');
+
+    var sel = GetSelection();
+    var cursor_pos = sel.start; //cursor_pos;
+    var selectionStart = sel.start, selectionEnd = sel.end, selectionLen = sel.length;
+
+    //appendAct(cursor_pos + ' =?= ' + doGetCaretPosition(t1));
+
+    var msg =('appendDst_opera: scanCode = ' + scanCode + ', charCode = ' + charCode
+        + ', metaCode = ' + metaCode + ', cursor_pos = ' + cursor_pos);
+
+    appendAct(msg);
+    showMsg(msg);
+    showMsg3('selectioin start/end: ' + selectionStart + '/' + selectionEnd);
+
+    if (scanCode == 13) {
+        var txt = t3.val();
+        if (selectionLen == 0) {
+            setDstVal(txt.substring(0, cursor_pos) + "\n" + txt.substring(cursor_pos));
+        }
+        else {
+            setDstVal(txt.substring(0, selectionStart) + "\n" + txt.substring(selectionEnd));
+        }
+// well, seems it only accept one char '10', not 2 chars 10 and 13.
+// if use "\r\r" or "\n\n", or "\n\r", all accepted correctly as 2 chars.
+// but use "\r\n" then only 1 char is accepted (10 or \r).
+    }
+    else if (scanCode == 8) { // windows. backspace
+/*
+            var txt = t3.val();
+            if (selectionLen == 0) {
+                appendAct('last 2 chars: [' + txt.substring(cursor_pos - 2, 2) + ']');
+                setDstVal(txt.substring(0, cursor_pos - 1) + txt.substring(cursor_pos));
+            }
+            else
+                setDstVal(txt.substring(0, selectionStart) + txt.substring(selectionEnd));
+*/
+    }
+    else if (scanCode == 46) { // windows, delete
+            var txt = t3.val();
+            if (selectionLen == 0) {
+                setDstVal(txt.substring(0, cursor_pos) + txt.substring(cursor_pos + 1));
+            }
+            else
+                setDstVal(txt.substring(0, selectionStart) + txt.substring(selectionEnd));
+    }
+    else if (charCode != '') {  // this includes '\n'.
+        var txt = t3.val();
+        if (selectionLen == 0)
+            setDstVal(txt.substring(0, cursor_pos) + charCode + txt.substring(cursor_pos));
+        else
+            setDstVal(txt.substring(0, selectionStart) + charCode + txt.substring(selectionEnd));
+    }
+}
+
+
+function appendDst_chrome(e) {
+    var scanCode = e.keyCode,
+        charCode = getChar(e),
+        metaCode = metaChar(e);
+    var t3 = $('#t3'); 
+
+    var sel = GetSelection();
+    var cursor_pos = sel.start; //cursor_pos;
+    var selectionStart = sel.start, selectionEnd = sel.end, selectionLen = sel.length;
+
+    var msg =('appendDst_chrome: scanCode = ' + scanCode + ', charCode = ' + charCode
+        + ', metaCode = ' + metaCode + ', cursor_pos = ' + cursor_pos);
+
+    appendAct(msg);
+    showMsg(msg);
+    showMsg3('selectioin start/end: ' + selectionStart + '/' + selectionEnd);
+
+    if (scanCode == 13) {
+        var txt = t3.val();
+        if (selectionLen == 0) {
+            setDstVal(txt.substring(0, cursor_pos) + '\n' + txt.substring(cursor_pos));
+        }
+        else {
+            setDstVal(txt.substring(0, selectionStart) + '\n' + txt.substring(selectionEnd));
+        }
+    }
+    else if (charCode != '') {  // this includes '\n'.
+        var txt = t3.val();
+        if (selectionLen == 0)
+            setDstVal(txt.substring(0, cursor_pos) + charCode + txt.substring(cursor_pos));
+        else
+            setDstVal(txt.substring(0, selectionStart) + charCode + txt.substring(selectionEnd));
+    }
+}
+
+
+function appendDst_firefox(e) {
+    var scanCode = e.keyCode, 
+        charCode = getChar(e),
+        metaCode = metaChar(e);
+    var t3 = $('#t3'); 
+
+    var sel = GetSelection();
+    var cursor_pos = sel.start; //cursor_pos;
+    var selectionStart = sel.start, selectionEnd = sel.end, selectionLen = sel.length;
+
+    showMsg('scanCode = ' + scanCode + ', charCode = ' + charCode 
+        + ', metaCode = ' + metaCode + ', cursor_pos = ' + cursor_pos);
+
+    showMsg3('selectioin start/end: ' + selectionStart + '/' + selectionEnd);
+
+    if (metaCode == 'ctrl' || metaCode == 'meta') {
+        if (metaCode == 'meta') showMsg3('metaCode = ' + metaCode);
+        return; // don't input anything.
+    }
+
+    if (metaCode == 'alt') {
+        return; // don't input anything on firefox.
+    }
+
+    switch (scanCode) {
+        case 0: 
+            var txt = t3.val();
+            if (selectionLen == 0)
+                setDstVal(txt.substring(0, cursor_pos) + charCode + txt.substring(cursor_pos));
+            else 
+                setDstVal(txt.substring(0, selectionStart) + charCode + txt.substring(selectionEnd));
+            break;
+        case 8:  // delete, on mac firefox; backspace on windows firefox.
+            var txt = t3.val();
+            if (selectionLen == 0) {
+                setDstVal(txt.substring(0, cursor_pos - 1) + txt.substring(cursor_pos));
+            }
+            else
+                setDstVal(txt.substring(0, selectionStart) + txt.substring(selectionEnd));
+            break;
+        case 46: // delete, on windows firefox.
+            var txt = t3.val();
+            if (selectionLen == 0) {
+                setDstVal(txt.substring(0, cursor_pos) + txt.substring(cursor_pos + 1));
+            }
+            else
+                setDstVal(txt.substring(0, selectionStart) + txt.substring(selectionEnd));
+            break;
+        case 13:
+            var txt = t3.val();
+            if (selectionLen == 0) {
+                setDstVal(txt.substring(0, cursor_pos) + '\n' + txt.substring(cursor_pos));
+            }
+            else {
+                setDstVal(txt.substring(0, selectionStart) + '\n' + txt.substring(selectionEnd));
+            }
+            break;
+        default:
+            break;
+    }
+}
+
+function showMsg(msg) {
+    $('#msg').html(msg);
+}
+
+function showMsg2(msg) {
+    $('#msg2').html(msg);
+}
+
+function showMsg3(msg) {
+    $('#msg3').html(msg);
+}
+
+function showMsg4(msg) {
+    $('#msg4').html(msg);
+}
+
+function metaChar(e) {
+    if (e.shiftKey) return "shift";
+    else if (e.ctrlKey) return "ctrl";
+    else if (e.altKey) return "alt";
+    else if (e.metaKey) return "meta"; // 'command' key in mac.
+    return '';
+}
+
+function getChar(e) {
+//appendAct('getChar: e.which=' + e.which + ', e.charCode=' + e.charCode + ', e.keyCode:' + e.keyCode);
+  if (e.which == null) {
+    return String.fromCharCode(e.keyCode) // IE
+  } else if (e.which == 0) { // opera
+    return '';
+  } else if (e.which!=0) { // && e.charCode!=0) { // e.charCode not work for keyup.
+    return String.fromCharCode(e.which)   // the rest
+  } else {
+    //return null // special key
+    return '?';
+  }
+}
+
+/*
+function setSelectionRange(input, selectionStart, selectionEnd) {
+  if (input == null) return;
+
+  if (input.setSelectionRange) {
+    input.focus();
+    input.setSelectionRange(selectionStart, selectionEnd);
+  }
+  else if (input.createTextRange) {
+    var range = input.createTextRange();
+    range.collapse(true);
+    range.moveEnd('character', selectionEnd);
+    range.moveStart('character', selectionStart);
+    range.select();
+  }
+}
+*/
+
+/*
+// get which mouse button is clicked.
+function fixWhich(e) {
+  if (!e.which && e.button) {
+    if (e.button & 1) e.which = 1      // Left
+    else if (e.button & 4) e.which = 2 // Middle
+    else if (e.button & 2) e.which = 3 // Right
+  }
+}
+*/
+
+// get and set cursor position.
+// function GetSelection() also can return this.
+// But this is faster if only caret position is needed.
+function doGetCaretPosition (ctrl) {
+    var CaretPos = 0;    // IE Support
+    if (document.selection) {
+        ctrl.focus ();
+        var Sel = document.selection.createRange ();
+        Sel.moveStart ('character', -ctrl.value.length);
+        CaretPos = Sel.text.length;
+    }
+    // Firefox support
+    else if (ctrl.selectionStart || ctrl.selectionStart == '0')
+        CaretPos = ctrl.selectionStart;
+    return (CaretPos);
+}
+function setCaretPosition(ctrl, pos){
+    if(ctrl.setSelectionRange)
+    {
+        ctrl.focus();
+        ctrl.setSelectionRange(pos,pos);
+    }
+    else if (ctrl.createTextRange) {
+        var range = ctrl.createTextRange();
+        range.collapse(true);
+        range.moveEnd('character', pos);
+        range.moveStart('character', pos);
+        range.select();
+    }
+}
+
+
+// @return:
+//   - length: length of selected text
+//   - start: start of selection. This is equal to cursor position.
+//   - end: end of selection
+function GetSelection() {
+    var textarea = document.getElementById("t1");
+    var start = textarea.selectionStart, end = textarea.selectionEnd;
+
+appendAct('GetS: start=' + start + ', end='+ end);
+
+    return {
+        start: start,
+        end: end,
+        length: end - start,
+        //text: textarea.value.slice(start, end)
+    };
+}
+
+// 
+// Paste must use a lock variable.
+//
+// Problem: 
+// It is found that, when paste continuously, the destination string is longer than source.
+//
+// Reason:
+// When coninuously paste (hold ctrl, and press v multiple times or continuously),
+// multiple setTimeout events will occur. Say you pasted 3 times before the first timeout
+// fires, then it'll get "val = textarea.val" as the final value with 3 pastes, so the
+// first fired event will paste the new content 3 times. Then the 2nd event is fired and will
+// paste 2 times, and the 3rd event will paste 1 time. In total you got 6 copies instead of 3.
+// You can verify this, by setting the timeout value longer, say 1 second, then paste something
+// 3 times during 1 second.
+//
+// Solution: use a lock variable, lock it so it won't re-enter the function before the first
+// event is fired. This works correctly. You can set the timeout interval larger, say 10 seconds,
+// it'll still paste correctly.
+//
+var paste_lock = false;
+
+function doOnpaste() {
+    if (paste_lock) return;
+    paste_lock = true;
+
+    var textarea = document.getElementById("t1");
+    var sel = GetSelection(); 
+    var initialLength = textarea.value.length;
+    appendAct('paste: cursor_pos:' + sel.start + ', start:' + sel.start + ', end:' + sel.end);
+
+    window.setTimeout(function() {
+        var val = textarea.value;
+        var pastedTextLength = val.length - (initialLength - sel.length);
+        //appendAct('val.len=' + val.length + ', initLen=' + initialLength + ', sel.len=' + sel.length);
+        //var end = sel.start + pastedTextLength;
+
+        var start = sel.start; // cursor_pos
+        var end = start + pastedTextLength;
+
+        var txt = val.slice(start, end);
+
+        /*
+        callback({
+            start: sel.start,
+            end: end,
+            length: pastedTextLength,
+            text: val.slice(sel.start, end),
+            replacedText: sel.text
+        });
+        */
+
+        var t3 = $('#t3'); 
+        var v = t3.val();
+        setDstVal(v.substring(0, start) + txt + v.substring(start + sel.length));
+        //setDstVal($('#t1').val()); // This works and is accurate. But data is large.
+
+        paste_lock = false;
+    }, 100);
+}
+
+$(document).ready(function() {
+    init();
+
+    $('#t1').keypress(function(e) {
+        //e = e || window.e;
+        appendAct('keypress - key:' + e.keyCode + ', char:' + getChar(e) + ', meta:' + metaChar(e) + '');
+        appendDst(e);
+        getPos();
+    });
+
+    // Cannot use keydown to handle alphabet input,  
+    // because charCode will all be capitialized no matter it's lower or upper case.
+    $('#t1').keydown(function(e) {
+        if (browserName == 'chrome' || browserName == 'safari') {
+            handle_chrome_special_char(e);
+        }
+if (browserName == 'opera') { 
+    //appendAct('keydown..--------.');
+}
+    });
+
+    $('#t1').keyup(function(e) {
+        getPos();
+if (browserName == 'opera') {
+    handle_opera_special_char(e);
+}
+    });
+
+    $('#t1').mousedown(function(e) {
+        getPos();
+    });
+
+    $('#t1').mouseup(function(e) {
+        getPos();
+GetSelection();
+    });
+
+    $('#t1').bind('paste', function(e) {
+        doOnpaste();
+    });
+});
+</script>
+</head>
+<body>
+
+<p>
+Message typed in left most textarea will be repeated in the right most textarea.
+Middle textarea shows triples: scanCode, charCode, metaCode.
+<br/>Events considered: type, delete, backspace, paste, select range, mouse click, home, end. 
+To consider: ctrl + backspace.
+<br/>Tested in: Firefox, Chrome, Safari.  Safari bahavior is the same as Chrome.
+</p>
+
+<div style="border: solid 1px #eeeeee; display: inline-block;">
+<div style="position: relative; left:20px; display:inline-block;">
+
+<div id="line_number">
+<div class="line">1</div>
+<div class="line">2</div>
+<div class="line">3</div>
+<div class="line">4</div>
+<div class="line">5</div>
+<div class="line">6</div>
+<div class="line">7</div>
+<div class="line">8</div>
+<div class="line">9</div>
+<div class="line">10</div>
+
+<div class="line">1</div>
+<div class="line">2</div>
+<div class="line">3</div>
+<div class="line">4</div>
+<div class="line">5</div>
+<div class="line">6</div>
+<div class="line">7</div>
+<div class="line">8</div>
+<div class="line">9</div>
+<div class="line">10</div>
+</div>
+
+<div id="cur_line">&nbsp;</div>
+
+<textarea rows=20 cols=30 id="t1"></textarea>
+&nbsp;&nbsp;&nbsp;&nbsp;
+</div>
+
+</div>
+
+
+<textarea rows=20 cols=40 id="t2"></textarea>
+
+
+<div style="position: relative; left:20px; display:inline-block;">
+<div id="cur_line3"><br/></div>
+<textarea rows=20 cols=30 id="t3"></textarea>
+</div>
+
+<div id="msg"></div>
+<div id="msg2"></div>
+<div id="msg3"></div>
+<div id="msg4"></div>
+
+
+<p id="browser"></p>
+<script>
+var br = document.getElementById("browser");
+var b = getBrowser();
+br.innerHTML = 'Browser name: ' + b.browserName +"<br/>"
+ + 'Full version: ' + b.fullVersion + '<br/>'
+ + 'Major version: ' + b.majorVersion + '<br/>'
+ + 'App name: ' + b.appName + '<br/>'
+ + 'User Agent: ' + b.userAgent + '<br/>'
+ + 'Platform: ' + b.platform + '<br/>'
+ + 'Language: ' + b.language + '<br/>'
+ + 'Java Enabled: ' + b.javaEnabled + '<br/>';
+</script>
+
+
+<p><br/></p>
+<pre>
+http://javascript.info/tutorial/keyboard-events#processing-the-character-keypress
+http://stackoverflow.com/questions/263743/caret-position-in-textarea-in-characters-from-the-start
+http://stackoverflow.com/questions/6157929/how-to-simulate-a-mouse-click-using-javascript
+http://stackoverflow.com/questions/17858174/set-cursor-to-specific-position-on-specific-line-in-a-textarea
+http://en.allexperts.com/q/Javascript-1520/Inserting-text-text-area.htm
+http://blog.vishalon.net/index.php/javascript-getting-and-setting-caret-position-in-textarea/
+http://stackoverflow.com/questions/11338592/how-can-i-bind-to-the-change-event-of-a-textarea-in-jquery
+http://jsbin.com/puvikutaha/1/edit?html,css,js,output
+* http://help.dottoro.com/ljtfkhio.php
+* http://stackoverflow.com/questions/3239124/javascript-catch-paste-event-in-textarea
+* http://collabedit.com/dtwpg
+http://www.quirksmode.org/js/keys.html
+</pre>
+
+</body>
+</html>

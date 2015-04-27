@@ -3,7 +3,7 @@
 
 By: X. Chen
 Created on: 3/18/2015
-Last modified: 4/8/2015
+Last modified: 4/15/2015
 
 
 == About ==
@@ -386,7 +386,6 @@ client.html is from:
 
 Modified client.py to add the function of getting console stdio input from user.
 Modified server.py to avoid sending to self when broadcast, and added class API_Chatroom.
-Modified client.html to add the textbox for user input, and modified output format.
 
 
 == testing ==
@@ -437,19 +436,68 @@ open client.html in a browser.
 - testing framework:
   - provide suites of test cases (in progress)
   - multiple clients test
-- api call update_pwd
 - api call whisper
 - api call broadcast
-- api call to get active users list (done)
 - api call to query status of a sepecific user.
-- api call to get active room list (done)
 - api call to query status of a sepecific room.
 - keep session status when user refresh web page client.html.
-- client.html (in progress)
 - client.py (optional)
 
 
 == Change Log ==
+
+4/15/2015
+
+- Chinese input cause speak error, and disconnect.
+  * is utf-8 encode/decode issue. solved.
+- Now do input check for user/room name in @create/join/invite/master/kick.
+- limit use of chars to use for username/pwd/roomname: basically: a-zA-Z0-9_ plus utf-8 chars (CN)
+- added @game chess/on/off, for 6p chess.
+- adjusted arrow_mode: only up/down used now, to avoid confusion.
+
+4/14/2015
+
+- font definition, to be consistent on different platform. (seems ok)
+- server side return status code besides status msg, so client can write Chinese. (done, added S_MSG to chatroom_msg_cn.js)
+- left/up arrow for last command. right/down to flip to empty. (done)
+- shift-return for multiple line. (done)
+- use different default bgImg (done, easy, just use different bgImgID at beginning)
+- store bgImg preference to server side (done)
+
+4/12/2015
+
+- added background image to settings.
+- separate client.html into index.html, chatroom.css and chatroom.js
+
+4/11/2015
+
+- temp persistence now, use plain text file db.txt.
+- when server.py exits, flush db.txt, now only SIGINT is captured:
+  kill -INT pid
+- added temp persistence.
+  now for register/uupdate_pwd, write to db.txt.
+  if db not flushed, this still works, since in loadDB, old pwd will be overwritten by new pwd
+  when read in sequence.
+- For register/update_pwd, there are not that many, so can write to db.txt on disk each time.
+  for messages, if need to save them, then must do flushDB once a while instead.
+  no worry for this now.
+- try http://fancybox.net/
+- FInished About/Help. Leave Privacy out.
+- http://smallbusiness.chron.com/slow-down-animated-gif-gimp-75666.html
+- matrix5.gif is good, but a little too fast. should slow down in gimp
+- http://darwingimp.sourceforge.net/guides/install_leopard/
+--> solved by using matrix2.gif, repeat twice on both x/y.
+
+4/10/2015
+
+- @master, done. also show different logo image on room user list.
+- @kick
+- @max
+- user/room name only allow letters, numbers and underscore
+- new register/login box, appear in the middle of chatroom.
+- solved new line problem, can send multiple lines.
+- move text box to bottom
+- icon from: http://www.softicons.com/social-media-icons/free-social-media-icons-by-aha-soft/chat-icon
 
 -- 4/9/2015 --
 
