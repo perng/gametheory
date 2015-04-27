@@ -8,6 +8,7 @@
 
 body {
     padding: 10px;
+    /*font: normal 12px Verdana, sans-serif;*/
 }
 
 #t1, #t2, #t3 {
@@ -17,17 +18,29 @@ body {
     top: 0; 
     left: 0px;
     border: solid 3px #eeeeee;
+
+    /*font-size: 10pt;*/
     line-height: 15px;
 
     ime-mode:disabled;
+  
+    width: 240px;
 
     white-space: pre;
     word-wrap: normal;
     overflow-x: scroll;
+
+    resize: none;
 }
 
 .line {
+    /*font: normal 12px Verdana, sans-serif;*/
     line-height: 15px;
+    height: 15px;
+    padding: 0px;
+    margin: 0 0 0 0px;
+    border: solid 0px #eeeeee;
+    display: block;
     /*background-color: #eeeeee;*/
 }
 
@@ -41,12 +54,18 @@ body {
     margin: 4 0 0 -45px;
     text-align: right;
     color: #AAAAAA;
+
+    display: inline-block;
+    line-height: 35px;
+
+    font-size: 10pt;
 }
 
 #cur_line, #cur_line3 {
+    padding: 0px;
     position: absolute;
     background-color: #eeeeee;
-    /*border: solid 1px black;*/
+    border: solid 0px black;
     width: 240px;
     line-height: 15px;
     height: 15px;
@@ -71,7 +90,7 @@ Middle textarea shows triples: scanCode, charCode, metaCode.
 <br/>Tested in: Firefox, Chrome, Safari. Safari bahavior is the same as Chrome. Opera does not work (take newline as 2 chars, and GetSelection() not accurate).
 </p>
 
-<div style="border: solid 1px #eeeeee; display: inline-block;">
+<div style="border: solid 0px #eeeeee; display: inline-block;">
 <div style="position: relative; left:20px; display:inline-block;">
 
 <div id="line1_number">

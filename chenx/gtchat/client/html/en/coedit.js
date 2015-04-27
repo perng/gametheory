@@ -27,6 +27,10 @@ if (typeof (CoEdit) == "undefined") {
         this.browserName = this.browser.browserName.toLowerCase();
         //alert(browser.browserName);
 
+        if (this.browserName == 'chrome') {
+            $('.line').css('height', '14.5px');
+        }
+
         this.paste_lock = false; // used by paste function.
 
         var _this = this;
@@ -35,7 +39,7 @@ if (typeof (CoEdit) == "undefined") {
     // because charCode will all be capitialized no matter it's lower or upper case.
     $('#t1').keydown(function(e) {
         _this.appendAct('keydown: key=' + e.keyCode + ', char=' + e.charCode);
-        if (this.browserName == 'chrome' || this.browserName == 'safari') {
+        if (_this.browserName == 'chrome' || _this.browserName == 'safari') {
             _this.handle_chrome_special_char(e);
         }
     });
@@ -67,6 +71,10 @@ if (typeof (CoEdit) == "undefined") {
         return false; // Disable drop. Note this also disables dragstart/dragend.
     });
 
+    this.t1.bind('input', function(e) {
+        _this.appendAct('changed ...');
+    });
+
 }
 
 
@@ -83,6 +91,10 @@ CoEdit.prototype.addLineNum = function(container, rowID, hidden) {
     var r = document.createElement('div');
     r.setAttribute('id', rowID);
     r.setAttribute('class', 'line');
+
+    if (this.browserName == 'chrome') {
+        r.style.height = '14.5px';
+    }
 
     if (hidden) r.style.display = 'none';
 
@@ -118,7 +130,11 @@ CoEdit.prototype.getPos = function() {
 
 CoEdit.prototype.highlightCurrentRow = function(row) {
     var r = row - this.winMinRow;
-    var top = 15 * r + 4;
+    var top = 15 * r + 3;
+
+    if (this.browserName == 'chrome') {
+        top = 14.5 * r + 3;
+    }
 
     $('#cur_line').css('top', top + 'px').css('display', 'block');
     $('#cur_line3').css('top', top + 'px').css('display', 'block');
@@ -173,8 +189,8 @@ CoEdit.prototype.moveLineNum = function(total_row, row) {
         this.moveLineNumForArrow(row);
     }
 
-    this.appendAct('row = ' + row + ', maxRow=' + this.maxRow);
-    this.appendAct('win min/maxRow=' + this.winMinRow + '/' + this.winMaxRow);
+    //this.appendAct('row = ' + row + ', maxRow=' + this.maxRow);
+    //this.appendAct('win min/maxRow=' + this.winMinRow + '/' + this.winMaxRow);
 }
 
 
@@ -228,7 +244,7 @@ CoEdit.prototype.setDstVal = function(val) {
 }
 
 CoEdit.prototype.handle_chrome_special_char = function(e) {
-    appendAct('Chrome: key:' + e.keyCode + ', char:' + getChar(e) + ', meta:' + metaChar(e));
+    this.appendAct('Chrome: key:' + e.keyCode + ', char:' + this.getChar(e) + ', meta:' + this.metaChar(e));
 
     var t3 = this.t3;
     var sel = this.GetSelection();
@@ -239,7 +255,7 @@ CoEdit.prototype.handle_chrome_special_char = function(e) {
 
     var keyCode = e.keyCode;
     switch(keyCode) {
-        case 8:  // windows, backspace
+        case 8:  // windows, backspace; mac, delete/backspace.
             var txt = t3.val();
             if (selectionLen == 0) {
                 this.setDstVal(txt.substring(0, cursor_pos - 1) + txt.substring(cursor_pos));
