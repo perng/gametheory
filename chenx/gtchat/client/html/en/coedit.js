@@ -70,8 +70,8 @@ CoEdit.prototype.appendAct = function(v) {
 // Get row and column of cursor.
 // Also update position of current row div.
 CoEdit.prototype.getPos = function() {
+    var cursor_pos =  this.doGetCaretPosition(this.t10);
     var t1 = this.t1;
-    var cursor_pos =  this.doGetCaretPosition(t1);
     var txt = t1.val().substring(0, cursor_pos);
     var row = txt.split('\n').length;
     var col = cursor_pos - txt.lastIndexOf('\n') - 1;
