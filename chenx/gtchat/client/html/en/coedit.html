@@ -20,6 +20,10 @@ body {
     line-height: 15px;
 
     ime-mode:disabled;
+
+    white-space: pre;
+    word-wrap: normal;
+    overflow-x: scroll;
 }
 
 .line {
@@ -27,7 +31,7 @@ body {
     /*background-color: #eeeeee;*/
 }
 
-#line_number{
+#line1_number, #line3_number {
     position: absolute;
     overflow: hidden;
     border-right: solid black 1px;
@@ -70,8 +74,8 @@ Middle textarea shows triples: scanCode, charCode, metaCode.
 <div style="border: solid 1px #eeeeee; display: inline-block;">
 <div style="position: relative; left:20px; display:inline-block;">
 
-<div id="line_number">
-<div class="line">1</div>
+<div id="line1_number">
+<div id="line1_1" class="line">1</div>
 </div>
 
 <div id="cur_line">&nbsp;</div>
@@ -87,6 +91,11 @@ Middle textarea shows triples: scanCode, charCode, metaCode.
 
 
 <div style="position: relative; left:20px; display:inline-block;">
+
+<div id="line3_number">
+<div id="line3_1" class="line">1</div>
+</div>
+
 <div id="cur_line3"><br/></div>
 <textarea rows=20 cols=30 id="t3"></textarea>
 </div>

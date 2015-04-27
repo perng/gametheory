@@ -9,11 +9,24 @@ if (typeof (CoEdit) == "undefined") {
     CoEdit.prototype.init = function() {
         this.t10 = document.getElementById('t1');
         this.t1 = $('#t1'); 
+        this.container1 = document.getElementById('line1_number');
+
         this.t3 = $('#t3');
+        this.container3 = document.getElementById('line3_number');
+
         this.t_act = $('#t2'); // action textarea.
+
+        this.minRow = 1;
+        this.maxRow = 1;
+
+        // for visible port in window of t1.
+        this.winMinRow = 1;
+        this.winMaxRow = 20;
+
         this.browser = getBrowser();
         this.browserName = this.browser.browserName.toLowerCase();
         //alert(browser.browserName);
+
         this.paste_lock = false; // used by paste function.
 
         var _this = this;
@@ -66,6 +79,21 @@ CoEdit.prototype.appendAct = function(v) {
     t.scrollTop(t[0].scrollHeight);
 }
 
+CoEdit.prototype.addLineNum = function(container, rowID, hidden) {
+    var r = document.createElement('div');
+    r.setAttribute('id', rowID);
+    r.setAttribute('class', 'line');
+
+    if (hidden) r.style.display = 'none';
+
+    r.innerHTML = this.maxRow;
+    container.appendChild(r);
+}
+
+CoEdit.prototype.delLineNum = function(container, rowID) {
+    var r = document.getElementById(rowID);
+    container.removeChild(r);
+}
 
 // Get row and column of cursor.
 // Also update position of current row div.
@@ -83,16 +111,103 @@ CoEdit.prototype.getPos = function() {
     this.showMsg4('row: ' + row + ' col: ' + col + 
         ', total rows: ' + total_row + ', total char: ' + total_char);
 
-    //var top = 15 * (row - 1) + 4;
-    //if (top > 289) top = 289; // max at row 20.
+    this.moveLineNum(total_row, row);
+    this.highlightCurrentRow(row);
+}
 
-    //if (row > 20) top_offset = row - 20 - 0;
 
-    var r = row - 1;
+CoEdit.prototype.highlightCurrentRow = function(row) {
+    var r = row - this.winMinRow;
     var top = 15 * r + 4;
 
     $('#cur_line').css('top', top + 'px').css('display', 'block');
     $('#cur_line3').css('top', top + 'px').css('display', 'block');
+}
+
+
+CoEdit.prototype.moveLineNum = function(total_row, row) {
+    // for Enter, Backspace/delete keys.
+    // Note it's a combination of adding/remove the last row, plus move cursor.
+    if (total_row > this.maxRow) {
+        while (this.maxRow < total_row) {
+            this.maxRow += 1;
+            var hidden =  (this.maxRow > this.winMaxRow);
+
+            this.addLineNum(this.container1, 'line1_' + this.maxRow, hidden);
+            this.addLineNum(this.container3, 'line3_' + this.maxRow, hidden);
+
+            if (row > this.winMaxRow) {
+                document.getElementById('line1_' + (this.winMinRow - 0)).style.display = 'none';
+                document.getElementById('line3_' + (this.winMinRow - 0)).style.display = 'none';
+            }
+        }
+
+        this.moveLineNumForArrow(row);
+    }
+    else if (total_row < this.maxRow) {
+
+        var container = document.getElementById('line_number');
+        while (this.maxRow > total_row) {
+            this.delLineNum(this.container1, 'line1_' + this.maxRow);
+            this.delLineNum(this.container3, 'line3_' + this.maxRow);
+            //this.appendAct('delete row ' + this.maxRow + '. winMaxRow = ' + this.winMaxRow);
+
+            if ((this.maxRow <= this.winMaxRow) && this.winMaxRow >= 20) { 
+                if (this.winMaxRow > 20) {
+                    this.winMaxRow -= 1;
+                    this.winMinRow -= 1;
+                }
+
+                document.getElementById('line1_' + (this.winMinRow - 0)).style.display = 'block';
+                document.getElementById('line3_' + (this.winMinRow - 0)).style.display = 'block';
+
+                this.appendAct('show line number ' + this.winMinRow);
+            }
+
+            this.maxRow -= 1;
+        }
+
+        //this.moveLineNumForArrow(row);
+    }
+    else {
+        this.moveLineNumForArrow(row);
+    }
+
+    this.appendAct('row = ' + row + ', maxRow=' + this.maxRow);
+    this.appendAct('win min/maxRow=' + this.winMinRow + '/' + this.winMaxRow);
+}
+
+
+CoEdit.prototype.moveLineNumForArrow = function(row) {
+    // for up/down arrow keys.
+    if (row > this.winMaxRow) {
+        while (row > this.winMaxRow) {
+            this.winMaxRow += 1;
+
+            document.getElementById('line1_' + (this.winMinRow)).style.display = 'none';
+            document.getElementById('line1_' + (this.winMaxRow)).style.display = 'block';
+
+            document.getElementById('line3_' + (this.winMinRow)).style.display = 'none';
+            document.getElementById('line3_' + (this.winMaxRow)).style.display = 'block';
+
+            this.winMinRow += 1;
+            //this.winMaxRow += 1;
+        }
+    } 
+    else if (row < this.winMinRow) {
+        while (row < this.winMinRow) {
+            this.winMinRow -= 1;
+            //this.winMaxRow -= 1;
+
+            document.getElementById('line1_' + (this.winMinRow)).style.display = 'block';
+            document.getElementById('line1_' + (this.winMaxRow)).style.display = 'none';
+
+            document.getElementById('line3_' + (this.winMinRow)).style.display = 'block';
+            document.getElementById('line3_' + (this.winMaxRow)).style.display = 'none';
+
+            this.winMaxRow -= 1;
+        }
+    }
 }
 
 // This will be the output function.
