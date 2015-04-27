@@ -237,11 +237,20 @@ CoEdit.prototype.appendDst = function(e) {
     else this.appendDst_firefox(e);
 }
 
+
 CoEdit.prototype.setDstVal = function(val) {
     var t3 = this.t3;
     t3.val(val);
     t3.scrollTop(t3[0].scrollHeight);
 }
+
+CoEdit.prototype.setDstVal2 = function(index1, txt, index2) {
+    var t3 = this.t3;
+    var v = t3.val();
+    t3.val(v.substring(0, index1) + txt + v.substring(index2));
+    t3.scrollTop(t3[0].scrollHeight);
+}
+
 
 CoEdit.prototype.handle_chrome_special_char = function(e) {
     this.appendAct('Chrome: key:' + e.keyCode + ', char:' + this.getChar(e) + ', meta:' + this.metaChar(e));
