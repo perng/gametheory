@@ -68,6 +68,18 @@ function init() {
     //alert(browser.browserName);
 }
 
+// KeyDown event. But onkeydown is not universally accepted.
+function doKeyPress(e) {
+    e = e || window.e;
+    appendAct('key:' + e.keyCode + ', char:' + getChar(e) + ', meta:' + metaChar(e) + '');
+    appendDst(e);
+    getPos();
+}
+
+function doKeyUp(e) {
+    getPos();
+}
+
 // Append user action to middle textarea.
 function appendAct(v) {
     var t2 = $('#t2'); 
@@ -523,7 +535,7 @@ $(document).ready(function() {
     $('#t1').keypress(function(e) {
         appendAct('keypress - key:' + e.keyCode + ', char:' + getChar(e) + ', meta:' + metaChar(e) + '');
         appendDst(e);
-        //getPos();
+        getPos();
     });
 
     $('#t1').keyup(function(e) {
