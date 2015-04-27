@@ -17,9 +17,9 @@ cmd_response = [
 
 class MyClientProtocol(WebSocketClientProtocol):
     def onConnect(self, response):
-        self.current_test = 0
-        self.peer_msg_count = 0
-        self.datum = {}
+        #self.current_test = 0
+        #self.peer_msg_count = 0
+        self.datum = {}  # can not be called 'state' because it's used
         print('Server connected: {0}'.format(response.peer))
 
     def onOpen(self):
@@ -48,8 +48,8 @@ class MyClientProtocol(WebSocketClientProtocol):
                 print 'satisfy', wait.conditions
                 msg = wait.receive(response, self.datum)
                 if msg:
-                    return self.sendMsg(msg)
-                return None
+                    self.sendMsg(msg)
+                return
 
         if '_tracker' in response:
             action = actions.get(response['_tracker'])
@@ -174,17 +174,21 @@ def setup_actions(factory):
     actions.add(Action('get_player_stats', settings={'player_id': 2, 'game_name':'Game Theory'}))
     actions.add(Action('sit_for_auto_match_game', out_attrs=['room_id']))
 
-    wait_game_start1 = Wait('', {'game_status': 'PLAYING'}, keep_attrs=['table_id'])
-    wait_game_start2 = Wait('game_start', {}, keep_attrs=['table_id'])
+    wait_game_start1 = Wait(conditions={'game_status': 'PLAYING'}, keep_attrs=['table_id'])
     actions.add_wait(wait_game_start1)
+
+    wait_game_start2 = Wait(conditions={'sys_cmd':'game_start' }, keep_attrs=['table_id'])
     actions.add_wait(wait_game_start2)
-    get_leader = Action('get_leader', out_attrs=['table_id'])
+
+    get_leader = Action('get_leaders', out_attrs=['table_id'])
     wait_game_start1.next=get_leader
     wait_game_start2.next=get_leader
     actions.add(get_leader, start_over=True)
     msg = 'This is a broadcast message'
-    actions.add(Action('broadcast_in_table', settings={'message':msg}, out_attrs=['table_id']))
-
+    #actions.add(Action('broadcast_in_table', settings={'message':msg}, out_attrs=['table_id']))
+    print '******** actions **********'
+    print str(actions)
+    print '******** /actions **********'
     return actions
 
 

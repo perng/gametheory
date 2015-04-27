@@ -1,6 +1,6 @@
+from server.utils import *
 
 global_tracker = 0
-
 
 class Action:
     def __init__(self, cmd, settings={}, out_attrs=[], keep_attrs=[], delete_attrs=[],
@@ -35,6 +35,7 @@ class Action:
         for attr in self.out_attrs:
             msg[attr] = state[attr]
         print 'action', self.cmd, ' emit', msg
+        print '************************'
         return msg
     def receive(self, message, state):
         if not self.conditions:
@@ -48,15 +49,32 @@ class Action:
         for attr in self.extract_attrs:
             state[attr] = self.extract_attrs[attr](state, message)
         if self.next:
+            print '************************'
             return self.next.emit(state)
+        print '************************'
         return None
+    def __str__(self):
+        return "(Action:"+self.conditions['cmd']+")"
+    def __repr__(self):
+        return self.__str__()
 
 class Wait(Action):
+    def __init__(self, settings={}, out_attrs=[], keep_attrs=[], delete_attrs=[],
+                 extract_attrs={}, conditions = {}):
+        Action.__init__(self, '', settings, out_attrs, keep_attrs, delete_attrs,
+                 extract_attrs, conditions)
+
     def satisfy(self, message):
         for k in self.conditions:
             if k not in message or self.conditions[k] != message[k]:
+                print '***mismatch on:', k
                 return False
         return True
+
+    def __str__(self):
+        return "(Wait:"+str(self.conditions)+")"
+    def __repr__(self):
+        return self.__str__()
 
 
 class Actions:
@@ -73,7 +91,22 @@ class Actions:
                 self.last.next = action
             self.last = action
     def add_wait(self, wait):
-        assert  len(wait.conditions)>0
+        assert wait.__class__== Wait
+        assert len(wait.conditions)>0
         self.waits.append(wait)
+        print '*** added:', wait, str(self.waits)
     def get(self, tracker):
         return self.actions[tracker]
+
+    def __str__(self):
+        result = "Actions:"
+        for a in self.actions:
+            result +=  str(a) +"\t"
+        result += "\n"
+
+        result += "Waits:"
+        for a in self.waits:
+            result +=  str(a) +"\t"
+        result += "\n"
+        return result
+
