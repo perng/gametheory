@@ -184,9 +184,9 @@
          // Show help for all commands.
          function getHelpAll() {
              var help = "\
-<br/>#a ($app, 显示所有应用) \
+<br/>#a (#app, 显示所有应用) \
 <br/>#a chess {#app chess, 打开六子棋游戏窗口) \
-<br/>#a {app} ($app, 打开指定的应用或URL) \
+<br/>#a {app} (#app, 打开指定的应用或URL) \
 <br/>#a1 (#a on, #app on, 打开应用窗口) \
 <br/>#a0 (#a off, #app off, 隐藏应用窗口) \
 <br/>#ac (#a clear, #app clear, 关闭应用，退出应用窗口) \

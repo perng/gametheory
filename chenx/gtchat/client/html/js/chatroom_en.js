@@ -184,9 +184,9 @@
          // Show help for all comands.
          function getHelpAll() {
              var help = "\
-<br/>#a ($app, show available apps) \
+<br/>#a (#app, show available apps) \
 <br/>#a chess {#app chess, open 6-piece chess app window) \
-<br/>#a {app} ($app, open given app or url) \
+<br/>#a {app} (#app, open given app or url) \
 <br/>#a1 (#a on, #app on, turn on app) \
 <br/>#a0 (#a off, #app off, hide app window) \
 <br/>#ac (#a clear, #app clear, clear any app and hide app window) \
