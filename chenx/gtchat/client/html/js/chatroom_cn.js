@@ -476,13 +476,21 @@
                        }
                    }
                }
+               else if (msg == '#vid') {
+                   appendChatroomInfo(msg);
+                   doVid();
+               }
+               else if (msg == '#vid off') {
+                   appendChatroomInfo(msg);
+                   doVidOff();
+               }
                else {
                    current_cmd = "speak";
                    //alert(msg);
-                   var style = '.'; //size=a';
+                   var meta = '.'; //size=a';
                    data = '{"cmd":"speak", "room_name":"' + current_room +
                           '", "msg":"' + strEncode(msg) +
-                          '", "style":"' + strEncode(style) +
+                          '", "meta":"' + strEncode(meta) +
                           '", "tracker":"' + current_tid + '"}';
                    send_data(data);
                    //doSpeak(msg, current_user, true);
@@ -1040,6 +1048,13 @@
              appendChatroomInfo('Use example: #a chess');
          }
 
+         function doVid() {
+             $('vid_panel').show();
+         }
+         function doVidOff() {
+             $('vid_panel').hide();
+         }
+
          function process_message(msg) {
              //alert(msg);
              var jo = JSON.parse(msg);
@@ -1096,6 +1111,7 @@
          }
          function handle_c_speak(jo) {
              var msg = jo.msg;
+             var meta = jo.meta;
              var usr = jo.usr;
              var room_name = jo.room_name;
              var tracker = jo.tracker;

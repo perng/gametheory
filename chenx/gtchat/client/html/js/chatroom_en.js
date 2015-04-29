@@ -474,13 +474,35 @@
                        }
                    }
                }
+               else if (msg == '#vid') {
+                   data = '{"cmd":"speak", "room_name":"' + current_room +
+                          '", "msg":"' + '[turn on video]' +
+                          '", "meta":"' + 'vid_on' +
+                          '", "tracker":"' + current_tid + '"}';
+                   send_data(data);
+
+                   current_cmd = "speak";
+                   //appendChatroomInfo(msg);
+                   doVidOn();
+               }
+               else if (msg == '#vid off') {
+                   current_cmd = "speak";
+                   //appendChatroomInfo(msg);
+                   doVidOff();
+
+                   data = '{"cmd":"speak", "room_name":"' + current_room +
+                          '", "msg":"' + '[turn off video]' +
+                          '", "meta":"' + 'vid_off' +
+                          '", "tracker":"' + current_tid + '"}';
+                   send_data(data);
+               }
                else {
                    current_cmd = "speak";
                    //alert(msg);
-                   var style = '.'; //b:u:i:size=a:color=#888888';
+                   var meta = '.'; //b:u:i:size=a:color=#888888';
                    data = '{"cmd":"speak", "room_name":"' + current_room + 
                           '", "msg":"' + strEncode(msg) + 
-                          '", "style":"' + strEncode(style) +
+                          '", "meta":"' + strEncode(meta) +
                           '", "tracker":"' + current_tid + '"}';
                    send_data(data);
                    //doSpeak(msg, current_user, true);
@@ -491,10 +513,33 @@
             }
          }
 
-         function doSpeak(msg, usr, isMe) {
+
+         function turnOnVid() {
+             doVidOn();
+         }
+         function turnOffVid() {
+             doVidOff();
+         }
+         function showVid(msg) {
+             $('#image').attr("src", msg);
+         }
+
+         function doSpeak(msg, meta, usr, isMe) {
              var t = getTimeStamp();
              var color = isMe ? ' color="#99ff99"' : '';
              var author = '>> ' + usr + ' ' + t;
+
+             if (meta == 'vid_on') {
+                 turnOnVid();
+             }
+             else if (meta == 'vid_off') {
+                 turnOffVid();
+             }
+             else if (meta == 'vid') {
+                 showVid(msg);
+                 return;
+             }
+
              msg = strDecode(msg);
              if (isMe) {
                  author = '<span style="font-size:10pt; color:#ccffcc;">' + author + '</span>';
@@ -1034,6 +1079,22 @@
              appendChatroomInfo('Use example: #a chess');
          }
 
+         function doVidOn() {
+             init_vid();
+             $('#vid_panel').show();
+             $('#chatroom').css('width', '360px');
+
+             var bgSize = bgImgSize.split(' ');
+             var width = parseInt(bgSize[0].replace('%', '')) * 2;
+             var newBgSize = width + '% ' + bgSize[1];  //alert (newBgSize);
+             $('#chatroom').css('background-size', newBgSize);
+         }
+         function doVidOff() {
+             $('#vid_panel').hide();
+             $('#chatroom').css('width', '720px');
+             $('#chatroom').css('background-size', bgImgSize);
+         }
+
          function process_message(msg) {
              //alert(msg);
              var jo = JSON.parse(msg);
@@ -1086,10 +1147,11 @@
          }
          function handle_c_speak(jo) {
              var msg = jo.msg;
+             var meta = jo.meta;
              var usr = jo.usr;
              var room_name = jo.room_name;
              var tracker = jo.tracker;
-             doSpeak(msg, usr, false);
+             doSpeak(msg, meta, usr, false);
          }
          function handle_c_whisper(jo) {
              var msg = jo.msg;
@@ -1787,7 +1849,9 @@
                  }
                  return;
              }
-             doSpeak(msg, current_user, true);
+
+             //if (meta == 'vid') {} // this won't happen. no response for vid.
+             doSpeak(msg, '', current_user, true);
          }
          function handle_cr_whisper(status, msg, code, tracker) {
 

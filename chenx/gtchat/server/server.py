@@ -430,9 +430,9 @@ class Cls_Chatroom():
 
             elif cmd == "speak":
                 msg = self.get_param('msg')
-                style = self.get_param('style')
+                meta = self.get_param('meta')
                 room_name = self.get_param('room_name')
-                self.api_speak(msg, style, room_name, usr, src, tracker)
+                self.api_speak(msg, meta, room_name, usr, src, tracker)
 
             elif cmd == "whisper":
                 msg = self.get_param('msg')
@@ -614,7 +614,7 @@ class Cls_Chatroom():
         return json.JSONEncoder().encode(data)
 
 
-    def process_msg(self, msg, style):
+    def process_msg(self, msg, meta):
         # do not allow html tag for security.
         msg = msg.replace('<', '&lt;')
 
@@ -624,14 +624,15 @@ class Cls_Chatroom():
         font-size (int)
         font-color (#0-9a-f-A-F){6}
         img
-        Format: 'b:i:u:size=3:color=#ffffff' or 'img'
+        vid
+        Format: 'b:i:u:size=3:color=#ffffff', or 'img', or 'vid'.
         """
 
-        if style == 'img':
+        if meta == 'img':
             msg = '<img src="' + msg + '" class="chatroom"/>'
         else:
-            styles = style.split(':')
-            for st in styles:
+            metas = meta.split(':')
+            for st in metas:
                 if st == 'b':
                     msg = '<b>' + msg + '</b>'
                 elif st == 'i':
@@ -665,33 +666,39 @@ class Cls_Chatroom():
             return False
 
 
-    def api_speak(self, msg, style, room_name, usr, src, tracker):
+    def api_speak(self, msg, meta, room_name, usr, src, tracker):
         self.validate_active_user(src)
         self.validate_active_room(room_name)
         self.validate_room_user(room_name, src)
 
-        # process msg
-        msg = self.process_msg(msg, style)
+        # process msg --> let client handle this. 4/29/2015.
+        # msg = self.process_msg(msg, meta)
 
         # send response message to sender.
-        response_msg = msg #"message is sent"
-        client = self.get_client(src)
-        self.send_c_response("ok", "speak", response_msg, usr, client, tracker)
+        if meta == 'vid':  # don't send response.
+            pass
+        else:
+            if meta == 'img':  # just send "sent" as response.
+                response_msg = 'sent'
+            else:              # send back the original message.
+                response_msg = msg  #"message is sent"
+            client = self.get_client(src)
+            self.send_c_response("ok", "speak", response_msg, usr, client, tracker)
 
         """
         Now broadcast to users in this room.
         Only users in this room receive this message.
         """
         # send event message to users in this room.
-        msg = self.make_msg_c_speak(msg, usr, room_name, tracker)
+        msg = self.make_msg_c_speak(msg, meta, usr, room_name, tracker)
         self.broadcast_to_room(room_name, msg, src)
 
 
     """
     'c_speak' is a client side API call. This msg will be sent to clients.
     """
-    def make_msg_c_speak(self, msg, usr, room_name, tracker):
-        data = {"cmd":"c_speak", "msg":msg, "usr":usr, "room_name":room_name, \
+    def make_msg_c_speak(self, msg, meta, usr, room_name, tracker):
+        data = {"cmd":"c_speak", "msg":msg, "meta":meta, "usr":usr, "room_name":room_name, \
                 "tracker":tracker}
         return json.JSONEncoder().encode(data)
 

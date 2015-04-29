@@ -74,7 +74,6 @@ if (typeof (CoEdit) == "undefined") {
         this.t1.bind('input', function(e) {
             _this.appendAct('changed ...');
         });
-    
     }
 
     
