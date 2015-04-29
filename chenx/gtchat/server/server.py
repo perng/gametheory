@@ -307,7 +307,7 @@ class Cls_Chatroom():
         usr = ''
         tracker = ''
 
-        if DEBUG or LOG:
+        if DEBUG:
             if DEBUG: print(' ')   # if debug, add an empty line for better display.
             print ('==' + src + ':: ' + encode_utf8(msg))
 
@@ -1575,7 +1575,7 @@ class BroadcastServerProtocol(WebSocketServerProtocol):
     def onMessage(self, payload, isBinary):
         if not isBinary:
             ret = self.factory.game_handler.handle(payload.decode('utf8'), self);
-            if DEBUG or LOG:
+            if DEBUG:
                 print "=> game_handler.handle() returns: " + ret
 
             """
