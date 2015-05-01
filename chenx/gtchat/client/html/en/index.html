@@ -69,20 +69,18 @@
       <iframe id="app_preload" frameborder="0" style="width:0px; height:0px;"></iframe>
       </div>
 
-      <div id="vid_panel" style="position:absolute; background-color:#bbccff; right:5px; width: 360px; top:5px; height: 460px; display:none;">
-          <div style="width:360px; text-align:center; margin: 5px;">
+      <div id="vid_panel">
+          <div id="div_vid_func">
+              <button id="btnRecord" onclick="record(this);" value='Start Recording' style="background-color:#eeeeee; width:50px; height:25px; padding:0px; margin:0px; vertical-align:middle;" title="Start"><img id="btnRecordImg" src="../images/start.png" style="height:20px; vertical-align:middle;"></button>
+          </div>
+          <br/>
+          <div id="vids" style="width:360px; text-align:center; margin: 5px;">
               <div id="webcam"></div>
-              <div style="margin:5px;">
-                      <img src="webcamlogo.png" style="vertical-align:text-top"/>
-                      <select id="cameraNames" size="1" onChange="changeCamera()" style="width:200px;font-size:10px;height:25px;">
-                      </select>
-                      <input type='button' class="btn btn-small" id="btnRecord" onclick="record(this);" value='Start Recording'/>
+
+              <div>
+              <!--<img src="webcamlogo.png" style="vertical-align:text-top"/>
+              <select id="cameraNames" size="1" onChange="changeCamera()" style="width:200px;font-size:10px;height:25px;"></select>-->
               </div>
-              <!--<p><button class="btn btn-small" id="btn1" onclick="base64_tofield()">Snapshot to form</button></p>
-              <p><button class="btn btn-small" id="btn2" onclick="base64_toimage()">Snapshot to image</button></p>
-              <input type='button' class="btn btn-small" id="btn3" onclick="record(this);" value='Start Recording'/>-->
-              <!--<p><textarea id="formfield" style="width:190px;height:70px;"></textarea></p>-->
-              <p><img id="image" style="width:200px;height:153px;"/></p>
           </div>
       </div>
 
@@ -155,6 +153,9 @@
           <div id='div_msg'>
               <span id='span_msg' style='color: orange;'></span>
           </div>
+          <!--div id='div_record'>
+              <input type='image' src='../images/start.png' style='height:22px;' value='start record'/>
+          </div-->
           <div id='div_setting'><img src="../images/setting.gif" style="vertical-align:middle;" onmouseover="javascript:showSettings();"></div>
       </div>
       </div> <!--end of chatroom_container-->

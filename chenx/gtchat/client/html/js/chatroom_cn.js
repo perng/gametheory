@@ -26,6 +26,7 @@
          var helpMsgCommon = getHelpCommon();
          var helpMsgMaster = getHelpMaster();
          var url_sixp = 'http://homecox.com/games/sp/';
+         var vid_on = false;
 
 
          if (typeof String.prototype.startsWith != 'function') {
@@ -186,7 +187,7 @@
              var help = "\
 <br/>#a (#app, 显示所有应用) \
 <br/>#a chess {#app chess, 打开六子棋游戏窗口) \
-<br/>#a {app} (#app, 打开指定的应用或URL) \
+<br/>#a {app} (#app {app}, 打开指定的应用或URL) \
 <br/>#a1 (#a on, #app on, 打开应用窗口) \
 <br/>#a0 (#a off, #app off, 隐藏应用窗口) \
 <br/>#ac (#a clear, #app clear, 关闭应用，退出应用窗口) \
@@ -207,6 +208,8 @@
 <br/>#s {size} (#size, 设置当前聊天室最大容量, 0表示无上限) \
 <br/>#u (#users, 列出所有在线用户) \
 <br/>#v (#private, 设置当前聊天室为秘密聊天室) \
+<br/>#v1 (#vid, #vid on, 打开视频窗口) \
+<br/>#v0 (#vid off, 关闭视频窗口) \
 <br/>#w (#where, 显示当前聊天室名) \
 <br/>#x (#exit, #logout, 退出登录) \
 ";
@@ -233,6 +236,8 @@
 <br/>#p (#passwd, 更新密码) \
 <br/>#r (#rooms, 列出所有在线聊天室) \
 <br/>#u (#users, 列出所有在线用户) \
+<br/>#v1 (#vid, #vid on, turn on video camera) \
+<br/>#v0 (#vid off, turn off video camera) \
 <br/>#w (#where, 显示当前聊天室名) \
 <br/>#x (#exit, #logout, 退出登录) \
 ";
@@ -273,14 +278,14 @@
                if (msg == '#rooms' || msg == '#r') {
                    request_src = 'console';
                    current_cmd = "get_room_list";
-                   data = '{"cmd":"get_room_list", "tracker":"' + current_tid + '"}';
+                   var data = '{"cmd":"get_room_list", "tracker":"' + current_tid + '"}';
                    send_data(data);
                    //appendChatroomInfo(msg + ":");
                }
                else if (msg == '#users' || msg == '#u') {
                    request_src = "console"
                    current_cmd = "get_user_list";
-                   data = '{"cmd":"get_user_list", "tracker":"' + current_tid + '"}';
+                   var data = '{"cmd":"get_user_list", "tracker":"' + current_tid + '"}';
                    send_data(data);
                    //appendChatroomInfo(msg + ":");
                }
@@ -367,7 +372,7 @@
                else if (msg == '#who' || msg == '#o') {
                    request_src = "console_who";
                    current_cmd = "get_room_user_list";
-                   data = '{"cmd":"get_room_user_list", "room_name":"' + current_room + '", "tracker":"' + current_tid + '"}';
+                   var data = '{"cmd":"get_room_user_list", "room_name":"' + current_room + '", "tracker":"' + current_tid + '"}';
                    send_data(data);
                    //appendChatroomInfo(msg + ":");
                }
@@ -398,7 +403,7 @@
                    else {
                        current_cmd = "set_room_permission";
                        var is_public = ((msg == '#public' || msg == '#b') ? 1 : 0);
-                       data = '{"cmd":"set_room_permission", "permission":"' + is_public + '", "room_name":"' + 
+                       var data = '{"cmd":"set_room_permission", "permission":"' + is_public + '", "room_name":"' + 
                               current_room + '", "tracker":"' + current_tid + '"}';
                        send_data(data);
                    }
@@ -470,25 +475,43 @@
                        }
                        else {
                            if (max_size < 0) max_size = 0;
-                           data = '{"cmd":"max", "size":"' + max_size + '", "room_name":"' +
+                           var data = '{"cmd":"max", "size":"' + max_size + '", "room_name":"' +
                                   current_room + '", "tracker":"' + current_tid + '"}';
                            send_data(data);
                        }
                    }
                }
-               else if (msg == '#vid') {
+               else if (msg == '#v1' || msg == '#vid' || msg == '#vid on') {
                    appendChatroomInfo(msg);
-                   doVid();
+                   if (! vid_on) {
+                       var data = '{"cmd":"speak", "room_name":"' + current_room +
+                          '", "msg":"' + '[turn on video]' +
+                          '", "meta":"' + 'vid_on' +
+                          '", "tracker":"' + current_tid + '"}';
+                       send_data(data);
+
+                       current_cmd = "speak";
+                       doVidOn();
+                   }
                }
-               else if (msg == '#vid off') {
+               else if (msg == '#v0' || msg == '#vid off') {
                    appendChatroomInfo(msg);
-                   doVidOff();
+                   if (vid_on) {
+                       current_cmd = "speak";
+                       doVidOff();
+
+                       var data = '{"cmd":"speak", "room_name":"' + current_room +
+                          '", "msg":"' + '[turn off video]' +
+                          '", "meta":"' + 'vid_off' +
+                          '", "tracker":"' + current_tid + '"}';
+                       send_data(data);
+                   }
                }
                else {
                    current_cmd = "speak";
                    //alert(msg);
                    var meta = '.'; //size=a';
-                   data = '{"cmd":"speak", "room_name":"' + current_room +
+                   var data = '{"cmd":"speak", "room_name":"' + current_room +
                           '", "msg":"' + strEncode(msg) +
                           '", "meta":"' + strEncode(meta) +
                           '", "tracker":"' + current_tid + '"}';
@@ -501,10 +524,41 @@
             }
          }
 
-         function doSpeak(msg, usr, isMe) {
+
+         function turnOnVid(usr) {
+             // do nothing.
+         }
+         function turnOffVid(usr) {
+              $('#webcam_' + usr).remove();
+         }
+         function showVid(usr, msg) { 
+             //$('#image').attr("src", msg);
+             var vids = $('#vids');
+             var usr_id = usr.replace(/\s+/g, '_').replace(/\(/g, '').replace(/\)/g, '');
+             var vid_id = 'vid_' + usr_id;
+             var div = document.getElementById(vid_id);
+             if (div == null) {
+                 vids.append('<div id="webcam_' + usr + '" class="webcam" style="width:100%;" title="' + usr + '"><img id="' + vid_id + '" class="vid" style="width:240px;height:180px;"></div>');
+             }
+             $('#' + vid_id).attr("src", msg);
+         }
+
+         function doSpeak(msg, meta, usr, isMe) {
              var t = getTimeStamp();
              var color = isMe ? ' color="#99ff99"' : '';
              var author = '>> ' + usr + ' ' + t;
+
+             if (meta == 'vid_on') {
+                 turnOnVid(usr);
+             }
+             else if (meta == 'vid_off') {
+                 turnOffVid(usr);
+             }
+             else if (meta == 'vid') {
+                 showVid(usr, msg);
+                 return;
+             }
+
              msg = strDecode(msg);
              if (isMe) {
                  author = '<span style="font-size:10pt; color:#ccffcc;">' + author + '</span>';
@@ -916,14 +970,14 @@
          function doMaster(user, room) {
              current_tid = make_tracker();
              current_cmd = "master";
-             data = '{"cmd":"master", "user":"' + user + '", "room_name":"'
+             var data = '{"cmd":"master", "user":"' + user + '", "room_name":"'
                       + room + '", "tracker":"' + current_tid + '"}';
              send_data(data);
          }
          function doKick(user, room) {
              current_tid = make_tracker();
              current_cmd = "kick";
-             data = '{"cmd":"kick", "user":"' + user + '", "room_name":"' +
+             var data = '{"cmd":"kick", "user":"' + user + '", "room_name":"' +
                       room + '", "tracker":"' + current_tid + '"}';
              send_data(data);
          }
@@ -1048,11 +1102,25 @@
              appendChatroomInfo('Use example: #a chess');
          }
 
-         function doVid() {
-             $('vid_panel').show();
+         function doVidOn() {
+             if (vid_on) { return; }
+             vid_on = true;
+
+             init_vid();
+             $('#vid_panel').show();
+             $('#chatroom').css('width', '360px');
+
+             var bgSize = bgImgSize.split(' ');
+             var width = parseInt(bgSize[0].replace('%', '')) * 2;
+             var newBgSize = width + '% ' + bgSize[1];  //alert (newBgSize);
+             $('#chatroom').css('background-size', newBgSize);
          }
          function doVidOff() {
-             $('vid_panel').hide();
+             vid_on = false;
+             record_stop();
+             $('#vid_panel').hide();
+             $('#chatroom').css('width', '720px');
+             $('#chatroom').css('background-size', bgImgSize);
          }
 
          function process_message(msg) {
@@ -1115,7 +1183,7 @@
              var usr = jo.usr;
              var room_name = jo.room_name;
              var tracker = jo.tracker;
-             doSpeak(msg, usr, false);
+             doSpeak(msg, meta, usr, false);
          }
          function handle_c_whisper(jo) {
              var msg = jo.msg;
@@ -1813,7 +1881,7 @@
                  }
                  return;
              }
-             doSpeak(msg, current_user, true);
+             doSpeak(msg, '', current_user, true);
          }
          function handle_cr_whisper(status, msg, code, tracker) {
 
@@ -1897,7 +1965,7 @@
 
              request_src = "showRoomUsers";
              current_cmd = "get_room_user_list";
-             data = '{"cmd":"get_room_user_list", "room_name":"' + 
+             var data = '{"cmd":"get_room_user_list", "room_name":"' + 
                     room_name + '", "tracker":"' + current_tid + '"}';
              send_data(data);
          }
@@ -2006,7 +2074,7 @@
          // v: field:value pair.
          function send_msg_pref(pref) {
              var current_tid = make_tracker();
-             data = '{"cmd":"update_pref", "pref":"' + pref +
+             var data = '{"cmd":"update_pref", "pref":"' + pref +
                     '", "tracker":"' + current_tid + '"}';
              send_data(data);
          }
