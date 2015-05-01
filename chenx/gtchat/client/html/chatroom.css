@@ -112,6 +112,25 @@
         border: solid 1px #cccccc;
         color: orange;
       }
+      #div_vid_func {
+        background-color: #eeeeff; 
+        padding-left:5px; 
+        padding-right:5px; 
+        margin-left:5px; 
+        margin-right:0px; 
+        text-align:center;
+        /*background-image: url(images/bg.gif);
+        background-repeat: no-repeat;*/
+      }
+      #div_record{
+        display: none;
+        text-align: center;
+        position: absolute;
+        left: 659px;
+        width: 30px;
+        height: 23px;
+        border: solid 1px #cccccc;
+      }
       #div_setting {
         text-align: center;
         position: absolute;
@@ -359,6 +378,27 @@
           filter:alpha(opacity=90); 
           -moz-opacity: 0.9; 
           opacity: 0.9;
+      }
+
+      #vid_panel {
+        position:absolute; 
+        background-color:#bbccff; 
+        right:5px; 
+        width: 360px; top:5px; 
+        height: 460px; 
+        display:none;
+
+        overflow:auto;
+        overflow-y: scroll;
+      }
+
+      div.webcam {
+          /*width: 100%;*/
+          margin: 0px;
+      }
+      img.vid {
+          width: 240px;
+          height: auto;
       }
 
       /* limit size of image display in chatroom. */
