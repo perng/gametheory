@@ -398,7 +398,7 @@
       }
       img.vid {
           width: 240px;
-          height: auto;
+          height: 180px; /* auto; */
       }
 
       /* limit size of image display in chatroom. */

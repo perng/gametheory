@@ -538,7 +538,7 @@
              var vid_id = 'vid_' + usr_id;
              var div = document.getElementById(vid_id);
              if (div == null) {
-                 vids.append('<div id="webcam_' + usr + '" class="webcam" style="width:100%;" title="' + usr + '"><img id="' + vid_id + '" class="vid" style="width:240px;height:180px;"></div>');
+                 vids.append('<div id="webcam_' + usr + '" class="webcam" title="' + usr + '"><img id="' + vid_id + '" class="vid"></div>');
              }
              $('#' + vid_id).attr("src", msg);
          }

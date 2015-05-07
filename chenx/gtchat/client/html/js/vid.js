@@ -2,8 +2,75 @@
 // From: http://www.scriptcam.com/demo_1.cfm
 //
 
+var use_html5_video;
+var localMediaStream;
+
+document.addEventListener('DOMContentLoaded', function(){
+    html5_video = document.getElementById('videoElement');
+    html5_canvas = document.getElementById('canvas');
+    html5_context = canvas.getContext('2d');
+    html5_w = canvas.width;
+    html5_h = canvas.height;
+
+},false);
+
 // uploadImage: upload.gif, hide it for now.
 function init_vid() {
+    navigator.getUserMedia = navigator.getUserMedia || navigator.webkitGetUserMedia || 
+        navigator.mozGetUserMedia || navigator.msGetUserMedia || navigator.oGetUserMedia;
+
+    if (navigator.getUserMedia) {      
+        use_html5_video = true;
+        localMediaStream = navigator.getUserMedia({video: true}, handleVideo, videoError);
+    }
+    else { // fall back to flash.
+        use_html5_video = false;
+        init_vid_flash();
+    }
+}
+
+function handleVideo(stream) { // if found attach feed to video element
+    videoGood();
+    var video = document.querySelector("#videoElement");
+    video.src = window.URL.createObjectURL(stream);
+}
+
+function videoGood() {
+    $("#div_noCamMsg").hide();
+    $("#btnRecord").show();
+}
+ 
+function videoError(e) { // no webcam found 
+    $("#div_noCamMsg").show();
+    $("#btnRecord").hide();
+}
+
+function getVideoURI() {
+    if(html5_video.paused || html5_video.ended) return false; // if no video, exit here
+    html5_context.drawImage(html5_video,0,0,html5_w,html5_h); // draw video feed to canvas
+    var uri = canvas.toDataURL("image/jpeg", 0.8); // 2nd param is for quality.
+    //imgtag.src = uri; // add URI to IMG tag src
+    return uri;
+}
+
+function onUploadImg() {
+    $("#fileselect").trigger('click');
+}
+
+function uploadImg() {
+    var sel = document.getElementById('fileselect');
+    var f = sel.files[0]; // get selected file (camera capture)
+   
+    var fr = new FileReader();
+    fr.onload = function() {
+        var v = fr.result;
+        sendVid(v);
+    }
+
+    fr.readAsDataURL(f); // get captured image as data URI
+}
+
+function init_vid_flash() {
     $("#webcam").scriptcam({
         showMicrophoneErrors:false,
         onError:onError,
@@ -20,10 +87,22 @@ function init_vid() {
 function base64_tofield() {
     $('#formfield').val($.scriptcam.getFrameAsBase64());
 };
+
 function base64_toimage() {
     //$('#image').attr("src","data:image/png;base64,"+$.scriptcam.getFrameAsBase64());
+    var v;
 
-    var v = "data:image/png;base64,"+$.scriptcam.getFrameAsBase64();
+    if (use_html5_video) {
+        v = getVideoURI();
+    } else {
+        v = "data:image/png;base64," + $.scriptcam.getFrameAsBase64();
+    }
+    sendVid(v);
+}
+
+function sendVid(v) {
+    $("#vid_image").attr('src', v); // echo to self.
+
     var data = '{"cmd":"speak", "room_name":"' + current_room +
                           '", "msg":"' + v +
                           '", "meta":"' + 'vid' +
@@ -35,6 +114,7 @@ function base64_toimage() {
 var stream = null;
 function record(o) {
     if (stream == null) {
+        //html5_video.play();
         o.title = 'Stop';
         $('#btnRecordImg').attr('src', '../images/stop.png');
         stream = setInterval(base64_toimage, 150);
@@ -48,6 +128,8 @@ function record(o) {
 }
 function record_stop() {
     if (stream != null) {
+        //html5_video.stop();
+        localMediaStream.stop();
         clearInterval(stream);
         stream = null;
         $('#btnRecord').val('Start Record');

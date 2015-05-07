@@ -76,9 +76,21 @@
               <button id="btnRecord" onclick="record(this);" value='Start Recording' style="background-color:#eeeeee; width:50px; height:25px; padding:0px; margin:0px; vertical-align:middle;" title="Start"><img id="btnRecordImg" src="../images/start.png" style="height:20px; vertical-align:middle;"></button>
           </div>
           <br/>
-          <div id="vids" style="text-align:center; margin: 5px;">
-              <div id="webcam"></div>
+          <div id="vid_cam" style="text-align:center; margin: 5px; display:block;">
+              <!-- for flash when html5 video is not available. -->
+              <div id="webcam"></div> 
+              <!-- for html5 video -->
+              <div id="video_container" style="position:relative;">
+                  <video autoplay id="videoElement" style="width:240px; height:180px; background-color:#999; position: absolute; left:45px;">Your browser does not support the video tag</video>
+                  <div id="div_noCamMsg" style="position:absolute; top:80px; left: 100px; display:none;">No webcam is found.</div>
+                  <input type="image" src="../vid/upload.gif" onclick="javascript:onUploadImg();" title="Upload Image" alt="Upload Image" style="position:absolute; top:5px; left: 55px;"/>
+                  <input id="fileselect" type="file" accept="image/*" capture="camera" onchange="javascript:uploadImg();" style="display:none;"/>
+                  <img id="vid_image" width="48" height="36" style="position:absolute; top:138px; left:230px;"/>
+                  <canvas id="canvas" width="240" height="180" style="display:none; background-color:#999;"></canvas>
+              </div>
+          </div>
 
+          <div id="vids" style="text-align:center; margin: 5px; position:relative; top: 185px;">
               <div>
               <!--<img src="webcamlogo.png" style="vertical-align:text-top"/>
               <select id="cameraNames" size="1" onChange="changeCamera()" style="width:200px;font-size:10px;height:25px;"></select>-->
