@@ -117,6 +117,7 @@ function record(o) {
         //html5_video.play();
         o.title = 'Stop';
         $('#btnRecordImg').attr('src', '../images/stop.png');
+        $('#btnUploadImg').hide();
         stream = setInterval(base64_toimage, 150);
     }
     else {
@@ -124,6 +125,7 @@ function record(o) {
         stream = null;
         o.title = 'Start';
         $('#btnRecordImg').attr('src', '../images/start.png');
+        $('#btnUploadImg').show();
     }
 }
 function record_stop() {
