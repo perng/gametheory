@@ -33,7 +33,7 @@
 # 3) added Chatroom API classes Cls_chatroom, Cls_ActiveUser, Cls_Rooms,
 #    Cls_UserPref.
 #
-# X. Chen (3/18/2015 - 4/18/2015)
+# X. Chen (3/18/2015 - 5/11/2015)
 # 
 
 import sys, os
@@ -309,7 +309,8 @@ class Cls_Chatroom():
 
         if DEBUG:
             if DEBUG: print(' ')   # if debug, add an empty line for better display.
-            print ('==' + src + ':: ' + encode_utf8(msg))
+            msg_head = msg if len(msg) <= 100 else (msg[:100] + ' ...')
+            print ('==' + src + ':: ' + encode_utf8(msg_head))
 
         try:
             # These 3 checks will close connection if msg doesn't obey rule:
@@ -616,6 +617,7 @@ class Cls_Chatroom():
 
     def process_msg(self, msg, meta):
         # do not allow html tag for security.
+        # by 4/29/2015, this is the only processing done to msg.
         msg = msg.replace('<', '&lt;')
 
         """
@@ -628,6 +630,8 @@ class Cls_Chatroom():
         Format: 'b:i:u:size=3:color=#ffffff', or 'img', or 'vid'.
         """
 
+        """
+        # turn off these. let client handle these. 4/29/2015.
         if meta == 'img':
             msg = '<img src="' + msg + '" class="chatroom"/>'
         else:
@@ -649,7 +653,7 @@ class Cls_Chatroom():
                     if not self.isHTMLColor(color):
                         raise Exception('40|not valid HTML color')
                     msg = '<font color="' + color + '">' + msg + '</font>'
-
+        """
         #print 'msg processed: ' + msg
 
         return msg
@@ -671,27 +675,32 @@ class Cls_Chatroom():
         self.validate_active_room(room_name)
         self.validate_room_user(room_name, src)
 
-        # process msg --> let client handle this. 4/29/2015.
-        # msg = self.process_msg(msg, meta)
+        msg = self.process_msg(msg, meta)
+
+        # get user's video camera status. vid will be sent to only those whose camera is on.
+        if meta == 'vid_on':
+            self.T_users_active[src].video_on = True
+        elif meta == 'vid_off':
+            self.T_users_active[src].video_on = False 
 
         # send response message to sender.
-        if meta == 'vid':  # don't send response.
-            pass
+        if meta == 'vid' or meta == 'audio':  # don't send response.
+            msg = self.make_msg_c_speak(msg, meta, usr, room_name, tracker)
+            self.broadcast_video_to_room(room_name, msg, src)
         else:
             if meta == 'img':  # just send "sent" as response.
                 response_msg = 'sent'
             else:              # send back the original message.
-                response_msg = msg  #"message is sent"
+                response_msg = msg  
+
             client = self.get_client(src)
             self.send_c_response("ok", "speak", response_msg, usr, client, tracker)
 
-        """
-        Now broadcast to users in this room.
-        Only users in this room receive this message.
-        """
-        # send event message to users in this room.
-        msg = self.make_msg_c_speak(msg, meta, usr, room_name, tracker)
-        self.broadcast_to_room(room_name, msg, src)
+            """
+            Now broadcast to users in this room.
+            """
+            msg = self.make_msg_c_speak(msg, meta, usr, room_name, tracker)
+            self.broadcast_to_room(room_name, msg, src)
 
 
     """
@@ -1111,6 +1120,18 @@ class Cls_Chatroom():
                 self.send_msg(self.get_client(target_src), msg)
 
 
+    def broadcast_video_to_room(self, room_name, msg, src):
+        """
+        broadcase video message to users in room whose video camera is on, and not self.
+        """
+        self.validate_active_room(room_name)
+
+        target_src_list = self.T_rooms[room_name].getUserSrcList()
+        for target_src in target_src_list:
+            if target_src != src and self.T_users_active[target_src].video_on == True:  
+                self.send_msg(self.get_client(target_src), msg)
+
+
     def make_msg_c_event(self, type, usr, tracker):
         """
         make message to send to target_user that usr has done something defined by type:
@@ -1454,6 +1475,7 @@ class Cls_ActiveUser():
         self.src  = src
         self.client = client  # can send message through this.
         self.room = ''
+        self.video_on = False # whether video camera is on.
 
     def setRoom(self, room):
         self.room = room
