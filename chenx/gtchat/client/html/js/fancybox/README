@@ -1,0 +1,9 @@
+fancybox/jquery.fancybox-1.3.4_patch_pack.js is downloaded from:
+http://www.picssel.com/playground/jquery/fancybox/jquery.fancybox-1.3.4_patch.zip
+
+The patch was updated on March 19, 2013.
+
+This is to fix the problem that fancybox-1.3.4 does not work with jQuery version > 1.4.
+See: http://stackoverflow.com/questions/14344289/fancybox-doesnt-work-with-jquery-v1-9-0-f-browser-is-undefined-cannot-read
+
+5/7/2014
