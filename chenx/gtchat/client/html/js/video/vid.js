@@ -24,6 +24,8 @@ function init_vid() {
         localMediaStream = navigator.getUserMedia({video: true}, handleVideo, videoError);
     }
     else { // fall back to flash.
+        $('#video_container').hide(); // hide html5 video container.
+        $('#vids').css('top', '0px'); // move div vids up so there is no space in between.
         use_html5_video = false;
         init_vid_flash();
     }
@@ -78,7 +80,7 @@ function init_vid_flash() {
         disableHardwareAcceleration:1,
         cornerColor:'e3e5e2',
         onWebcamReady:onWebcamReady,
-        uploadImage:'../vid/upload.gif',
+        uploadImage:'../js/video/upload.gif',
         zoom:0.75,
         onPictureAsBase64:base64_tofield_and_image
     });
@@ -86,7 +88,7 @@ function init_vid_flash() {
 
 function base64_tofield() {
     $('#formfield').val($.scriptcam.getFrameAsBase64());
-};
+}
 
 function base64_toimage() {
     //$('#image').attr("src","data:image/png;base64,"+$.scriptcam.getFrameAsBase64());
@@ -108,14 +110,14 @@ function sendVid(v) {
                           '", "meta":"' + 'vid' +
                           '", "tracker":"' + current_tid + '"}';
     send_data(data);
-};
+}
 
 
 var stream = null;
 function record(o) {
     if (stream == null) {
         //html5_video.play();
-        o.title = 'Stop';
+        o.title = 'Stop Video';
         $('#btnRecordImg').attr('src', '../images/stop.png');
         $('#btnUploadImg').hide();
         stream = setInterval(base64_toimage, 150);
@@ -123,7 +125,7 @@ function record(o) {
     else {
         clearInterval(stream);
         stream = null;
-        o.title = 'Start';
+        o.title = 'Start Video';
         $('#btnRecordImg').attr('src', '../images/start.png');
         $('#btnUploadImg').show();
     }
@@ -134,7 +136,7 @@ function record_stop() {
         localMediaStream.stop();
         clearInterval(stream);
         stream = null;
-        $('#btnRecord').val('Start Record');
+        //$('#btnRecord').val('Start Record');
     }
 }
 

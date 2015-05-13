@@ -27,7 +27,7 @@
          var helpMsgMaster = getHelpMaster();
          var url_sixp = 'http://homecox.com/games/sp/';
          var vid_on = false;
-
+         var soundVoice = null;
 
          if (typeof String.prototype.startsWith != 'function') {
              String.prototype.startsWith = function (str){
@@ -331,7 +331,7 @@
                    }
                }
                else if (msg == '#logout' || msg == '#exit' || msg == '#x') {
-                   doLogout();
+                   doLogout(false);
                }
                else if (msg == '#passwd' || msg == '#p') {
                    showFormUpdatePwd();
@@ -496,16 +496,7 @@
                }
                else if (msg == '#v0' || msg == '#vid off') {
                    appendChatroomInfo(msg);
-                   if (vid_on) {
-                       current_cmd = "speak";
-                       doVidOff();
-
-                       var data = '{"cmd":"speak", "room_name":"' + current_room +
-                          '", "msg":"' + '[turn off video]' +
-                          '", "meta":"' + 'vid_off' +
-                          '", "tracker":"' + current_tid + '"}';
-                       send_data(data);
-                   }
+                   if (vid_on) { doVidOff(); }
                }
                else {
                    current_cmd = "speak";
@@ -543,6 +534,14 @@
              $('#' + vid_id).attr("src", msg);
          }
 
+         function playAudio(usr, msg) {
+             if (soundVoice == null) {
+                 soundVoice = document.getElementById('idSoundVoice');
+             }
+             soundVoice.src = msg;
+             soundVoice.play();
+         }
+
          function doSpeak(msg, meta, usr, isMe) {
              var t = getTimeStamp();
              var color = isMe ? ' color="#99ff99"' : '';
@@ -556,6 +555,10 @@
              }
              else if (meta == 'vid') {
                  showVid(usr, msg);
+                 return;
+             }
+             else if (meta == 'audio') {
+                 playAudio(usr, msg);
                  return;
              }
 
@@ -899,8 +902,12 @@
              current_cmd = 'login';
              send_data(msg);
          }
-         function doLogout() {
-             if (! confirm(C_MSG['24'])) return;
+         // If force is true, then logout without first confirm.
+         // This happens when close window.
+         function doLogout(force) {
+             if (! force && ! confirm(C_MSG['24'])) return;
+
+             if (vid_on) { doVidOff(); }
 
              // should logout locally no matter what happen on server side.
              // if disconnected before sending logout msg, will not get any
@@ -1107,6 +1114,7 @@
              vid_on = true;
 
              init_vid();
+             init_audio();
              $('#vid_panel').show();
              $('#chatroom').css('width', '360px');
 
@@ -1121,6 +1129,13 @@
              $('#vid_panel').hide();
              $('#chatroom').css('width', '720px');
              $('#chatroom').css('background-size', bgImgSize);
+
+             current_cmd = "speak";
+             var data = '{"cmd":"speak", "room_name":"' + current_room +
+                 '", "msg":"' + '[turn off video]' +
+                 '", "meta":"' + 'vid_off' +
+                 '", "tracker":"' + current_tid + '"}';
+             send_data(data);
          }
 
          function process_message(msg) {
@@ -1361,7 +1376,13 @@
          }
 
          function removeUsersList(user_name) {
-             $('#selectUsersList option[value=' + user_name + ']').remove();
+             //$('#selectUsersList option[value=' + user_name + ']').remove();
+             //above will have error when user_name is like: "user (2)".
+             $('#selectUsersList option').each(function() {
+                 if ($(this).val() == user_name) {
+                     $(this).remove();
+                 }
+             });
          }
 
          function dump(msg) {
@@ -1564,7 +1585,13 @@
              }));
          }
          function removeFromSelectList(listName, item_name) {
-             $('#' + listName + ' option[value=' + item_name + ']').remove();
+             //$('#' + listName + ' option[value=' + item_name + ']').remove();
+             //above will have error when item_name is like: "user (2)".
+             $('#' + listName + ' option').each(function() {
+                 if ($(this).val() == item_name) {
+                     $(this).remove();
+                 }
+             });
          }
          function setSelectOptionBgColor(listName, item_name, color) {
              if (color == '') { color = 'transparent'; }
@@ -1601,6 +1628,8 @@
          }
 
          function setRoomMasterIcon(user, isMaster) {
+             if (user == '') return;
+
              var bgImg = isMaster ? 'url(../images/master.gif)' : 'url(../images/person.png)';
              var title = isMaster ? 'Room master' : '';
 
@@ -2133,7 +2162,7 @@
              }
 
              $('#cbToggleDebug').click(function() {
-                 if ($(this).attr('checked')) { 
+                 if ($(this).prop('checked')) { 
                      $('#btnClearConsole').show();
                      $('#console').show();
                  } else {
@@ -2230,5 +2259,11 @@
                  current_cmd = 'doConnect';
                  doConnect();
              }
+
+             // Force logout if user closes browser window.
+             $(window).bind("beforeunload", function() {
+                 //return true || confirm('bye');
+                 doLogout(true);
+             });
          });
 

@@ -97,11 +97,11 @@
 			for (var key in opts) {
 				opts[key] = encodeURIComponent(opts[key]);
 			};
-			if (fileExists(decodeURIComponent(data.path)+'../vid/scriptcam.swf')) {
-				swfobject.embedSWF(decodeURIComponent(data.path)+'../vid/scriptcam.swf', opts.id, newWidth, newHeight, '11.6', false, opts, params);
+			if (fileExists(decodeURIComponent(data.path)+'../js/video/scriptcam.swf')) {
+				swfobject.embedSWF(decodeURIComponent(data.path)+'../js/video/scriptcam.swf', opts.id, newWidth, newHeight, '11.6', false, opts, params);
 			}
 			else {
-				alert(decodeURIComponent(data.path)+'scriptcam.swf not found, please check the path parameter');
+				alert(decodeURIComponent(data.path)+'../js/video/scriptcam.swf not found, please check the path parameter');
 			}
 		});
 	};
